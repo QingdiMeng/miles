@@ -39,8 +39,6 @@ from miles_plugins.models.cp_utils import build_fla_cp_context, packed_shard_to_
 
 WEIGHT_LAYOUT_VERSION = 1
 
-WEIGHT_LAYOUT_VERSION = 1
-
 
 class Projections(NamedTuple):
     """This rank's projections: ``qkv`` as the core's :meth:`DeltaRuleAttention.convolve` takes it (one
