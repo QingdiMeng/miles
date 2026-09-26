@@ -230,9 +230,9 @@ def test_invalid_options_fail_early(field: str, value: object) -> None:
 @pytest.mark.parametrize("session", ["v1", "v2"])
 @pytest.mark.parametrize("top_k", [21, 128])
 def test_large_session_heads_can_use_sglang_router(session: str, top_k: int) -> None:
-validate_score_centering_args(
-_args(use_session_server=session, score_centering_top_k=top_k, use_miles_router=False)
-)
+    validate_score_centering_args(
+        _args(use_session_server=session, score_centering_top_k=top_k, use_miles_router=False)
+    )
 
 
 @pytest.mark.parametrize("session", ["v1", "v2"])
