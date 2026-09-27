@@ -92,7 +92,12 @@ class TestAnObservationThatEndsWithTheSut:
     def test_failed_polls_after_the_training_exit_fall_back_to_the_last_successful_one(self) -> None:
         """A finished training run takes its api server down, so its final polls fail by design."""
         assert_end_state_complete(
-            [_closed(0), _observation(_complete(), at=_at(1)), _observation(None, at=_at(2)), _observation(None, at=_at(3))],
+            [
+                _closed(0),
+                _observation(_complete(), at=_at(1)),
+                _observation(None, at=_at(2)),
+                _observation(None, at=_at(3)),
+            ],
             expected_count_of_kind=_EXPECTED,
             observation_ends_with_sut=True,
         )
