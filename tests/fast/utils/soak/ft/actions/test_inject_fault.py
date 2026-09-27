@@ -1,3 +1,4 @@
+import argparse
 import random
 
 import httpx
@@ -20,6 +21,7 @@ from tests.utils.soak.ft.actions import inject_fault as inject_fault_module
 from tests.utils.soak.ft.actions.inject_fault import InjectFaultForm
 from tests.utils.soak.ft.types import CellTarget, InjectFaultDetails, ObservedCellFault, ObservedCellFaultKind
 
+from miles.utils.arguments import get_miles_extra_args_provider
 from miles.utils.ft_utils.api_server.models import TriState
 from miles.utils.test_utils.fault_injector.actions.process import KillProcessAction
 from miles.utils.test_utils.fault_injector.actions.remote import ApiServerFaultAction
@@ -351,3 +353,16 @@ class TestHookTriggeredRequests:
 
         assert _pick(11) == _pick(11)
         assert _pick(11) in [trainer.fault_target for trainer in trainers]
+
+
+class TestEffectTimeout:
+    @pytest.mark.parametrize("prefix", ["trainer_heartbeat_checker", "rollout_health_check"])
+    def test_the_effect_budget_outlasts_the_default_failure_detection_twice(self, prefix: str) -> None:
+        """A crashed cell turns unhealthy only after its checker's consecutive failures, so the wait must cover them."""
+        parser = argparse.ArgumentParser()
+        get_miles_extra_args_provider()(parser)
+        detection_seconds = parser.get_default(f"{prefix}_failure_threshold") * (
+            parser.get_default(f"{prefix}_interval") + parser.get_default(f"{prefix}_timeout")
+        )
+
+        assert inject_fault_module.EFFECT_TIMEOUT_SECONDS >= 2 * detection_seconds
