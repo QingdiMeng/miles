@@ -232,7 +232,6 @@ class TestReadEvents:
         assert len(events) == 3
 
 
-
 class TestEventReader:
     @staticmethod
     def _log(log_dir: Path, *, rollout_id: int, file_name: str = "events.jsonl") -> None:

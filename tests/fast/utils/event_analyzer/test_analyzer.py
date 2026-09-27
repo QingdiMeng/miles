@@ -369,7 +369,9 @@ class TestRunSampleOwnershipAnalysis:
 
     def test_a_disabled_check_reads_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Disabled checking does not even open the event log."""
-        monkeypatch.setattr(analyzer_module, "_event_reader", lambda *args, **kwargs: pytest.fail("disabled check ran"))
+        monkeypatch.setattr(
+            analyzer_module, "_event_reader", lambda *args, **kwargs: pytest.fail("disabled check ran")
+        )
 
         run_sample_ownership_analysis(args=self._args(enable_sample_ownership_checker=False))
 
