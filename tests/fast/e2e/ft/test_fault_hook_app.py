@@ -96,6 +96,7 @@ class TestTheTwoSidesOfTheFaultHookComparison:
         for launch in harness.launches:
             parsed = parse_fault_tolerance_args(launch.request.train_args)
             assert parsed.namespace.update_weight_transfer_mode == "p2p"
+            assert "--sglang-remote-instance-weight-loader-start-seed-via-transfer-engine" in launch.argv
             assert parsed.ft_components == ["train"]
             assert parsed.mini_ft_controller_enable
             assert "--debug-deterministic-collective" in launch.argv
