@@ -305,6 +305,19 @@ class TestEventReader:
 
         assert [e.rollout_id for e in reader.read()] == [3, 4]
 
+    def test_a_same_size_rewrite_keeping_the_last_line_is_parsed_again(self, tmp_path: Path) -> None:
+        """The prefix check spans lines, so an unchanged trailing line cannot hide a rewritten event before it."""
+        reader = EventReader(tmp_path)
+        self._log(tmp_path, rollout_id=1)
+        path = tmp_path / "events.jsonl"
+        with open(path, "a") as f:
+            f.write("\n")
+        reader.read()
+
+        path.write_bytes(path.read_bytes().replace(b'"rollout_id":1', b'"rollout_id":2'))
+
+        assert [e.rollout_id for e in reader.read()] == [2]
+
     def test_an_unterminated_last_line_is_parsed_again_once_complete(self, tmp_path: Path) -> None:
         """A line still being written is not taken as read, so its completed form is returned later."""
         reader = EventReader(tmp_path)

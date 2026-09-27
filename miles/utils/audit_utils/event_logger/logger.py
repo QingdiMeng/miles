@@ -218,7 +218,7 @@ class _ParsedFile:
     def append_line(self, raw_line: bytes, *, events: list[Event]) -> None:
         self.offset += len(raw_line)
         self.num_lines += 1
-        self.tail = raw_line[-_PREFIX_CHECK_BYTES:]
+        self.tail = (self.tail + raw_line[-_PREFIX_CHECK_BYTES:])[-_PREFIX_CHECK_BYTES:]
         self.events += events
 
 
