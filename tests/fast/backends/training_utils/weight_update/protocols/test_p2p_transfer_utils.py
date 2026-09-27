@@ -1,3 +1,4 @@
+import sys
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
@@ -253,3 +254,41 @@ class TestRegisterCPUMemory:
 
         with pytest.raises(RuntimeError, match="register CPU memory failed for weight w, error: 5"):
             p2p_transfer_utils.register_cpu_memory({"w": torch.zeros(2)}, fake_transfer_engine)
+
+
+class TestCreateTransferEngine:
+    @pytest.mark.parametrize(
+        ("env", "expected"),
+        [
+            ({}, ("10.0.0.7", "P2PHANDSHAKE", "rdma", "")),
+            (
+                {"MOONCAKE_PROTOCOL": "tcp", "MOONCAKE_DEVICE": "mlx5_0"},
+                ("10.0.0.7", "P2PHANDSHAKE", "tcp", "mlx5_0"),
+            ),
+        ],
+    )
+    def test_the_transport_follows_the_same_environment_as_the_engines(
+        self,
+        p2p_transfer_utils: ModuleType,
+        monkeypatch: pytest.MonkeyPatch,
+        env: dict[str, str],
+        expected: tuple[str, str, str, str],
+    ) -> None:
+        """Trainer and sglang engines must pick one transport, and sglang reads MOONCAKE_PROTOCOL / MOONCAKE_DEVICE."""
+        initialized: list[tuple[str, str, str, str]] = []
+
+        class _RecordingTransferEngine:
+            def initialize(self, *args: str) -> None:
+                initialized.append(args)
+
+        monkeypatch.delenv("MOONCAKE_PROTOCOL", raising=False)
+        monkeypatch.delenv("MOONCAKE_DEVICE", raising=False)
+        for name, value in env.items():
+            monkeypatch.setenv(name, value)
+        monkeypatch.setitem(sys.modules, "mooncake", ModuleType("mooncake"))
+        monkeypatch.setitem(sys.modules, "mooncake.engine", SimpleNamespace(TransferEngine=_RecordingTransferEngine))
+        monkeypatch.setattr(p2p_transfer_utils.ray._private.services, "get_node_ip_address", lambda: "10.0.0.7")
+
+        p2p_transfer_utils.create_transfer_engine()
+
+        assert initialized == [expected]
