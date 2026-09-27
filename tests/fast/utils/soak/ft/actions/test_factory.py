@@ -69,7 +69,9 @@ class TestTimerForms:
 
 class TestHookForms:
     @pytest.mark.parametrize("backend", [ClusterBackend.RAY, ClusterBackend.KUBERNETES])
-    def test_each_trainer_hook_is_paired_with_the_actions_that_fault_its_trainer(self, backend: ClusterBackend) -> None:
+    def test_each_trainer_hook_is_paired_with_the_actions_that_fault_its_trainer(
+        self, backend: ClusterBackend
+    ) -> None:
         """A deadlock pairs only with the all-gather hook, since hanging a per-engine send thread spares the trainer."""
         forms = _forms(backend, FaultTrigger.HOOK)
 
