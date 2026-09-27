@@ -479,9 +479,9 @@ Witnesses, counted per kind:
              cell observed Serving, then a normal training step
   tail    -> every action returned and recovered, then a normal training step after
              admission closed
-  end     -> the latest clean observation after the last fault holds every expected cell of
-             each kind alive and ready (a finished training run takes its api server down, so
-             the final poll itself may fail)
+  end     -> the last successful observation, taken after the last fault, holds every expected
+             cell of each kind alive and ready and has no errors (a finished training run takes
+             its api server down, so the polls after its exit fail and are skipped)
 
 Faults are random, so beyond the witnesses no exact sequence is asserted.
 ```
