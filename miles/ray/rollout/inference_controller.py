@@ -337,7 +337,11 @@ class InferenceController:
         if srv is None:
             return []
         return await srv.check_weights(
-            action=action, allow_quant_error=allow_quant_error, selector=selector, skip_list=skip_list, cell_ids=cell_ids
+            action=action,
+            allow_quant_error=allow_quant_error,
+            selector=selector,
+            skip_list=skip_list,
+            cell_ids=cell_ids,
         )
 
     # -------------------------- tick -----------------------------

@@ -376,7 +376,9 @@ class TestTheScriptLogsTheChecksumsTheEnginesNowServe:
             _orchestration_args(), response=response, trainer_model_id="solver"
         )
 
-        inference_controller.check_weights.assert_awaited_once_with(action="checksum", model_id="solver", cell_ids=["cell-0"])
+        inference_controller.check_weights.assert_awaited_once_with(
+            action="checksum", model_id="solver", cell_ids=["cell-0"]
+        )
         assert event_logger.log.call_args.args[1] == dict(
             rollout_id=0,
             trainer_model_id="solver",
