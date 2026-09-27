@@ -12,6 +12,8 @@ from miles.utils.pydantic_utils import FrozenStrictBaseModel
 
 __all__ = ["check"]
 
+_EXCLUSION_ARG_NAMES: tuple[str, ...] = ("lora_rank", "lora_adapter_path", "update_weights_interval")
+
 
 class WeightMovementIssue(FrozenStrictBaseModel):
     trainer_model_id: str | None
@@ -23,7 +25,7 @@ class WeightMovementIssue(FrozenStrictBaseModel):
 
 def check(events: list[Event], *, include_latest: bool = False) -> list[WeightMovementIssue]:
     """Check: every tensor changes between adjacent published versions of one trainer load state."""
-    if (args := trainer_args(events)) is None or not _applies(args):
+    if (args := trainer_args(events, names=_EXCLUSION_ARG_NAMES)) is None or not _applies(args):
         return []
 
     latest = max(
