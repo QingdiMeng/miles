@@ -16,7 +16,7 @@ from miles.utils.test_utils.fault_injector.actions.process import (
     StopProcessAction,
 )
 from miles.utils.test_utils.fault_injector.controller import _filter_fault_hooks
-from miles.utils.test_utils.fault_injector.models import FaultHookName, FaultHookOwner
+from miles.utils.test_utils.fault_injector.models import DeclaredFaultHookTarget, FaultHookName, FaultHookOwner
 from miles.utils.test_utils.fault_injector.static_source import read_declared_fault_hooks
 
 _MODE = "kill_train__dp2_tp2"
@@ -70,7 +70,7 @@ class TestTheAllGatherFaultPlan:
         assert [(r.rollout_id, r.action) for r in requests] == [
             (r, SleepAction(seconds=scenario_trainer_all_gather_fault.HEAL_WAIT_SECONDS)) for r in (2, 4, 6)
         ]
-        assert all(r.target is None for r in requests)
+        assert all(r.target == DeclaredFaultHookTarget() for r in requests)
 
     def test_each_fault_heals_the_victim_at_the_next_rollout(self) -> None:
         """The victim cell must rejoin from cell 0 right after each faulted update, with every cell alive."""
