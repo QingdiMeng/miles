@@ -233,6 +233,24 @@ class TestWeightPublicationRulesWiredIn:
         ]
 
 
+    def test_a_changed_tensor_set_between_settled_versions_still_fails(self, tmp_path: Path) -> None:
+        """Rounding explains an unchanged value but never a vanished tensor, so a set change stays a failure."""
+        self._write(
+            tmp_path,
+            [
+                make_trainer_args(),
+                make_checksum(
+                    second=1.0, update_id="u1", weight_version=1, snapshots={"a": ("h1", {"w": "1", "b": "1"})}
+                ),
+                make_checksum(second=2.0, update_id="u2", weight_version=2, snapshots={"a": ("h2", {"w": "2"})}),
+                make_step_end(second=9.0, cell_outcomes={}),
+            ],
+        )
+
+        [issue] = run_analysis(event_dir=tmp_path)
+
+        assert (issue.kind, issue.description) == ("tensor_set_changed", "tensor set changed")
+
 class TestRunAnalysisFromArgs:
     def test_skips_when_disabled(self) -> None:
         args = Namespace(enable_event_analyzer=False, save_debug_event_data="/tmp/whatever")

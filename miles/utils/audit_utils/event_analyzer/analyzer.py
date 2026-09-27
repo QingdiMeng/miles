@@ -18,6 +18,7 @@ from miles.utils.audit_utils.event_analyzer.rules.sample_ownership.models import
 from miles.utils.audit_utils.event_logger.logger import get_event_logger, read_events
 from miles.utils.audit_utils.event_logger.models import DataSourceIssuedSamplesEvent
 from miles.utils.audit_utils.process_identity import TrainerControllerProcessIdentity, TrainProcessIdentity
+from miles.utils.misc import partition
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,16 @@ def run_sample_ownership_analysis(*, args: Namespace, event_dir: Path | None = N
 
 
 def _check_one_model_id(events: list[Any]) -> list[Any]:
-    for movement_issue in inference_engine_weight_movement.check(events):
+    tensor_set_changes, unchanged_tensors = partition(
+        inference_engine_weight_movement.check(events), lambda issue: issue.kind == "unchanged_tensors"
+    )
+    for movement_issue in unchanged_tensors:
         logger.warning(f"Event analysis warning: {movement_issue}")
     return [
         *cross_replica_weight_checksum.check(events),
         *inference_engine_weight_checksum_consistency.check(events),
         *inference_engine_weight_checksum_coverage.check(events),
+        *tensor_set_changes,
         *witness_rule.check(events),
     ]
 
