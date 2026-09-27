@@ -140,6 +140,18 @@ class TestTheLaunchedTrainArguments:
         assert "rollout" not in parsed.ft_components or parsed.partial_target_weight_update
         _assert_the_gpu_layout_is_the_modes(launch.request.num_gpus_per_node, parsed.namespace, mode=mode)
 
+    def test_the_hook_forms_leave_out_the_all_gather_hook(self, harness: ScenarioHarness) -> None:
+        """Every real-rollout random_crash topology is CP-only, so an all-gather hook fault would never fire."""
+        _run(_MIXED_MODE, seed=7, num_steps=9, requested_triggers=[FaultTrigger.HOOK])
+
+        (soak,) = harness.soaks
+        expected = create_cell_fault_forms(
+            soak["config"], triggers=frozenset({FaultTrigger.HOOK}), weight_update_all_gathers=False
+        )
+        assert {kind: [form.name for form in forms] for kind, forms in soak["forms"].items()} == {
+            kind: [form.name for form in expected[kind]] for kind in (ACTOR_CELL_TYPE, ROLLOUT_CELL_TYPE)
+        }
+
     def test_a_real_rollout_run_carries_the_hook_timeout_and_p2p_update(self, harness: ScenarioHarness) -> None:
         """Hook faults hold a weight update open, and the default timeout would fail it before the fault fires."""
         _run(_MIXED_MODE, seed=7, num_steps=9)

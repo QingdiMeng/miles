@@ -35,12 +35,24 @@ CELL_TYPE_OF_FT_COMPONENT: dict[str, str] = {"train": ACTOR_CELL_TYPE, "rollout"
 
 
 def create_cell_fault_forms(
-    config: command_utils.ExecuteTrainConfig, *, triggers: frozenset[FaultTrigger]
+    config: command_utils.ExecuteTrainConfig,
+    *,
+    triggers: frozenset[FaultTrigger],
+    weight_update_all_gathers: bool = True,
 ) -> CellFaultForms:
     forms: CellFaultForms = {ACTOR_CELL_TYPE: [], ROLLOUT_CELL_TYPE: []}
     for trigger in sorted(triggers):
         for kind, kind_forms in _CREATE_FORMS_OF_TRIGGER[trigger](config).items():
             forms[kind] += kind_forms
+    if not weight_update_all_gathers:
+        forms[ACTOR_CELL_TYPE] = [
+            form
+            for form in forms[ACTOR_CELL_TYPE]
+            if not (
+                isinstance(form, InjectFaultForm)
+                and form.hook_name is FaultHookName.TRAINER_WEIGHT_UPDATE_BEFORE_ALL_GATHER
+            )
+        ]
     return forms
 
 
