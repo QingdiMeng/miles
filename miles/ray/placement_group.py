@@ -360,7 +360,7 @@ async def _maybe_log_inference_engine_weight_checksums(
             inference_controller.check_weights(
                 action="checksum", model_id=trainer_model_id, cell_ids=sorted(published)
             ),
-            timeout=min(args.update_weight_engine_request_timeout, 5.0),
+            timeout=args.update_weight_engine_request_timeout,
         )
         if not checked:
             return

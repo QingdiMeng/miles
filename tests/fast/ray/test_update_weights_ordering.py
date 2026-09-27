@@ -501,6 +501,28 @@ class TestTheChecksumRecordKeepsOnlyThisPublication:
         assert asked == []
         assert self._recorded(event_log_dir) == []
 
+    async def test_the_checksum_waits_as_long_as_a_weight_update_request(
+        self, event_log_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A rollout heal holds the controller lock for a whole engine start, which the record must outwait."""
+        timeouts: list[float] = []
+        wait_for = asyncio.wait_for
+
+        async def _recording_wait_for(awaitable: Awaitable[Any], timeout: float) -> Any:
+            timeouts.append(timeout)
+            return await wait_for(awaitable, timeout)
+
+        monkeypatch.setattr("miles.ray.placement_group.asyncio.wait_for", _recording_wait_for)
+
+        await self._log(
+            check_weights=self._answering(_checksum_response([{"w": "new"}])),
+            snapshot={"cell-0": "incarnation-0"},
+            update_weight_engine_request_timeout=60.0,
+        )
+
+        assert timeouts == [60.0]
+        assert len(self._recorded(event_log_dir)) == 1
+
     async def test_a_hanging_engine_is_deadlined_without_failing_the_update(self, event_log_dir: Path) -> None:
         """Evidence collection is best effort, so a stuck engine must not block or fail publication."""
 
