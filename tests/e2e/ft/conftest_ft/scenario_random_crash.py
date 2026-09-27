@@ -107,7 +107,9 @@ def run_ci(
         mean_interval_seconds_of_cell_type=mean_interval_seconds_of_cell_type,
         train_args=train_args,
         fully_async=fully_async,
-        cell_fault_forms=create_cell_fault_forms(config, triggers=triggers),
+        cell_fault_forms=create_cell_fault_forms(
+            config, triggers=triggers, weight_update_all_gathers=ft_mode.has_weight_update_all_gather
+        ),
     )
 
     fault_triggers.assert_hook_evidence(

@@ -45,6 +45,12 @@ class FTTestMode:
         return self.rollout_num_engines > 0
 
     @property
+    def has_weight_update_all_gather(self) -> bool:
+        tokens: list[str] = shlex.split(self.parallel_args)
+        size_of_flag: dict[str, str] = dict(zip(tokens, tokens[1:], strict=False))
+        return any(int(size_of_flag.get(flag, "1")) > 1 for flag in WEIGHT_UPDATE_ALL_GATHER_FLAGS)
+
+    @property
     def total_rollout_gpus(self) -> int:
         return self.rollout_num_engines * self.rollout_gpus_per_engine
 
@@ -64,6 +70,12 @@ MODEL_SEGMENT_OF_MODEL_NAME: dict[str, str | None] = {
     MODEL_NAME: "moe_5layer",
     FULL_MODEL_NAME: "moe_full",
 }
+
+WEIGHT_UPDATE_ALL_GATHER_FLAGS: tuple[str, ...] = (
+    "--tensor-model-parallel-size",
+    "--expert-model-parallel-size",
+    "--expert-tensor-parallel-size",
+)
 
 PARALLELISM_SEGMENT_OF_FLAG: dict[str, str] = {
     "--context-parallel-size": "cp",

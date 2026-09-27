@@ -40,6 +40,21 @@ def _hook_forms(forms: CellFaultForms, kind: str) -> list[InjectFaultForm]:
     return [form for form in forms[kind] if isinstance(form, InjectFaultForm) and form.hook_name is not None]
 
 
+class TestWithoutWeightUpdateAllGathers:
+    def test_only_the_all_gather_hook_forms_are_dropped(self) -> None:
+        """Without a tensor, expert or expert-tensor all-gather the all-gather hook is never reached."""
+        config = command_utils.ExecuteTrainConfig(cluster_backend=ClusterBackend.RAY, namespace="ns", run_id="run-1")
+        triggers = frozenset({FaultTrigger.TIMER, FaultTrigger.HOOK})
+        full = create_cell_fault_forms(config, triggers=triggers)
+        reduced = create_cell_fault_forms(config, triggers=triggers, weight_update_all_gathers=False)
+
+        assert reduced[ACTOR_CELL_TYPE] == [
+            form for form in full[ACTOR_CELL_TYPE] if not (isinstance(form, InjectFaultForm) and form.hook_name is _BEFORE_ALL_GATHER)
+        ]
+        assert {form.hook_name for form in _hook_forms(reduced, ACTOR_CELL_TYPE)} == {_BEFORE_SEND}
+        assert reduced[ROLLOUT_CELL_TYPE] == full[ROLLOUT_CELL_TYPE]
+
+
 class TestTimerForms:
     def test_ray_timer_forms_inject_process_faults_at_random_instants(self) -> None:
         """Timer faults on Ray are direct process faults without any hook, delay or lifetime."""

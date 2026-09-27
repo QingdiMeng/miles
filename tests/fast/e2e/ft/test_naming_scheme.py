@@ -26,6 +26,23 @@ class TestModeNames:
         assert MODES["kill_train_rollout__dp2_cp2"].ft_components == ("train", "rollout")
 
 
+class TestWeightUpdateAllGather:
+    @pytest.mark.parametrize(
+        "mode_name,expected",
+        [
+            ("kill_train_rollout__dp2_tp2", True),
+            ("kill_train__dp2_cp2_tp2_ep2__fake_rollout__moe_5layer", True),
+            ("kill_train_rollout__dp2_cp2", False),
+            ("kill_rollout__dp4", False),
+        ],
+    )
+    def test_only_a_tensor_or_expert_split_all_gathers_during_weight_updates(
+        self, mode_name: str, expected: bool
+    ) -> None:
+        """The soak draws all-gather hook faults only where the hook is reachable."""
+        assert MODES[mode_name].has_weight_update_all_gather is expected
+
+
 class TestScenarioNames:
     @pytest.mark.parametrize("path", SCENARIO_PATHS, ids=lambda path: path.stem)
     def test_a_scenario_carries_no_ft_segment(self, path: Path):
