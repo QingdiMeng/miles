@@ -372,6 +372,9 @@ Type: comparison; both sides run the deterministic P2P recipe of scenario_rollou
 Entry: test_trainer_all_gather_fault__kill_train__dp2_tp2.py, ft-short
 Steps: 8 rollouts (NUM_ROLLOUTS)
 Requires: mode.has_real_rollout, and ft_components == ("train",) exactly
+Extra ft: the target also enables rollout ft (extra_ft_components): an engine a faulted trainer
+          never finished sending to is marked errored, and only rollout ft replaces it; no rollout
+          fault is declared, so the mode name still says the run crashes only trainers
 Compare: dumps rel <= 0 (bitwise); metrics rtol=0 / atol=0 over train/* and rollout/*
 
 Faults (target side only), declared at launch, all on the last cell's rank 0 at
