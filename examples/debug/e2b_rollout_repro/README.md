@@ -273,3 +273,5 @@ checkpoint for this collector: restart from ID zero using attempt manifests.
 
 `progress.json` reports settled/usable/active slots; batch reports describe exports.
 Run `test_continuous_collect.py` in the pinned environment. No new dependencies.
+
+Context-window rejections and the known Terminus XML-parser empty-tag IndexError are retained with zero reward when replay tensors pass validation. Other parser/infrastructure exceptions remain excluded. Original exception status and trial artifacts are preserved for auditing.
