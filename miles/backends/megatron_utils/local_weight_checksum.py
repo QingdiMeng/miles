@@ -128,6 +128,8 @@ def _build_name_by_tensor_id(model: Sequence[DDP]) -> dict[_MainParamId, str]:
     for pp_idx, model_chunk in enumerate(model):
         for name, param in model_chunk.named_parameters():
             assert param is not None, f"pp{pp_idx}.{name}: param is None"
+            if not param.requires_grad:
+                continue
             main_param = getattr(param, "main_param", None)
             if main_param is None:
                 assert getattr(param, "main_param_sharded", False), (
