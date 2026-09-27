@@ -67,11 +67,12 @@ def run_sample_ownership_analysis(*, args: Namespace, event_dir: Path | None = N
 
 
 def _check_one_model_id(events: list[Any]) -> list[Any]:
+    for movement_issue in inference_engine_weight_movement.check(events):
+        logger.warning(f"Event analysis warning: {movement_issue}")
     return [
         *cross_replica_weight_checksum.check(events),
         *inference_engine_weight_checksum_consistency.check(events),
         *inference_engine_weight_checksum_coverage.check(events),
-        *inference_engine_weight_movement.check(events),
         *witness_rule.check(events),
     ]
 

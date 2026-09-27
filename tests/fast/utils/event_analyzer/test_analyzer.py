@@ -25,7 +25,6 @@ from miles.utils.audit_utils.event_analyzer.analyzer import (
 from miles.utils.audit_utils.event_analyzer.rules.inference_engine_weight_checksum_coverage import (
     WeightUpdateCoverageIssue,
 )
-from miles.utils.audit_utils.event_analyzer.rules.inference_engine_weight_movement import WeightMovementIssue
 from miles.utils.audit_utils.event_logger.logger import EventLogger
 from miles.utils.audit_utils.event_logger.models import (
     InferenceEngineWeightChecksumEvent,
@@ -206,8 +205,11 @@ class TestWeightPublicationRulesWiredIn:
 
         assert isinstance(issue, WeightUpdateCoverageIssue)
 
-    def test_an_unchanged_tensor_between_settled_versions_is_reported(self, tmp_path: Path) -> None:
-        """run_analysis runs the per-tensor movement rule when the trainer arguments allow it."""
+    def test_an_unchanged_tensor_between_settled_versions_is_only_a_warning(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A bf16 tensor can legitimately stay unchanged under a small learning rate, so movement only warns."""
+        caplog.set_level(logging.WARNING)
         self._write(
             tmp_path,
             [
@@ -225,9 +227,8 @@ class TestWeightPublicationRulesWiredIn:
             ],
         )
 
-        [issue] = run_analysis(event_dir=tmp_path)
-
-        assert isinstance(issue, WeightMovementIssue)
+        assert run_analysis(event_dir=tmp_path) == []
+        assert [record.getMessage() for record in caplog.records if "WeightMovementIssue" in record.getMessage()]
 
 
 class TestRunAnalysisFromArgs:
