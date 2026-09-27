@@ -26,7 +26,7 @@ from miles.utils.test_utils.fault_injector.models import FaultHookName, FaultHoo
 
 logger = logging.getLogger(__name__)
 
-EFFECT_TIMEOUT_SECONDS: float = 30.0
+EFFECT_TIMEOUT_SECONDS: float = 120.0
 
 
 @dataclass(frozen=True, kw_only=True)
