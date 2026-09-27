@@ -163,6 +163,14 @@ class TestAssertFaultHooksFired:
 
         assert_fault_hooks_fired(tmp_path, request_ids=["a"])
 
+    def test_a_fired_request_rearmed_by_a_healed_cell_still_passes(self, tmp_path: Path) -> None:
+        """A healed incarnation re-arms every declared request, logging pending after the fault already fired."""
+        _write_events(
+            tmp_path, [_hook("a", FaultHookStatus.PENDING), _hook("a", FaultHookStatus.FIRED), _hook("a", FaultHookStatus.PENDING)]
+        )
+
+        assert_fault_hooks_fired(tmp_path, request_ids=["a"])
+
     @pytest.mark.parametrize(
         "statuses",
         [

@@ -8,12 +8,19 @@ from miles.utils.test_utils.fault_injector.models import FaultHookRecord, FaultH
 
 def assert_fault_hooks_fired(events_dir: Path, *, request_ids: Sequence[str]) -> None:
     records = _read_fault_hook_records(events_dir)
-    status_of_request_id = {record.request.request_id: record.status for record in records}
     for request_id in request_ids:
-        assert (status := status_of_request_id.get(request_id)) is FaultHookStatus.FIRED, (
+        statuses = [record.status for record in records if record.request.request_id == request_id]
+        assert (status := _compute_outcome(statuses)) is FaultHookStatus.FIRED, (
             f"Declared fault hook {request_id} ended as {status}, so the run never took the fault it was built to "
             f"survive"
         )
+
+
+def _compute_outcome(statuses: Sequence[FaultHookStatus]) -> FaultHookStatus | None:
+    if FaultHookStatus.FIRED not in statuses:
+        return statuses[-1] if statuses else None
+    last_fired = len(statuses) - 1 - statuses[::-1].index(FaultHookStatus.FIRED)
+    return FaultHookStatus.FAILED if FaultHookStatus.FAILED in statuses[last_fired:] else FaultHookStatus.FIRED
 
 
 def assert_weight_updates_published(events_dir: Path, *, rollout_ids: Iterable[int]) -> None:
