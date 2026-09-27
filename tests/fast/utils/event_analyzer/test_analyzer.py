@@ -232,7 +232,6 @@ class TestWeightPublicationRulesWiredIn:
             record.getMessage() for record in caplog.records if "unchanged tensor checksums" in record.getMessage()
         ]
 
-
     def test_a_changed_tensor_set_between_settled_versions_still_fails(self, tmp_path: Path) -> None:
         """Rounding explains an unchanged value but never a vanished tensor, so a set change stays a failure."""
         self._write(
@@ -250,6 +249,7 @@ class TestWeightPublicationRulesWiredIn:
         [issue] = run_analysis(event_dir=tmp_path)
 
         assert (issue.kind, issue.description) == ("tensor_set_changed", "tensor set changed")
+
 
 class TestRunAnalysisFromArgs:
     def test_skips_when_disabled(self) -> None:
