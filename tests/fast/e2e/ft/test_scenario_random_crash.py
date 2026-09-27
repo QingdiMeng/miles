@@ -147,6 +147,7 @@ class TestTheLaunchedTrainArguments:
         (launch,) = harness.launches
         assert launch.value_of("--update-weights-timeout") == "600"
         assert launch.value_of("--update-weight-transfer-mode") == "p2p"
+        assert "--sglang-remote-instance-weight-loader-start-seed-via-transfer-engine" in launch.argv
         assert launch.value_of("--num-rollout") == "9"
         assert launch.request.train_script.endswith("/train.py")
 
@@ -172,6 +173,7 @@ class TestTheLaunchedTrainArguments:
         assert launch.value_of("--load-debug-rollout-data") == f"{tmp_path / 'cyclic-9'}/{{rollout_id}}.pt"
         assert "--update-weights-timeout" not in launch.argv
         assert "--update-weight-transfer-mode" not in launch.argv
+        assert "--sglang-remote-instance-weight-loader-start-seed-via-transfer-engine" not in launch.argv
         expected = create_cell_fault_forms(soak["config"], triggers=frozenset({FaultTrigger.TIMER}))
         assert [form.name for form in soak["forms"][ACTOR_CELL_TYPE]] == [
             form.name for form in expected[ACTOR_CELL_TYPE]
