@@ -2,6 +2,8 @@
 # WARNING: Do NOT relax any assert logic in this file. All assertions must remain strict.
 
 
+from pathlib import Path
+
 from tests.e2e.ft.conftest_ft.app import BASELINE_SIDE, TARGET_SIDE, create_comparison_app_and_run_ci
 from tests.e2e.ft.conftest_ft.execution import get_common_train_args, get_ft_args, get_train_env_vars_arg
 from tests.e2e.ft.conftest_ft.modes import FTTestMode
@@ -15,6 +17,7 @@ from miles.utils.test_utils.comparisons.dumps import (
 from miles.utils.test_utils.comparisons.metrics import compare_metrics
 
 NUM_STEPS: int = 2
+INJECT_START_ROLLOUT_ID: int = 1
 
 
 def _build_baseline_args(
@@ -28,11 +31,19 @@ def _build_baseline_args(
 def _build_target_args(
     mode: FTTestMode, dump_dir: str, enable_dumper: bool = True, config: ExecuteTrainConfig | None = None
 ) -> str:
-    return (
+    args = (
         get_common_train_args(mode, dump_dir=dump_dir, num_steps=NUM_STEPS, enable_dumper=enable_dumper)
         + get_ft_args(mode)
         + get_train_env_vars_arg(mode, deterministic=False)
     )
+    if mode.has_real_rollout:
+        baseline_dump_dir = Path(dump_dir).parent / BASELINE_SIDE
+        args += (
+            f"--ci-inject-rollout-data-path {baseline_dump_dir}/rollout_data/{{rollout_id}}.pt "
+            f"--ci-inject-rollout-data-start-rollout-id {INJECT_START_ROLLOUT_ID} "
+            "--ci-inject-rollout-data-min-match-ratio 0.5 "
+        )
+    return args
 
 
 def _compare(dump_dir: str, mode: FTTestMode) -> None:

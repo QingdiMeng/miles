@@ -178,7 +178,10 @@ Compare: dumps rel <= 0.0085; metrics rtol=1e-2, atol=1e-8
 
 1. Baseline: normal DP on debug rollout data (real engines in a real-rollout mode)
 2. Target: the same arguments plus get_ft_args(mode), which is --use-fault-tolerance
-   --ft-components <the mode's ft_components> --api-server-port 0
+   --ft-components <the mode's ft_components> --api-server-port 0; in a real-rollout mode it
+   also replays the baseline's --save-debug-rollout-data recording from rollout 1 on
+   (--ci-inject-rollout-data-path, min match ratio 0.5), because after one update the two
+   topologies' weights differ by ulps and live temperature-0.8 samples diverge
 3. Compare:
    - Tensor-level: compare_dumps (weights, grads via dumper & sglang comparator)
    - Metric-level: compare_metrics (MetricEvent, requires train/grad_norm and train/loss)
