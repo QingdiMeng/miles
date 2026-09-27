@@ -138,7 +138,7 @@ class TestTriggerCombination:
     def test_hook_forms_are_the_only_ones_carrying_a_hook(self) -> None:
         """Timer forms that armed hooks would wait for an update the timer never promised."""
         assert _hook_forms(_forms(ClusterBackend.RAY, FaultTrigger.TIMER), ACTOR_CELL_TYPE) == []
-        assert len(_hook_forms(_forms(ClusterBackend.RAY, FaultTrigger.HOOK), ACTOR_CELL_TYPE)) == 6
+        assert len(_hook_forms(_forms(ClusterBackend.RAY, FaultTrigger.HOOK), ACTOR_CELL_TYPE)) == 5
 
 
 class TestComputeMeanIntervalSecondsOfKind:
