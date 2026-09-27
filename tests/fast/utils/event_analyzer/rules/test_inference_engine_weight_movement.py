@@ -174,6 +174,18 @@ class TestExclusions:
         with pytest.raises(AssertionError, match="different arguments"):
             check(events)
 
+    def test_trainer_ranks_differing_only_outside_the_applicability_arguments_still_check_movement(self) -> None:
+        """Per-rank or later-mutated arguments, such as world_size or a sample counter, must not stop the rule."""
+        events = [
+            make_trainer_args(rank=0, world_size=2, consumed_train_samples=0),
+            make_trainer_args(rank=1, world_size=4, consumed_train_samples=64),
+            _version(1, {"w": "1"}),
+            _version(2, {"w": "1"}),
+            make_step_end(second=100.0),
+        ]
+
+        assert len(check(events)) == 1
+
     def test_excluding_movement_keeps_consistency_and_coverage_reporting(self) -> None:
         """Only movement is excluded; engines disagreeing or an uncovered publication still fail."""
         disagreeing = make_checksum(
