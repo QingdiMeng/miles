@@ -190,7 +190,7 @@ def get_deterministic_p2p_train_args(
     args += "--mini-ft-controller-enable "
     args += "--debug-deterministic-collective "
     args += "--sglang-disable-radix-cache "
-    args += "--update-weight-transfer-mode p2p --sglang-router-policy round_robin "
+    args += "--update-weight-transfer-mode p2p --sglang-remote-instance-weight-loader-start-seed-via-transfer-engine --sglang-router-policy round_robin "
     args += f"--rollout-health-check-interval {ROLLOUT_HEALTH_CHECK_INTERVAL_SECONDS} "
     args += "--weight-decay 0 "
     args += get_train_env_vars_arg(mode, deterministic=True, extra_env_vars=DETERMINISTIC_INFERENCE_ENV_VARS)
