@@ -13,7 +13,7 @@ register_cuda_ci(
     hardware=["hopper", "blackwell"],
 )
 
-_MODE: str = "kill_train__dp2_tp2"
+_MODE: str = "kill_train_rollout__dp2_tp2"
 
 if __name__ == "__main__":
     run_ci(_MODE)

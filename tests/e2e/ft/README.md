@@ -15,7 +15,7 @@
 | `scenario_trainer_deterministic` | `kill_train__dp2_cp2_tp2_ep2__fake_rollout__moe_5layer`, `kill_train__dp2_cp2_pp2__fake_rollout__moe_5layer`, `kill_train__dp4_cp2__fake_rollout__moe_5layer`, `kill_train__dp2_cp2__moe_5layer` |
 | `scenario_trainer_with_failure` | `kill_train__dp2_cp2_tp2_ep2__fake_rollout__moe_5layer`, `kill_train__dp2_cp2_pp2__fake_rollout__moe_5layer`, `kill_train__dp4_cp2__fake_rollout__moe_5layer`, `kill_train__dp2_cp2` |
 | `scenario_rollout_deterministic` | `kill_rollout__dp4` |
-| `scenario_trainer_all_gather_fault` | `kill_train__dp2_tp2` |
+| `scenario_trainer_all_gather_fault` | `kill_train_rollout__dp2_tp2` |
 | `scenario_p2p_send_receiver_fault` | `kill_rollout__dp2_tp2` |
 | `scenario_random_crash` | `kill_train__dp2_cp2_tp2_ep2__fake_rollout__moe_5layer`, `kill_train__dp2_cp2__moe_5layer`, `kill_train_rollout__dp2_cp2`, `kill_rollout__dp4` |
 | `scenario_realistic_gsm8k` | `test_realistic_gsm8k__kill_train_rollout.py`, no modes |
@@ -66,7 +66,7 @@
 | `kill_train__dp2_cp2` | 1 | 4 + 4 | 2 | CP2 | 4 engines × 1 GPU | dense Qwen3-0.6B | `("train",)` | `scenario_trainer_with_failure` under real generation; needs the dense model (see below) |
 | `kill_rollout__dp4` | 1 | 4 + 4 | 4 | — | 4 engines × 1 GPU, disaggregated | dense Qwen3-0.6B | `("rollout",)` | the only rollout-only mode: crashes engines, not trainer cells |
 | `kill_train_rollout__dp2_cp2` | 1 | 4 + 4 | 2 | CP2 | 4 engines × 1 GPU | dense Qwen3-0.6B | `("train", "rollout")` | both kinds crash in the same run, sync and fully-async |
-| `kill_train__dp2_tp2` | 1 | 4 + 4 | 2 | TP2 | 4 engines × 1 GPU | dense Qwen3-0.6B | `("train",)` | trainer faults inside the weight-update tensor all-gather |
+| `kill_train_rollout__dp2_tp2` | 1 | 4 + 4 | 2 | TP2 | 4 engines × 1 GPU | dense Qwen3-0.6B | `("train", "rollout")` | trainer faults inside the weight-update tensor all-gather; rollout ft replaces the engines a faulted sender leaves errored |
 | `kill_rollout__dp2_tp2` | 1 | 4 + 4 | 2 | TP2 | 4 engines × 1 GPU | dense Qwen3-0.6B | `("rollout",)` | a receiving engine killed during the trainer's P2P send |
 | `kill_train__dp4_cp2_tp2_pp2_ep2_etp2__moe_full` | 4 train + 2 rollout | 32 + 16 | 4 | CP2 TP2 PP2 EP2 ETP2 | 2 engines × 8 GPU | full MoE | `("train",)` | full model, all parallelism; multi-node, so no CI entry |
 
@@ -368,9 +368,10 @@ Assertions:
 ```
 Type: comparison; both sides run the deterministic P2P recipe of scenario_rollout_deterministic,
       the target side with --ci-fault-hooks
-Entry: test_trainer_all_gather_fault__kill_train__dp2_tp2.py, ft-short
+Entry: test_trainer_all_gather_fault__kill_train_rollout__dp2_tp2.py, ft-short
 Steps: 8 rollouts (NUM_ROLLOUTS)
-Requires: mode.has_real_rollout, and ft_components == ("train",) exactly
+Requires: mode.has_real_rollout, and ft_components == ("train", "rollout") exactly: an engine a
+          faulted trainer never finished sending to is marked errored, and only rollout ft replaces it
 Compare: dumps rel <= 0 (bitwise); metrics rtol=0 / atol=0 over train/* and rollout/*
 
 Faults (target side only), declared at launch, all on the last cell's rank 0 at

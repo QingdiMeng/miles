@@ -19,7 +19,7 @@ from miles.utils.test_utils.fault_injector.controller import _filter_fault_hooks
 from miles.utils.test_utils.fault_injector.models import DeclaredFaultHookTarget, FaultHookName, FaultHookOwner
 from miles.utils.test_utils.fault_injector.static_source import read_declared_fault_hooks
 
-_MODE = "kill_train__dp2_tp2"
+_MODE = "kill_train_rollout__dp2_tp2"
 _LAST_CELL = "trainer-engine-actor-00001"
 
 
@@ -109,12 +109,12 @@ class TestTheAllGatherFaultRun:
     def test_the_target_waits_on_updates_with_the_bounded_timeout_and_trainer_ft(
         self, harness: ScenarioHarness
     ) -> None:
-        """A stopped or deadlocked sender must time the update out and heal through trainer fault tolerance."""
+        """A stalled sender times the update out and heals, and the engines it failed heal through rollout ft."""
         scenario_trainer_all_gather_fault.run_ci(_MODE)
 
         for launch in harness.launches:
             parsed = parse_fault_tolerance_args(launch.request.train_args)
-            assert parsed.ft_components == ["train"]
+            assert parsed.ft_components == ["train", "rollout"]
             assert parsed.namespace.update_weights_timeout == 120.0
 
     def test_the_target_is_judged_on_the_declared_healing_and_every_faulted_rollout_publishing(

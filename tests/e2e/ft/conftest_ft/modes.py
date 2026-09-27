@@ -108,7 +108,7 @@ MODES: dict[str, FTTestMode] = {
         ft_components=("rollout",),
         parallel_args="",
     ),
-    "kill_train__dp2_tp2": FTTestMode(
+    "kill_train_rollout__dp2_tp2": FTTestMode(
         model_name=DENSE_MODEL_NAME,
         model_hf_repo=DENSE_MODEL_HF_REPO,
         megatron_model_type=DENSE_MODEL_TYPE,
@@ -117,6 +117,7 @@ MODES: dict[str, FTTestMode] = {
         rollout_num_engines=4,
         rollout_gpus_per_engine=1,
         parallel_args="--tensor-model-parallel-size 2 --sequence-parallel",
+        ft_components=("train", "rollout"),
     ),
     "kill_rollout__dp2_tp2": FTTestMode(
         model_name=DENSE_MODEL_NAME,

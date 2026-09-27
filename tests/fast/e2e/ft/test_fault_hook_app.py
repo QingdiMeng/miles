@@ -25,7 +25,7 @@ from miles.utils.test_utils.fault_injector.models import (
 )
 from miles.utils.test_utils.fault_injector.static_source import compute_fault_hooks_arg, read_declared_fault_hooks
 
-_MODE = "kill_train__dp2_tp2"
+_MODE = "kill_train_rollout__dp2_tp2"
 _NUM_ROLLOUTS = 6
 _HOOKS = [
     FaultHookRequest(
@@ -39,7 +39,9 @@ _HOOKS = [
 _HEAL = ReconfigureInfo(rollout_id=3, src_cell_index=0, healed_cell_indices=[1], alive_cell_indices_after=[0, 1])
 
 
-def _create_run_ci(harness: ScenarioHarness, *, ft_components: tuple[str, ...] = ("train",)) -> Callable[[str], None]:
+def _create_run_ci(
+    harness: ScenarioHarness, *, ft_components: tuple[str, ...] = ("train", "rollout")
+) -> Callable[[str], None]:
     def build_fault_hooks(mode: FTTestMode, config: ExecuteTrainConfig) -> list[FaultHookRequest]:
         harness.checks.append(("build_fault_hooks", (mode, config), {}))
         return _HOOKS
@@ -97,7 +99,7 @@ class TestTheTwoSidesOfTheFaultHookComparison:
             parsed = parse_fault_tolerance_args(launch.request.train_args)
             assert parsed.namespace.update_weight_transfer_mode == "p2p"
             assert "--sglang-remote-instance-weight-loader-start-seed-via-transfer-engine" in launch.argv
-            assert parsed.ft_components == ["train"]
+            assert parsed.ft_components == ["train", "rollout"]
             assert parsed.mini_ft_controller_enable
             assert "--debug-deterministic-collective" in launch.argv
             assert launch.value_of("--update-weights-timeout") == "120.0"
