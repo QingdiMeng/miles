@@ -49,7 +49,9 @@ class TestWithoutWeightUpdateAllGathers:
         reduced = create_cell_fault_forms(config, triggers=triggers, weight_update_all_gathers=False)
 
         assert reduced[ACTOR_CELL_TYPE] == [
-            form for form in full[ACTOR_CELL_TYPE] if not (isinstance(form, InjectFaultForm) and form.hook_name is _BEFORE_ALL_GATHER)
+            form
+            for form in full[ACTOR_CELL_TYPE]
+            if not (isinstance(form, InjectFaultForm) and form.hook_name is _BEFORE_ALL_GATHER)
         ]
         assert {form.hook_name for form in _hook_forms(reduced, ACTOR_CELL_TYPE)} == {_BEFORE_SEND}
         assert reduced[ROLLOUT_CELL_TYPE] == full[ROLLOUT_CELL_TYPE]
