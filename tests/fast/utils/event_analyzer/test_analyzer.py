@@ -228,7 +228,7 @@ class TestWeightPublicationRulesWiredIn:
         )
 
         assert run_analysis(event_dir=tmp_path) == []
-        assert [record.getMessage() for record in caplog.records if "WeightMovementIssue" in record.getMessage()]
+        assert [record.getMessage() for record in caplog.records if "unchanged tensor checksums" in record.getMessage()]
 
 
 class TestRunAnalysisFromArgs:
