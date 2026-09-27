@@ -1,13 +1,15 @@
 import contextvars
+import dataclasses
 import functools
 import inspect
 import logging
+import os
 import threading
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from pydantic import TypeAdapter
 
@@ -139,30 +141,94 @@ def _maybe_with_context(
 
 def read_events(log_dir: Path, *, strict: bool = False) -> list[Event]:
     """Read all JSONL event files from a directory and return parsed events."""
-    events: list[Event] = []
+    return EventReader(log_dir, strict=strict).read()
 
-    jsonl_files = sorted(log_dir.glob("**/*.jsonl"))
-    if not jsonl_files:
-        logger.warning("No JSONL files found in %s", log_dir)
+
+class EventReader:
+    """Read the events of one directory repeatedly, parsing only the lines appended since the previous read."""
+
+    def __init__(self, log_dir: Path, *, strict: bool = False) -> None:
+        self._log_dir = log_dir
+        self._strict = strict
+        self._parsed_files: dict[Path, _ParsedFile] = {}
+
+    def read(self) -> list[Event]:
+        jsonl_files = sorted(self._log_dir.glob("**/*.jsonl"))
+        if not jsonl_files:
+            logger.warning("No JSONL files found in %s", self._log_dir)
+            return []
+
+        events: list[Event] = []
+        parsed_files: dict[Path, _ParsedFile] = {}
+        for jsonl_path in jsonl_files:
+            parsed, unterminated_tail = self._read_file(jsonl_path)
+            parsed_files[jsonl_path] = parsed
+            events += parsed.events
+            events += unterminated_tail
+        self._parsed_files = parsed_files
         return events
 
-    for jsonl_path in jsonl_files:
-        with open(jsonl_path, encoding="utf-8") as f:
-            for line_num, raw_line in enumerate(f, start=1):
-                raw_line = raw_line.strip()
-                if not raw_line:
-                    continue
-                try:
-                    event = _event_adapter.validate_json(raw_line)
-                    events.append(event)
-                except Exception:
-                    if strict:
-                        raise
-                    logger.warning(
-                        "Failed to parse event at %s:%d",
-                        jsonl_path,
-                        line_num,
-                        exc_info=True,
-                    )
+    def _read_file(self, path: Path) -> tuple["_ParsedFile", list[Event]]:
+        with open(path, "rb") as f:
+            stat = os.fstat(f.fileno())
+            previous = self._parsed_files.get(path)
+            if previous is None or not previous.is_prefix_of(f, stat=stat):
+                previous = _ParsedFile(file_id=(stat.st_dev, stat.st_ino))
+            f.seek(previous.offset)
+            appended = f.read()
 
-    return events
+        complete, _, unterminated = appended.rpartition(b"\n")
+        complete_lines = complete.split(b"\n") if complete else []
+        parsed = previous.extended(
+            events=self._parse_lines(path, lines=complete_lines, first_line_num=previous.num_lines + 1),
+            data=complete + b"\n" if complete else b"",
+            num_lines=len(complete_lines),
+        )
+        unterminated_tail = self._parse_lines(path, lines=[unterminated], first_line_num=parsed.num_lines + 1)
+        return parsed, unterminated_tail
+
+    def _parse_lines(self, path: Path, *, lines: list[bytes], first_line_num: int) -> list[Event]:
+        events: list[Event] = []
+        for line_num, raw_line in enumerate(lines, start=first_line_num):
+            raw_line = raw_line.strip()
+            if not raw_line:
+                continue
+            try:
+                events.append(_event_adapter.validate_json(raw_line))
+            except Exception:
+                if self._strict:
+                    raise
+                logger.warning(
+                    "Failed to parse event at %s:%d",
+                    path,
+                    line_num,
+                    exc_info=True,
+                )
+        return events
+
+
+@dataclasses.dataclass(frozen=True)
+class _ParsedFile:
+    file_id: tuple[int, int]
+    offset: int = 0
+    num_lines: int = 0
+    tail: bytes = b""
+    events: tuple[Event, ...] = ()
+
+    def is_prefix_of(self, f: BinaryIO, *, stat: os.stat_result) -> bool:
+        if (stat.st_dev, stat.st_ino) != self.file_id or stat.st_size < self.offset:
+            return False
+        f.seek(self.offset - len(self.tail))
+        return f.read(len(self.tail)) == self.tail
+
+    def extended(self, *, events: list[Event], data: bytes, num_lines: int) -> "_ParsedFile":
+        return dataclasses.replace(
+            self,
+            offset=self.offset + len(data),
+            num_lines=self.num_lines + num_lines,
+            tail=(self.tail + data)[-_PREFIX_CHECK_BYTES:],
+            events=self.events + tuple(events),
+        )
+
+
+_PREFIX_CHECK_BYTES: int = 4096
