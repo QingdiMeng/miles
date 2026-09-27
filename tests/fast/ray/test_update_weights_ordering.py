@@ -210,7 +210,7 @@ async def test_the_window_is_scoped_to_the_policy_the_script_is_publishing():
 
     calls = {name: kwargs for name, _args, kwargs in inference_controller.calls}
     assert calls["start_update_weights"] == dict(model_id="alpha")
-    assert calls["check_weights"] == dict(action="checksum", model_id="alpha")
+    assert calls["check_weights"] == dict(action="checksum", model_id="alpha", cell_ids=[])
 
 
 def test_fsdp_updater_flushes_only_after_every_engine_is_paused():
@@ -348,7 +348,9 @@ class TestTheScriptLogsTheChecksumsTheEnginesNowServe:
 
         inference_controller, event_logger = await self._log(_orchestration_args(), response=response)
 
-        inference_controller.check_weights.assert_awaited_once_with(action="checksum", model_id=None)
+        inference_controller.check_weights.assert_awaited_once_with(
+            action="checksum", model_id=None, cell_ids=["cell-0", "cell-1"]
+        )
         event_logger.log.assert_called_once()
         assert event_logger.log.call_args.args[1] == dict(
             rollout_id=0,
@@ -374,7 +376,7 @@ class TestTheScriptLogsTheChecksumsTheEnginesNowServe:
             _orchestration_args(), response=response, trainer_model_id="solver"
         )
 
-        inference_controller.check_weights.assert_awaited_once_with(action="checksum", model_id="solver")
+        inference_controller.check_weights.assert_awaited_once_with(action="checksum", model_id="solver", cell_ids=["cell-0"])
         assert event_logger.log.call_args.args[1] == dict(
             rollout_id=0,
             trainer_model_id="solver",
@@ -446,6 +448,22 @@ class TestTheChecksumRecordKeepsOnlyThisPublication:
 
         [event] = self._recorded(event_log_dir)
         assert [snapshot.cell_id for snapshot in event.engine_snapshots] == ["cell-0"]
+
+    async def test_only_the_cells_the_update_published_to_are_asked(self, event_log_dir: Path) -> None:
+        """A cell outside the update, e.g. one a fault is hanging, must not stall the checksum of the others."""
+        asked: list[object] = []
+
+        async def _check_weights(**kwargs: object) -> list[tuple[ServerCellMetadata, dict[str, Any]]]:
+            asked.append(kwargs["cell_ids"])
+            return _checksum_response([{"w": "new"}])
+
+        await self._log(
+            check_weights=_check_weights,
+            snapshot={"cell-0": "incarnation-0", "cell-1": "incarnation-1"},
+            failed=("cell-1",),
+        )
+
+        assert asked == [["cell-0"]]
 
     async def test_a_cell_replaced_since_the_snapshot_is_left_out(self, event_log_dir: Path) -> None:
         """A same-named cell with a new incarnation never received this update."""

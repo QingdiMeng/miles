@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import logging
+from collections.abc import Collection
 from typing import Any
 
 from miles.backends.sglang_utils.sglang_api_client import SGLangApiClient
@@ -185,9 +186,14 @@ class RolloutServer:
 
     @requires_lock
     async def check_weights(
-        self, action: str, allow_quant_error: bool = False, selector: str = "all", skip_list: list[str] | None = None
+        self,
+        action: str,
+        allow_quant_error: bool = False,
+        selector: str = "all",
+        skip_list: list[str] | None = None,
+        cell_ids: Collection[str] | None = None,
     ) -> list[tuple[ServerCellMetadata, Any]]:
-        cells = self._addressable_cells()
+        cells = [cell for cell in self._addressable_cells() if cell_ids is None or cell.meta.cell_id in cell_ids]
         bodies = await asyncio.gather(
             *[
                 cell.check_weights(
