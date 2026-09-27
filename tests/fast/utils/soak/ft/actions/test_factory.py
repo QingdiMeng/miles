@@ -69,14 +69,18 @@ class TestTimerForms:
 
 class TestHookForms:
     @pytest.mark.parametrize("backend", [ClusterBackend.RAY, ClusterBackend.KUBERNETES])
-    def test_every_trainer_hook_is_paired_with_every_trainer_hook_action(self, backend: ClusterBackend) -> None:
-        """Each hook can kill, stop or deadlock the trainer that reaches it."""
+    def test_each_trainer_hook_is_paired_with_the_actions_that_fault_its_trainer(
+        self, backend: ClusterBackend
+    ) -> None:
+        """A deadlock pairs only with the all-gather hook, since hanging a per-engine send thread spares the trainer."""
         forms = _forms(backend, FaultTrigger.HOOK)
 
         assert [(f.hook_name, f.action) for f in forms[ACTOR_CELL_TYPE]] == [
-            (hook, action)
-            for hook in (_BEFORE_ALL_GATHER, _BEFORE_SEND)
-            for action in (KillProcessAction(), StopProcessAction(), DeadlockThreadAction())
+            (_BEFORE_ALL_GATHER, KillProcessAction()),
+            (_BEFORE_ALL_GATHER, StopProcessAction()),
+            (_BEFORE_ALL_GATHER, DeadlockThreadAction()),
+            (_BEFORE_SEND, KillProcessAction()),
+            (_BEFORE_SEND, StopProcessAction()),
         ]
         assert all(f.lifetime_seconds == HOOK_FAULT_LIFETIME_SECONDS == 300.0 for f in forms[ACTOR_CELL_TYPE])
         assert not any(f.through_trainer_hook for f in forms[ACTOR_CELL_TYPE])
@@ -88,7 +92,6 @@ class TestHookForms:
         delays = {(f.hook_name, f.action.kind): f.max_delay_ms for f in forms[ACTOR_CELL_TYPE]}
         assert {key: delay for key, delay in delays.items() if key[1] == DeadlockThreadAction().kind} == {
             (_BEFORE_ALL_GATHER, DeadlockThreadAction().kind): 0,
-            (_BEFORE_SEND, DeadlockThreadAction().kind): 0,
         }
         assert {delay for key, delay in delays.items() if key[1] != DeadlockThreadAction().kind} == {
             HOOK_FAULT_MAX_DELAY_MS
@@ -135,7 +138,7 @@ class TestTriggerCombination:
     def test_hook_forms_are_the_only_ones_carrying_a_hook(self) -> None:
         """Timer forms that armed hooks would wait for an update the timer never promised."""
         assert _hook_forms(_forms(ClusterBackend.RAY, FaultTrigger.TIMER), ACTOR_CELL_TYPE) == []
-        assert len(_hook_forms(_forms(ClusterBackend.RAY, FaultTrigger.HOOK), ACTOR_CELL_TYPE)) == 6
+        assert len(_hook_forms(_forms(ClusterBackend.RAY, FaultTrigger.HOOK), ACTOR_CELL_TYPE)) == 5
 
 
 class TestComputeMeanIntervalSecondsOfKind:
