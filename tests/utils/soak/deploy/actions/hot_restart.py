@@ -116,6 +116,7 @@ class HotRestartForm(BaseSoakActionForm):
             event_log=self.event_log,
             request_id=request.request_id,
             launching=launch(spec, guard=HotRestartLaunchGuard(target=spec.target)),
+            accept_replaced=True,
         )
 
     async def _wait_for_take_over(

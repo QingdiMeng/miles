@@ -178,6 +178,7 @@ def _run_soak(
                     config=config,
                     train_script=get_train_script(fully_async=fully_async),
                 ),
+                accept_replaced=False,
             ),
             runner_config=SoakRunnerConfig(
                 seed=seed,

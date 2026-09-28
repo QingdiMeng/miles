@@ -203,7 +203,7 @@ class TestExecuteGsm8kSession:
         _FakeTrainingLauncher(error=error).install(monkeypatch)
         run = _prepare()
 
-        assert await execute_gsm8k_session(run) is outcome
+        assert await execute_gsm8k_session(run, accept_replaced=True) is outcome
 
         [event] = [event for event in run.event_log.events if isinstance(event, SoakLaunchFinishedEvent)]
         assert (event.request_id, event.outcome) == (None, outcome)
@@ -217,7 +217,7 @@ class TestExecuteGsm8kSession:
         run = _prepare()
 
         with pytest.raises(RuntimeError, match="train crashed"):
-            await execute_gsm8k_session(run)
+            await execute_gsm8k_session(run, accept_replaced=False)
 
         [event] = [event for event in run.event_log.events if isinstance(event, SoakLaunchFinishedEvent)]
         assert event.outcome is LaunchOutcome.FAILED

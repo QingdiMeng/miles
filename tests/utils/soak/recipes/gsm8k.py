@@ -133,8 +133,13 @@ def _build_gsm8k_train_args(
     return train_args + build_extra_train_args(dump_dir)
 
 
-async def execute_gsm8k_session(run: Gsm8kRun) -> LaunchOutcome:
-    return await note_launch_outcome(event_log=run.event_log, request_id=None, launching=launch(run.launch_spec))
+async def execute_gsm8k_session(run: Gsm8kRun, *, accept_replaced: bool) -> LaunchOutcome:
+    return await note_launch_outcome(
+        event_log=run.event_log,
+        request_id=None,
+        launching=launch(run.launch_spec),
+        accept_replaced=accept_replaced,
+    )
 
 
 async def launch(spec: Gsm8kLaunchSpec, *, guard: LaunchGuard | None = None) -> None:

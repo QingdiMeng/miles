@@ -23,7 +23,7 @@ def _failure(error: BaseException) -> asyncio.Task[LaunchOutcome]:
 def _install_first_launch(monkeypatch: pytest.MonkeyPatch, first: LaunchOutcome | BaseException) -> list[object]:
     runs: list[object] = []
 
-    async def _execute_gsm8k_session(run: object) -> LaunchOutcome:
+    async def _execute_gsm8k_session(run: object, *, accept_replaced: bool) -> LaunchOutcome:
         runs.append(run)
         if isinstance(first, BaseException):
             raise first
