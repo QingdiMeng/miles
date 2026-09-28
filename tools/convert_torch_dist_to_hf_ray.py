@@ -988,7 +988,9 @@ def prepare_whole_source_task_tensors(
         for name, param in get_named_params(megatron_args, state_dict):
             if getattr(megatron_args, "vocab_size", None) is not None:
                 param = m2hf.remove_padding(name, param, megatron_args.vocab_size)
-            converted_named_tensors = m2hf._convert_to_hf_core(megatron_args, model_name, name, param)
+            converted_named_tensors = m2hf._convert_to_hf_core(
+                argparse.Namespace(backend=megatron_args), model_name, name, param
+            )
             groups.append(PreparedTensorGroup(name, tuple(converted_named_tensors)))
         return PreparedTaskTensors(
             tuple(groups),
@@ -1020,7 +1022,15 @@ def write_prepared_tensor_groups(
                 torch.cuda.set_device(cuda_device_id)
             converted_named_tensors = tuple(
                 m2hf.quantize_params(
-                    megatron_args, group.source_name, list(converted_named_tensors), quantization_config
+                    argparse.Namespace(
+                        backend=megatron_args,
+                        extra_high_precision_layers_megatron=getattr(
+                            megatron_args, "extra_high_precision_layers_megatron", None
+                        ),
+                    ),
+                    group.source_name,
+                    list(converted_named_tensors),
+                    quantization_config,
                 )
             )
         shard_idx, current_size, added_size = append_to_shards(
@@ -1270,14 +1280,14 @@ def prepare_output_dir(output_dir: str, force: bool) -> str:
 
 
 def load_megatron_args(input_dir: str, model_name_override: str | None, vocab_size: int | None) -> tuple[Any, str]:
-    megatron_args = torch.load(os.path.join(input_dir, "common.pt"), weights_only=False)["args"]
+    megatron_args = argparse.Namespace(
+        **vars(torch.load(os.path.join(input_dir, "common.pt"), weights_only=False)["args"])
+    )
     model_name = model_name_override or getattr(megatron_args, "original_hf_model_name", None)
     if model_name is None:
         raise ValueError("Model name is required when common.pt does not include original_hf_model_name")
     if vocab_size is not None:
         megatron_args.vocab_size = vocab_size
-    if not hasattr(megatron_args, "sglang_enable_ep_moe"):
-        megatron_args.sglang_enable_ep_moe = False
     return megatron_args, model_name
 
 
