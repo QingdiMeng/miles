@@ -13,7 +13,7 @@ from unittest.mock import patch
 from miles.backends.megatron_utils.megatron_config import resolve_megatron_config
 from miles.backends.sglang_utils.sglang_config import SglangConfig
 from miles.utils.args.runtime import AllConfig, TrainerConfig
-from miles.utils.arguments import get_miles_extra_args_provider, parse_args
+from miles.utils.arguments import _compute_init_expected_num_cells, get_miles_extra_args_provider, parse_args
 from miles.utils.run_uuid import RUN_UUID_LENGTH
 
 _ConfigT = TypeVar("_ConfigT", AllConfig, TrainerConfig)
@@ -35,6 +35,7 @@ _RESOLVED_AFTER_PARSING: dict[str, Any] = dict(
     eval_uses_snapshots=False,
     starts_inference_engines=True,
     use_critic=False,
+    rollout_external=False,
     multi_lora=False,
     use_sampling_support_replay=False,
     run_uuid="0" * RUN_UUID_LENGTH,
@@ -73,6 +74,9 @@ def parser_defaults() -> dict[str, Any]:
 def resolve_parse_boundary_configs(args: Namespace) -> Namespace:
     args.raw_megatron = resolve_megatron_config(args, base_args={})
     args.sglang, args.sglang_scaling = SglangConfig.parse_args(args)
+    args.init_expected_num_cells = _compute_init_expected_num_cells(
+        args, sglang=args.sglang, sglang_scaling=args.sglang_scaling
+    )
     return args
 
 
