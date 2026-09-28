@@ -15,8 +15,13 @@ class ConfigSnapshotStorage:
         atomic_write_text(path=self.directory / f"{uuid.uuid4().hex}.json", text=record.model_dump_json())
 
     def read(self) -> list[ConfigSnapshotRecord]:
+        try:
+            paths = sorted(self.directory.iterdir())
+        except FileNotFoundError:
+            return []
+
         return [
             ConfigSnapshotRecord.model_validate_json(path.read_text())
-            for path in sorted(self.directory.iterdir())
+            for path in paths
             if path.suffix == ".json"
         ]
