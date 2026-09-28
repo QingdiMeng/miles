@@ -13,9 +13,7 @@ _ = tinker_startup
 
 
 class TestServe:
-    async def test_observed_engines_initialize_a_client_that_can_sample(
-        self, tinker_startup: SimpleNamespace
-    ) -> None:
+    async def test_observed_engines_initialize_a_client_that_can_sample(self, tinker_startup: SimpleNamespace) -> None:
         """A gateway starting with unknown topology can sample after its engines initialize."""
         args = tinker_startup.args
         assert args.inference_runtime_mut_state.engine_count == 0
