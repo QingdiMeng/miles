@@ -106,8 +106,21 @@ def make_trainer_args(*, train_backend: str = "megatron", **values: Any) -> Conf
     from miles.utils.args.configs.backend_fields import TrainerBackendTraitConfig
     from miles.utils.args.runtime import TrainerConfig
 
+    values = {**parser_defaults(), **values, "train_backend": train_backend}
     trainer_fields = TrainerConfig.model_fields.keys() - TrainerBackendTraitConfig.model_fields.keys()
     backend_cls = MegatronArgsNamespace if train_backend == "megatron" else FsdpArgsNamespace
     backend = backend_cls(**{name: value for name, value in values.items() if name not in trainer_fields})
     trainer = {name: value for name, value in values.items() if name in trainer_fields}
-    return ConfigNamespace(**trainer, train_backend=train_backend, backend=backend)
+    return ConfigNamespace(**trainer, backend=backend)
+
+
+def with_backend_values(args: ConfigNamespace, **values: Any) -> ConfigNamespace:
+    backend = type(args.backend)(**(vars(args.backend) | values))
+    return ConfigNamespace(**(vars(args) | {"backend": backend}))
+
+
+def make_trainer_config(**values: Any) -> Any:
+    from miles.utils.args.runtime import TrainerConfig
+
+    args = make_trainer_args(**values)
+    return TrainerConfig.model_construct(**vars(args))
