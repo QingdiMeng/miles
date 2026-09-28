@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Any, Self
 
 from pydantic import model_validator
 
@@ -308,4 +308,22 @@ class AllConfig(
     MultiLoraOnlyConfig,
     TinkerConfig,
 ):
-    pass
+    # ========================== same-name delegates ===========================
+
+    @property
+    def tensor_model_parallel_size(self) -> int:
+        return self._raw_backend_values["tensor_model_parallel_size"]
+
+    @property
+    def pipeline_model_parallel_size(self) -> int:
+        return self._raw_backend_values["pipeline_model_parallel_size"]
+
+    @property
+    def context_parallel_size(self) -> int:
+        return self._raw_backend_values["context_parallel_size"]
+
+    # ======================== end same-name delegates =========================
+
+    @property
+    def _raw_backend_values(self) -> dict[str, Any]:
+        return self.raw_megatron.base_args if self.train_backend == "megatron" else vars(self.raw_fsdp)
