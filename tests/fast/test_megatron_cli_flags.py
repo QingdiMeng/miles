@@ -68,6 +68,7 @@ def test_kimi_yarn_flags_propagate_to_megatron(monkeypatch, model_type, beta_fas
 
     from miles.backends.megatron_utils.arguments import parse_args as megatron_parse_args
     from miles.utils.arguments import get_miles_extra_args_provider
+
     monkeypatch.setattr(
         sys,
         "argv",

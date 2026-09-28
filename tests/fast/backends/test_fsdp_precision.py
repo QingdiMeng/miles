@@ -68,7 +68,9 @@ def test_fsdp_args_expose_effective_compute_precision(monkeypatch):
 
 
 def test_qwen3_formal_true_on_policy_resolves_fp32_params_with_bf16_autocast():
-    args = _args(fp16=False, keep_fp32_master=True, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name)
+    args = _args(
+        fp16=False, keep_fp32_master=True, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name
+    )
 
     policy = resolve_precision_policy(SimpleNamespace(model_type="qwen3"), args)
 
@@ -102,7 +104,9 @@ def test_qwen3_formal_true_on_policy_rejects_fp16():
     with pytest.raises(ValueError, match="requires bf16 training"):
         resolve_precision_policy(
             SimpleNamespace(model_type="qwen3"),
-            _args(fp16=True, keep_fp32_master=True, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name),
+            _args(
+                fp16=True, keep_fp32_master=True, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name
+            ),
         )
 
 
@@ -110,7 +114,12 @@ def test_qwen3_formal_true_on_policy_rejects_disabled_fp32_master():
     with pytest.raises(ValueError, match="requires fp32 master weights"):
         resolve_precision_policy(
             SimpleNamespace(model_type="qwen3"),
-            _args(fp16=False, keep_fp32_master=False, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name),
+            _args(
+                fp16=False,
+                keep_fp32_master=False,
+                true_on_policy_mode=True,
+                contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name,
+            ),
         )
 
 
@@ -125,7 +134,9 @@ def test_precision_forward_context_uses_policy_autocast(monkeypatch):
     monkeypatch.setattr(torch, "autocast", fake_autocast)
     policy = resolve_precision_policy(
         SimpleNamespace(model_type="qwen3"),
-        _args(fp16=False, keep_fp32_master=True, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name),
+        _args(
+            fp16=False, keep_fp32_master=True, true_on_policy_mode=True, contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name
+        ),
     )
 
     with precision_forward_context(policy):

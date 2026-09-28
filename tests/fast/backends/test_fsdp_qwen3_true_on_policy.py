@@ -75,11 +75,19 @@ def test_qwen3_instance_patch_registry_is_contract_gated(monkeypatch):
         apply_model_instance_patches(
             model,
             SimpleNamespace(model_type=model_type),
-            SimpleNamespace(backend=SimpleNamespace(fp16=fp16), true_on_policy_mode=true_on_policy_mode, sglang=make_sglang_config(true_on_policy_contract=contract)),
+            SimpleNamespace(
+                backend=SimpleNamespace(fp16=fp16),
+                true_on_policy_mode=true_on_policy_mode,
+                sglang=make_sglang_config(true_on_policy_contract=contract),
+            ),
         )
     assert calls == []
 
-    args = SimpleNamespace(backend=SimpleNamespace(fp16=False), true_on_policy_mode=True, sglang=make_sglang_config(true_on_policy_contract=formal_contract))
+    args = SimpleNamespace(
+        backend=SimpleNamespace(fp16=False),
+        true_on_policy_mode=True,
+        sglang=make_sglang_config(true_on_policy_contract=formal_contract),
+    )
     config = SimpleNamespace(model_type="qwen3")
     assert hook.applies_to(config, args)
     apply_model_instance_patches(model, config, args)
@@ -133,7 +141,11 @@ def test_qwen3_formal_sync_preserves_post_update_fp32_values():
     model = modeling_qwen3.Qwen3ForCausalLM(_tiny_config()).to(torch.bfloat16)
     policy = resolve_precision_policy(
         model.config,
-        SimpleNamespace(backend=SimpleNamespace(fp16=False, keep_fp32_master=True), true_on_policy_mode=True, sglang=make_sglang_config(true_on_policy_contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name)),
+        SimpleNamespace(
+            backend=SimpleNamespace(fp16=False, keep_fp32_master=True),
+            true_on_policy_mode=True,
+            sglang=make_sglang_config(true_on_policy_contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name),
+        ),
     )
     model = apply_fp32_master(model, policy.sync_dtype_resolver)
 
@@ -156,7 +168,11 @@ def test_qwen3_ref_model_uses_fp32_master_storage(monkeypatch):
     from miles.backends.fsdp_utils import actor as actor_module
 
     config = _tiny_config()
-    args = SimpleNamespace(backend=SimpleNamespace(attn_implementation="eager", fp16=False, keep_fp32_master=True), true_on_policy_mode=True, sglang=make_sglang_config(true_on_policy_contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name))
+    args = SimpleNamespace(
+        backend=SimpleNamespace(attn_implementation="eager", fp16=False, keep_fp32_master=True),
+        true_on_policy_mode=True,
+        sglang=make_sglang_config(true_on_policy_contract=QWEN3_DENSE_TRUE_ON_POLICY_V1.name),
+    )
     actor = object.__new__(actor_module.FSDPTrainRayActor)
     actor.args = args
     actor.hf_config = config

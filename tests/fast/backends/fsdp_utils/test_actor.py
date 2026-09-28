@@ -93,7 +93,9 @@ class TestFSDPTrainParallelConfigWiring:
         fsdp_debug_actor: actor_module.FSDPTrainRayActor,
     ) -> None:
         """FSDP init records its live DP layout without precomputed scheduling and train hands it to the loader."""
-        args = make_trainer_args(train_backend="fsdp", dumper_enable=False, seed=0, offload_train=False, debug_rollout_only=True)
+        args = make_trainer_args(
+            train_backend="fsdp", dumper_enable=False, seed=0, offload_train=False, debug_rollout_only=True
+        )
         received: list[TrainParallelConfig] = []
 
         def load_rollout_data(
