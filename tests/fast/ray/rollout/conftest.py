@@ -3,7 +3,7 @@ from __future__ import annotations
 import textwrap
 from argparse import ArgumentParser, Namespace
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, TypeVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,7 +16,7 @@ from miles.utils import object_store
 from miles.utils.args.component_rollout import InferenceRuntimeImmutState, InferenceRuntimeMutState
 from miles.utils.args.configs.router import RouterConfig
 from miles.utils.args.custom_function import CustomFunctionConfig
-from miles.utils.args.runtime import AllConfig, RolloutConfig
+from miles.utils.args.runtime import AllConfig, InferenceControllerConfig, RolloutConfig
 from miles.utils.types import Sample
 
 
@@ -189,13 +189,23 @@ def make_args(**overrides: Any) -> Namespace:
 
 def make_rollout_config(**overrides: Any) -> RolloutConfig:
     """The typed config the rollout executor receives, sliced from ``make_args``."""
-    args = make_args(**overrides)
+    return _slice_config(RolloutConfig, make_args(**overrides))
+
+
+def make_inference_controller_config(args: Namespace) -> InferenceControllerConfig:
+    """The typed config the inference controller receives, sliced from a ``make_args`` namespace."""
+    return _slice_config(InferenceControllerConfig, args)
+
+
+def _slice_config(config_class: type[_LeafConfigT], args: Namespace) -> _LeafConfigT:
     values = vars(args) | _RESOLVED_ROLLOUT_FIELDS | RouterConfig.from_args(args)
     for name in _CUSTOM_FUNCTION_FIELDS:
         if isinstance(path := values[name], str):
             values[name] = CustomFunctionConfig(path=path)
-    return RolloutConfig.model_validate({name: values[name] for name in RolloutConfig.model_fields if name in values})
+    return config_class.model_validate({name: values[name] for name in config_class.model_fields if name in values})
 
+
+_LeafConfigT = TypeVar("_LeafConfigT", RolloutConfig, InferenceControllerConfig)
 
 _RESOLVED_ROLLOUT_FIELDS: dict[str, Any] = dict(
     ci_enable_metrics_capture=False,
