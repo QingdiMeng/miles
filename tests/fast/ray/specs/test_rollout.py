@@ -9,11 +9,14 @@ from miles.ray.specs.entrypoint import SERVE_SPEC_CLASSES
 from miles.ray.specs.rollout import (
     ROLLOUT_EXECUTOR_POOL_ID,
     ROLLOUT_EXECUTOR_WORKER_CLASS,
-    rollout_executor_cell_id,
     RolloutExecutorSpec,
+    rollout_executor_cell_id,
     rollout_executor_worker_name,
 )
-from miles.utils.external_utils.command_utils.helm_backend.launcher.values.builder import build_values
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values.builder import (
+    build_values,
+    compute_static_connections,
+)
 from miles.utils.external_utils.command_utils.helm_backend.launcher.values.misc import SECTION_OF_CATEGORY, LaunchPlan
 from miles.utils.function_registry import load_function
 from miles.utils.misc import NodeProbeMixin
@@ -115,7 +118,9 @@ class TestRolloutExecutorSpec:
         """The release has to contain the executor pod, or the address book would point at nothing."""
         spec = spec_rollout_executor()
 
-        values = build_values([spec], _layout(), scaling=SCALING).as_values()
+        values = build_values(
+            [spec], _layout(), scaling=SCALING, static_connections=compute_static_connections([spec], scaling=SCALING)
+        ).as_values()
 
         (entry,) = values["run"]["staticWorkers"]
         assert SECTION_OF_CATEGORY[spec.category] == "staticWorkers"

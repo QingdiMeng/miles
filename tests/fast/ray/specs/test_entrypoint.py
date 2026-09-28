@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections import Counter
 
 import pytest
-from tests.fast.fixtures.megatron_config_fixtures import encode_megatron_config
 from tests.fast.fixtures.args_fixtures import parse_megatron_test_config
+from tests.fast.fixtures.megatron_config_fixtures import encode_megatron_config
 from tests.fast.ray.rollout.conftest import make_sglang_config_yaml
 
 from miles.ray.specs.entrypoint import compute_specs
@@ -15,7 +15,6 @@ from miles.utils.workers.types import DeployComponent
 from miles.utils.workers.worker_provider.kubernetes.helm.builder import compute_helm_backend_capability
 from miles.utils.workers.worker_provider.kubernetes.helm.env import NAMESPACE_ENV_VAR, RELEASE_ENV_VAR
 from miles.utils.workers.worker_spec import BaseSpec, WorkerCtorContext
-
 
 _SPLIT_DEPLOYMENT_ARGV = (
     "--run-uuid",
@@ -150,7 +149,9 @@ class TestComputeSpecs:
 
 
 def _debug_train_only_args(tmp_path) -> AllConfig:
-    sglang_config = _write_sglang_config(tmp_path, [{"worker_type": "regular", "num_gpus": 8, "num_gpus_per_engine": 1}])
+    sglang_config = _write_sglang_config(
+        tmp_path, [{"worker_type": "regular", "num_gpus": 8, "num_gpus_per_engine": 1}]
+    )
     return parse_megatron_test_config(
         "--sglang-config",
         sglang_config,
@@ -176,7 +177,9 @@ class TestDeployComponentFiltering:
             tmp_path, [{"worker_type": "regular", "num_gpus": 4, "num_gpus_per_engine": 2}]
         )
         critic_argv = ["--advantage-estimator", "ppo", "--critic-num-nodes", "1", "--critic-num-gpus-per-node", "2"]
-        split_argv = _split_deployment_argv(deploy_component, trainer_ids=["actor", "critic"] if use_critic else ["actor"])
+        split_argv = _split_deployment_argv(
+            deploy_component, trainer_ids=["actor", "critic"] if use_critic else ["actor"]
+        )
         return parse_megatron_test_config(
             "--sglang-config",
             sglang_config,
@@ -267,9 +270,7 @@ class TestDeployComponentFiltering:
 
     def test_an_inference_deployment_holds_the_engines_and_the_one_reporter(self, tmp_path):
         """An engine release carries no controller and no router; it only announces the engines it launches."""
-        specs = compute_specs(
-            self._args(tmp_path, deploy_component="inference")
-        )
+        specs = compute_specs(self._args(tmp_path, deploy_component="inference"))
 
         assert [spec.name for spec in specs] == ["inference-registration-reporter", "inference-engine-inference-0-0"]
 
