@@ -76,6 +76,6 @@ class FaultHookRequestExecutor:
         if not is_event_logger_initialized():
             return
         try:
-            get_event_logger().log(FaultHookEvent, dict(record=self._record))
+            get_event_logger().log(FaultHookEvent, dict(record=self._record), include_context=False)
         except Exception:
             logger.exception("Could not record fault hook event: %s", self._record.request.request_id)
