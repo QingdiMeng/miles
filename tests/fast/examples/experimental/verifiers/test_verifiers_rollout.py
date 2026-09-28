@@ -243,7 +243,9 @@ def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monke
     }
 
 
-def test_canonical_tokenizer_selects_tool_renderer_for_ambiguous_local_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_canonical_tokenizer_selects_tool_renderer_for_ambiguous_local_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Structured tokenizer identity disambiguates local Qwen checkpoints for tools."""
     renderers = pytest.importorskip("renderers", minversion="0.1.8")
     runtime = pytest.importorskip("verifiers.v1.clients.train")
