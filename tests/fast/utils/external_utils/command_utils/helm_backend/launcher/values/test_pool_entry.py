@@ -6,6 +6,7 @@ import pytest
 from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.values.utils import (
     LAYOUT,
     SCALING,
+    build_values_as_launched,
     engine,
     router,
     session_server,
@@ -13,12 +14,11 @@ from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.values.
 )
 
 from miles.ray.specs.rollout import ROLLOUT_EXECUTOR_POOL_ID
-from miles.utils.external_utils.command_utils.helm_backend.launcher.values import placeholders, pool_entry
-from miles.utils.external_utils.command_utils.helm_backend.launcher.values.builder import build_values
-from miles.utils.external_utils.command_utils.helm_backend.launcher.values.helm_values_types import PortEntry
-from miles.utils.external_utils.command_utils.helm_backend.launcher.values.misc import LaunchPlan
 from miles.utils.args.configs.scaling import ScalingConfig
 from miles.utils.args.runtime_base import BaseLeafConfig
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values import placeholders, pool_entry
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values.helm_values_types import PortEntry
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values.misc import LaunchPlan
 from miles.utils.workers.connection_config import StaticConnConfig
 from miles.utils.workers.types import PlatformAccess
 from miles.utils.workers.worker_spec import BaseSpec, SchedulingSpec
@@ -28,6 +28,7 @@ STAMP = "2026-08-12T09:00:00+00:00"
 RESTARTED_LAYOUT = LAYOUT.model_copy(
     update=dict(restart_at=STAMP, stamped_components=frozenset({ROLLOUT_EXECUTOR_POOL_ID}))
 )
+
 
 class _UnlaunchableSpec(BaseSpec):
     args: Any = None
@@ -49,7 +50,7 @@ class _NotedArgs(BaseLeafConfig):
 
 
 def _unprepared_trainer_command(spec: BaseSpec) -> list[str]:
-    return build_values([spec], LAYOUT, scaling=SCALING).as_values()["run"]["trainerEngines"][0]["command"]
+    return build_values_as_launched([spec], LAYOUT, scaling=SCALING).as_values()["run"]["trainerEngines"][0]["command"]
 
 
 PREPARE_CMD = "mkdir -p /scratch/dataset && rsync -a /cluster-storage/dataset/ /scratch/dataset"
@@ -66,7 +67,7 @@ PREPARE_LAYOUT = LaunchPlan(
 
 
 def _prepared(section: str, spec: BaseSpec) -> list[str]:
-    return build_values([spec], PREPARE_LAYOUT, scaling=SCALING).as_values()["run"][section][0]["command"]
+    return build_values_as_launched([spec], PREPARE_LAYOUT, scaling=SCALING).as_values()["run"][section][0]["command"]
 
 
 class TestBuildEntry:
@@ -92,7 +93,9 @@ class TestBuildEntry:
 
     def test_points_a_master_port_at_the_group_leader(self):
         """A rank cannot know its leader's address until it is scheduled, but kubelet does."""
-        command = build_values([engine()], LAYOUT, scaling=SCALING).as_values()["run"]["inferenceEngines"][0]["command"]
+        command = build_values_as_launched([engine()], LAYOUT, scaling=SCALING).as_values()["run"]["inferenceEngines"][
+            0
+        ]["command"]
 
         assert command[command.index("--dist-init-addr") + 1] == f"{placeholders.LEADER_ADDRESS_PLACEHOLDER}:9000"
 
@@ -103,9 +106,9 @@ class TestBuildEntry:
         )
         layout = LAYOUT.model_copy(update={"colocate": True})
 
-        entry = build_values([spec, trainer(num_cells=1, gpus_per_cell=8)], layout, scaling=SCALING).as_values()["run"][
-            "inferenceEngines"
-        ][0]
+        entry = build_values_as_launched(
+            [spec, trainer(num_cells=1, gpus_per_cell=8)], layout, scaling=SCALING
+        ).as_values()["run"]["inferenceEngines"][0]
 
         assert entry["env"]["BASE_GPU"] == placeholders._BASE_GPU_ID_PLACEHOLDER
 
@@ -161,7 +164,9 @@ class TestPrepareCmd:
     def test_refuses_a_trainer_whose_pods_can_share_a_node(self):
         """Two pods of one node would run the copy against the same node-local path at the same time."""
         with pytest.raises(AssertionError, match="can land on one node"):
-            build_values([trainer(num_cells=1, gpus_per_cell=4)], PREPARE_LAYOUT, scaling=SCALING).as_values()
+            build_values_as_launched(
+                [trainer(num_cells=1, gpus_per_cell=4)], PREPARE_LAYOUT, scaling=SCALING
+            ).as_values()
 
     def test_accepts_a_trainer_that_takes_whole_nodes(self):
         """A pod holding every gpu of its node is the only pod there, so the copy cannot race itself."""
@@ -171,7 +176,9 @@ class TestPrepareCmd:
 
     def test_a_run_that_prepares_nothing_leaves_every_command_alone(self):
         """Most runs read from the shared filesystem directly, and a bash wrapper would hide their exit codes."""
-        command = build_values([trainer()], LAYOUT, scaling=SCALING).as_values()["run"]["trainerEngines"][0]["command"]
+        command = build_values_as_launched([trainer()], LAYOUT, scaling=SCALING).as_values()["run"]["trainerEngines"][
+            0
+        ]["command"]
 
         assert command[:2] != ["bash", "-c"]
 
@@ -179,7 +186,7 @@ class TestPrepareCmd:
 class TestTheRestartStamp:
     @staticmethod
     def _entry(spec: BaseSpec, *, plan: LaunchPlan) -> dict:
-        return build_values([spec], plan, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
+        return build_values_as_launched([spec], plan, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
 
     @staticmethod
     def _executor() -> BaseSpec:
@@ -202,14 +209,14 @@ class TestTheRestartStamp:
         plan = LAYOUT.model_copy(update=dict(restart_at=STAMP, stamped_components=frozenset({"inference-engine-0-0"})))
 
         with pytest.raises(AssertionError, match="renders a restart stamp"):
-            build_values([engine()], plan, scaling=SCALING).as_values()
+            build_values_as_launched([engine()], plan, scaling=SCALING).as_values()
 
     def test_stamping_a_trainer_pool_is_refused(self):
         """A trainer pool a hot restart promises to keep alive must never be handed a stamp at all."""
         plan = LAYOUT.model_copy(update=dict(restart_at=STAMP, stamped_components=frozenset({"trainer-engine-actor"})))
 
         with pytest.raises(AssertionError, match="renders a restart stamp"):
-            build_values([trainer()], plan, scaling=SCALING).as_values()
+            build_values_as_launched([trainer()], plan, scaling=SCALING).as_values()
 
 
 class TestTheAccountAPoolRunsUnder:
@@ -217,7 +224,7 @@ class TestTheAccountAPoolRunsUnder:
         """Only these workers reconcile against pods, and the namespace default cannot list one."""
         spec = session_server(num_cells=1).model_copy(update={"platform_access": PlatformAccess.READ})
 
-        entry = build_values([spec], LAYOUT, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
+        entry = build_values_as_launched([spec], LAYOUT, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
 
         assert entry["serviceAccountName"] == "r-miles-run-platform-read"
 
@@ -225,13 +232,15 @@ class TestTheAccountAPoolRunsUnder:
         """A trainer controller suspends cells by deleting pods and must retain that existing capability."""
         spec = session_server(num_cells=1).model_copy(update={"platform_access": PlatformAccess.READ_DELETE})
 
-        entry = build_values([spec], LAYOUT, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
+        entry = build_values_as_launched([spec], LAYOUT, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
 
         assert entry["serviceAccountName"] == "r-miles-run-platform-read-delete"
 
     def test_every_other_pool_stays_on_the_namespace_default(self):
         """An engine talks to no api server, and an account it never needs is one it could misuse."""
-        entry = build_values([session_server(num_cells=1)], LAYOUT, scaling=SCALING).as_values()["run"]["staticWorkers"][0]
+        entry = build_values_as_launched([session_server(num_cells=1)], LAYOUT, scaling=SCALING).as_values()["run"][
+            "staticWorkers"
+        ][0]
 
         assert "serviceAccountName" not in entry
 
@@ -240,4 +249,4 @@ class TestTheAccountAPoolRunsUnder:
         spec = engine(num_cells=1, gpus_per_engine=8).model_copy(update={"platform_access": PlatformAccess.READ})
 
         with pytest.raises(AssertionError, match="renders a service account"):
-            build_values([spec], LAYOUT, scaling=SCALING).as_values()
+            build_values_as_launched([spec], LAYOUT, scaling=SCALING).as_values()

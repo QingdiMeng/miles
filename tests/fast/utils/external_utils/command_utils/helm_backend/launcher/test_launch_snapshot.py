@@ -6,13 +6,17 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.utils import LauncherArgs
-from tests.fast.utils.workers.fake_specs import FakeCommandSpec, FakeServeSpec
 import yaml
 from tests.fast.launch_scripts.sh_harness import REPO_ROOT, sanitize
+from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.utils import (
+    LauncherArgs,
+    launcher_args_orchestrator_command,
+)
+from tests.fast.utils.workers.fake_specs import FakeCommandSpec, FakeServeSpec
 
 from miles.ray.specs.inference import POOL_CATEGORY_INFERENCE_ENGINE
 from miles.ray.specs.train import POOL_CATEGORY_TRAINER_ENGINE
+from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.external_utils.command_utils.base_backend import ExecuteTrainConfig, ExecuteTrainRequest
 from miles.utils.external_utils.command_utils.helm_backend import naming
 from miles.utils.external_utils.command_utils.helm_backend.launcher import command_wrapper, entrypoint
@@ -23,7 +27,6 @@ from miles.utils.test_utils.snapshot import (
     SNAPSHOT_UPDATE_ENV_VAR,
     assert_matches_snapshot,
 )
-from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.workers.worker_spec import DEFAULT_RPC_PORT_INFO, PortInfo, SchedulingSpec
 
 SNAPSHOT_DIR = REPO_ROOT / "tests" / "snapshots" / "helm_backend"
@@ -196,6 +199,7 @@ def _stub_launch_inputs(monkeypatch, *, specs, colocate: bool = False, on_comput
         lambda: LauncherArgs(colocate=colocate),
     )
     monkeypatch.setattr(MooncakeInfo, "plan_of_args", staticmethod(lambda args: None))
+    monkeypatch.setattr(entrypoint, "_compute_orchestrator_command", launcher_args_orchestrator_command)
     monkeypatch.setattr(entrypoint, "_follow_until_finished", lambda **kwargs: None)
 
 

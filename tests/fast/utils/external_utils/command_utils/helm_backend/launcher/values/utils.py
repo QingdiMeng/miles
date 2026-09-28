@@ -1,12 +1,17 @@
-from miles.ray.specs.inference import POOL_CATEGORY_INFERENCE_ENGINE
-from miles.ray.specs.train import POOL_CATEGORY_TRAINER_ENGINE
 from tests.fast.utils.workers.fake_specs import FakeCommandSpec, FakeServeSpec
 
 from miles.backends.sglang_utils.sglang_scaling_config import SglangScalingConfig
+from miles.ray.specs.inference import POOL_CATEGORY_INFERENCE_ENGINE
+from miles.ray.specs.train import POOL_CATEGORY_TRAINER_ENGINE
 from miles.utils.args.configs.scaling import ScalingConfig
 from miles.utils.args.runtime_base import BaseLeafConfig
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values.builder import (
+    build_values,
+    compute_static_connections,
+)
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values.helm_values_types import MilesRunChartValues
 from miles.utils.external_utils.command_utils.helm_backend.launcher.values.misc import LaunchPlan
-from miles.utils.workers.worker_spec import DEFAULT_RPC_PORT_INFO, PortInfo, SchedulingSpec
+from miles.utils.workers.worker_spec import DEFAULT_RPC_PORT_INFO, BaseSpec, PortInfo, SchedulingSpec
 
 LAYOUT = LaunchPlan(
     run_id="260101-000000-000",
@@ -18,6 +23,14 @@ LAYOUT = LaunchPlan(
 )
 
 SCALING = ScalingConfig(sglang_scaling=SglangScalingConfig(groups={}))
+
+
+def build_values_as_launched(
+    specs: list[BaseSpec], plan: LaunchPlan, *, scaling: ScalingConfig = SCALING
+) -> MilesRunChartValues:
+    return build_values(
+        specs, plan, scaling=scaling, static_connections=compute_static_connections(specs, scaling=scaling)
+    )
 
 
 def router() -> FakeCommandSpec:

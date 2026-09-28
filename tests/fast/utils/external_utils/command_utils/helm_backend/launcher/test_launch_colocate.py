@@ -4,12 +4,16 @@ from typing import Any
 
 import pydantic
 import pytest
-from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.utils import LauncherArgs
-from tests.fast.utils.workers.fake_specs import FakeCommandSpec, FakeServeSpec
 import yaml
+from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.utils import (
+    LauncherArgs,
+    launcher_args_orchestrator_command,
+)
+from tests.fast.utils.workers.fake_specs import FakeCommandSpec, FakeServeSpec
 
 from miles.ray.specs.inference import POOL_CATEGORY_INFERENCE_ENGINE
 from miles.ray.specs.train import POOL_CATEGORY_TRAINER_ENGINE
+from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.external_utils.command_utils.base_backend import ExecuteTrainConfig, ExecuteTrainRequest
 from miles.utils.external_utils.command_utils.helm_backend.launcher import command_wrapper, entrypoint
 from miles.utils.external_utils.command_utils.helm_backend.launcher.command_wrapper import Helm
@@ -17,7 +21,6 @@ from miles.utils.external_utils.command_utils.helm_backend.launcher.values.misc 
 from miles.utils.external_utils.command_utils.helm_backend.naming import ReleaseName
 from miles.utils.external_utils.command_utils.helm_backend.orchestrator import state as orchestrator_state
 from miles.utils.workers.types import DeployComponent
-from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.workers.worker_spec import DEFAULT_RPC_PORT_INFO, PortInfo, SchedulingSpec
 
 RUN_ID = "260101-000000-000"
@@ -147,6 +150,7 @@ def _stub_launch_inputs(monkeypatch, *, specs, colocate: bool = False) -> None:
         lambda: LauncherArgs(colocate=colocate),
     )
     monkeypatch.setattr(MooncakeInfo, "plan_of_args", staticmethod(lambda args: None))
+    monkeypatch.setattr(entrypoint, "_compute_orchestrator_command", launcher_args_orchestrator_command)
     monkeypatch.setattr(entrypoint, "_follow_until_finished", lambda **kwargs: None)
 
 
