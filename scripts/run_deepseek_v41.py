@@ -3,7 +3,7 @@ from typing import Literal
 
 import typer
 
-import miles.utils.external_utils.command_utils as U
+from miles.utils.external_utils import command_utils
 
 app = typer.Typer()
 
@@ -11,9 +11,9 @@ _MEGATRON_MODEL_TYPE = {"DeepSeek-V4.1": "deepseek-v4.1"}
 
 
 @dataclass
-class ScriptArgs(U.ExecuteTrainConfig):
+class ScriptArgs(command_utils.ExecuteTrainConfig):
     mode: Literal["normal", "debug_minimal"] = "debug_minimal"
-    run_id: str = U.create_run_id()
+    run_id: str = command_utils.create_run_id()
     model_name: Literal["DeepSeek-V4.1"] = "DeepSeek-V4.1"
     task: Literal["dapo_aime", "gsm8k"] = "gsm8k"
     enable_eval: bool = False
@@ -45,6 +45,8 @@ class ScriptArgs(U.ExecuteTrainConfig):
     sglang_engram_host_table: bool = False
     sglang_max_running_requests: int = 128
     sglang_radix_cache: bool = False
+    sglang_dp_size: int = 1
+    sglang_engram_host_table_layout: Literal["per_rank", "shared"] | None = None
     rollout_num_nodes: int = 0
     fully_async: bool = False
     load_from_hf: bool = False
@@ -73,9 +75,12 @@ class ScriptArgs(U.ExecuteTrainConfig):
     rollout_num_gpus: int = field(init=False)
 
     def __post_init__(self):
-        self.hardware = U.resolve_hardware(self)
-        self.num_gpus_per_node = self.num_gpus_per_node or U.NUM_GPUS_OF_HARDWARE[self.hardware]
+        self.hardware = command_utils.resolve_hardware(self)
+        self.num_gpus_per_node = self.num_gpus_per_node or command_utils.NUM_GPUS_OF_HARDWARE[self.hardware]
         assert 0 <= self.rollout_num_nodes < self.num_nodes
+        assert not (
+            self.optimizer_offload and self.disk_offload
+        ), "--stream-optimizer-state-to-disk cannot be combined with --optimizer-cpu-offload"
         self.colocate = self.rollout_num_nodes == 0
         self.actor_num_nodes = self.num_nodes - self.rollout_num_nodes
         self.actor_num_gpus_per_node = self.num_gpus_per_node
@@ -98,6 +103,7 @@ class ScriptArgs(U.ExecuteTrainConfig):
 
 
 def _download_dataset(args: ScriptArgs):
+    U = args.create_backend()
     match args.task:
         case "dapo_aime":
             U.hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
@@ -120,6 +126,7 @@ def _parallel_args(args: ScriptArgs) -> str:
 
 def _prepare_spmd(args: ScriptArgs):
     assert args.hf_checkpoint is not None
+    U = args.create_backend()
     U.convert_checkpoint(
         model_name=args.model_name,
         hf_checkpoint=args.hf_checkpoint,
@@ -141,19 +148,20 @@ def _prepare_spmd(args: ScriptArgs):
 
 
 @app.command()
-@U.dataclass_cli
+@command_utils.dataclass_cli
 def prepare_spmd(args: ScriptArgs):
     _prepare_spmd(args)
 
 
 @app.command()
-@U.dataclass_cli
+@command_utils.dataclass_cli
 def prepare_data(args: ScriptArgs):
     _download_dataset(args)
 
 
 def _train(args: ScriptArgs):
     assert args.hf_checkpoint is not None
+    U = args.create_backend()
     load_save_path = f"{args.save_dir}/{args.run_id}/checkpoints"
     ref_load = args.hf_checkpoint if args.load_from_hf else f"{args.model_dir}/{args.torch_dist_name}"
     ckpt_args = f"--hf-checkpoint {args.hf_checkpoint} " f"--ref-load {ref_load} "
@@ -232,7 +240,13 @@ def _train(args: ScriptArgs):
     sglang_args = (
         f"--rollout-num-gpus-per-engine {engine_gpus} "
         f"--sglang-tp-size {engine_gpus} "
-        "--sglang-dp-size 1 "
+        f"--sglang-dp-size {args.sglang_dp_size} "
+        # The vocab (129280) does not split over 24 TP ranks; with DP attention the LM head can use the
+        # attention-TP group instead, as the embedding already does.
+        f"{'--sglang-enable-dp-attention --sglang-enable-dp-lm-head ' if args.sglang_dp_size > 1 else ''}"
+        # DP attention splits the chunked-prefill budget over the DP ranks; each share must stay a
+        # multiple of the dsv4 backend's 256-token page.
+        f"{f'--sglang-chunked-prefill-size {args.sglang_dp_size * 1024} ' if args.sglang_dp_size > 1 else ''}"
         f"--sglang-ep-size {engine_gpus} "
         "--sglang-attention-backend dsv4 "
         "--sglang-moe-runner-backend auto "
@@ -258,6 +272,16 @@ def _train(args: ScriptArgs):
         "PYTHONFAULTHANDLER": "1",
         "CUDA_DEVICE_MAX_CONNECTIONS": "1",
     }
+    # The shared layout opens rank 0's memfd through /proc, so it cannot span nodes.
+    engram_layout = args.sglang_engram_host_table_layout or (
+        "per_rank" if engine_gpus > args.num_gpus_per_node else None
+    )
+    if args.sglang_engram_host_table and engram_layout is not None:
+        extra_env_vars["SGLANG_DSV41_ENGRAM_HOST_TABLE_LAYOUT"] = engram_layout
+    if args.sglang_dp_size > 1:
+        # The DP-attention gather inside a pausable decode graph hangs on NCCL buffer registration
+        # until sgl-project/sglang#40648 and #40649 are in the engine.
+        extra_env_vars["NCCL_GRAPH_REGISTER"] = "0"
 
     peak_device = args.colocate_memory_peak_device or ("gpu" if args.hardware == "GB300" else "cpu")
     misc_args = (
@@ -316,7 +340,7 @@ def _train(args: ScriptArgs):
         f"{rollout_args} "
         f"{optimizer_args} "
         f"{grpo_args} "
-        f"{U.get_default_wandb_args(__file__, run_id=args.run_id)} "
+        f"{command_utils.get_default_wandb_args(__file__, run_id=args.run_id)} "
         f"{perf_args} "
         f"{eval_args} "
         f"{sglang_args} "
@@ -325,7 +349,6 @@ def _train(args: ScriptArgs):
     )
     U.execute_train(
         train_args=train_args,
-        config=args,
         num_gpus_per_node=args.num_gpus_per_node,
         megatron_model_type=args.megatron_model_type,
         extra_env_vars=extra_env_vars,
@@ -334,7 +357,7 @@ def _train(args: ScriptArgs):
 
 
 @app.command()
-@U.dataclass_cli
+@command_utils.dataclass_cli
 def train(args: ScriptArgs):
     _train(args)
 
