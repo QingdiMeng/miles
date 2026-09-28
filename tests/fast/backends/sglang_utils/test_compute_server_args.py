@@ -18,6 +18,7 @@ def make_args(**overrides: object) -> SimpleNamespace:
         rollout_num_gpus_per_engine=1,
         offload_rollout=False,
         sglang_dp_size=1,
+        sglang_enable_dp_attention=False,
         sglang_pp_size=1,
         sglang_ep_size=1,
         sglang_mem_fraction_static=0.7,
@@ -166,3 +167,30 @@ class TestAdapterOwnership:
         server_args = compute(make_args(lora_rank=8, lora_adapter_path="/fake/adapter", **{flag: True}))
 
         assert server_args["lora_paths"] == ["miles_lora=/fake/adapter"]
+
+
+class TestDpAttentionLoRA:
+    """SGLang's DP-attention LoRA serves only pinned adapters, and a pinned adapter needs a slot besides the base model's."""
+
+    def test_dp_attention_reserves_a_slot_beside_the_base_model(self):
+        server_args = compute(make_args(lora_rank=8, sglang_enable_dp_attention=True, sglang_dp_size=8))
+
+        assert server_args["max_loras_per_batch"] == 2
+
+    def test_without_dp_attention_the_engine_keeps_a_single_slot(self):
+        server_args = compute(make_args(lora_rank=8))
+
+        assert server_args["max_loras_per_batch"] == 1
+
+    def test_dp_attention_pins_the_adapter_the_engine_loads_itself(self):
+        server_args = compute(
+            make_args(
+                lora_rank=8,
+                lora_adapter_path="/fake/adapter",
+                debug_rollout_only=True,
+                sglang_enable_dp_attention=True,
+                sglang_dp_size=8,
+            )
+        )
+
+        assert server_args["lora_paths"] == [{"lora_name": "miles_lora", "lora_path": "/fake/adapter", "pinned": True}]

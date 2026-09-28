@@ -155,14 +155,21 @@ def _compute_server_args(
         )
     elif lora_rollout_enabled(args):
         kwargs["enable_lora"] = True
-        kwargs["max_loras_per_batch"] = 1
+        # SGLang's DP-attention LoRA only serves pinned adapters, and a pinned adapter
+        # needs a second slot: the anti-starvation check keeps one for the base model.
+        kwargs["max_loras_per_batch"] = 2 if args.sglang_enable_dp_attention else 1
         kwargs["max_lora_rank"] = max(getattr(args, "lora_rank", 0), 1)
         kwargs["lora_target_modules"] = (
             ["all"] if args.lora_adapter_targets == "all-linear" else args.lora_adapter_targets
         )
 
         if engine_loads_adapter_from_disk(args):
-            kwargs["lora_paths"] = [f"{LORA_ADAPTER_NAME}={args.lora_adapter_path}"]
+            if args.sglang_enable_dp_attention:
+                kwargs["lora_paths"] = [
+                    {"lora_name": LORA_ADAPTER_NAME, "lora_path": args.lora_adapter_path, "pinned": True}
+                ]
+            else:
+                kwargs["lora_paths"] = [f"{LORA_ADAPTER_NAME}={args.lora_adapter_path}"]
         elif args.lora_adapter_path is not None:
             logger.info("Skipping startup lora_paths: the trainer pushes the adapter in the first weight sync")
         else:

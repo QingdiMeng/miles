@@ -160,5 +160,11 @@ class WeightUpdater:
             config = self._lora_sync_config
             if adapter is not None:
                 config = config | {"r": adapter.rank, "lora_alpha": adapter.alpha}
-            register_lora_adapter(rollout_engines, lora_name=lora_name, lora_config=config)
+            register_lora_adapter(
+                rollout_engines,
+                lora_name=lora_name,
+                lora_config=config,
+                # SGLang's DP-attention LoRA needs the adapter in the same slot on every DP rank.
+                pinned=self.args.sglang_enable_dp_attention,
+            )
             self._registered_adapters.add(lora_name)
