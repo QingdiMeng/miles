@@ -28,7 +28,7 @@ def make_worker_metadata(
     workers_per_pod: int = 1,
     worker_class: str | None = ENGINE_CLASS,
     ports: dict[str, int] | None = None,
-    static_meta: StaticMeta = StaticMeta(),
+    static_meta: StaticMeta | None = None,
 ) -> WorkerPodMetadata:
     return WorkerPodMetadata(
         workers_per_pod=workers_per_pod,
@@ -39,7 +39,7 @@ def make_worker_metadata(
         port_infos=[
             PortInfo(name=name, static_port=port) for name, port in ({"rpc": 8000} if ports is None else ports).items()
         ],
-        static_meta=static_meta,
+        static_meta=static_meta or StaticMeta(),
     )
 
 
