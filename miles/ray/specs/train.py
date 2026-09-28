@@ -142,6 +142,7 @@ class TrainerSpec(BaseServeSpec):
     args: TrainerConfig
     category: str = POOL_CATEGORY_TRAINER_ENGINE
     deploy_component: DeployComponent = DeployComponent.TRAINER
+    fp8_block_scaling_fp32_scales: str
 
     @classmethod
     def slice_configs(cls, args: Any) -> list[TrainerConfig]:
@@ -152,6 +153,7 @@ class TrainerSpec(BaseServeSpec):
         return cls(
             args=config,
             name=compute_trainer_pool_id(config.trainer_id),
+            fp8_block_scaling_fp32_scales=_compute_fp8_block_scaling_fp32_scales(),
             port_infos=[
                 PortInfo(name=MASTER_PORT_NAME, static_port=9000, mode="master", allow_dynamic=True),
                 DEFAULT_RPC_PORT_INFO,
@@ -189,12 +191,7 @@ class TrainerSpec(BaseServeSpec):
         )
 
     def env_var(self, ctx: WorkerLaunchContext) -> dict[str, str]:
-        fp8_scales = (
-            x
-            if (x := os.environ.get("NVTE_FP8_BLOCK_SCALING_FP32_SCALES")) is not None
-            else default_fp8_block_scaling_fp32_scales()
-        )
-        return compute_trainer_env_vars(ctx.args, ctx, fp8_scales=fp8_scales)
+        return compute_trainer_env_vars(ctx.args, ctx, fp8_scales=self.fp8_block_scaling_fp32_scales)
 
     def ctor_kwargs(self, ctx: WorkerCtorContext) -> dict[str, Any]:
         return dict(
@@ -248,3 +245,11 @@ def compute_trainer_env_vars(args, ctx: WorkerLaunchContext, *, fp8_scales: str)
             env_vars["TMS_INIT_ENABLE_CPU_BACKUP"] = "1"
 
     return env_vars
+
+
+def _compute_fp8_block_scaling_fp32_scales() -> str:
+    return (
+        x
+        if (x := os.environ.get("NVTE_FP8_BLOCK_SCALING_FP32_SCALES")) is not None
+        else default_fp8_block_scaling_fp32_scales()
+    )
