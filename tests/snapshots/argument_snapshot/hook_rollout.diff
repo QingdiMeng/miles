@@ -3,47 +3,17 @@
 @@ -17,0 +18,2 @@
 +- --rollout-function-path
 +- tests.fast.argument_snapshot.argparser.scenarios._Hook
-@@ -1009 +1011 @@
+@@ -1020 +1022 @@
 -    rollout_function_path: null
 +    rollout_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
-@@ -1664,0 +1667 @@
+@@ -1675,0 +1678 @@
 +    snapshot_hook: 23
-@@ -2838 +2841 @@
--    rollout_function_path: null
-+    rollout_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
-@@ -3493,0 +3497 @@
-+    snapshot_hook: 23
-@@ -4666 +4670 @@
--    rollout_function_path: null
-+    rollout_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
-@@ -5321,0 +5326 @@
-+    snapshot_hook: 23
-@@ -6494 +6499 @@
--    rollout_function_path: null
-+    rollout_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
-@@ -7149,0 +7155 @@
-+    snapshot_hook: 23
-@@ -8322 +8328 @@
--    rollout_function_path: null
-+    rollout_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
-@@ -8977,0 +8984 @@
-+    snapshot_hook: 23
-@@ -11292,0 +11300 @@
-+    snapshot_hook: 23
-@@ -12829,0 +12838 @@
-+          - snapshot_hook
-@@ -49424,0 +49434,14 @@
-+          default: 23
-+          dest: snapshot_hook
-+          help: null
-+          metavar: null
-+          nargs: null
-+          option_strings:
-+          - --snapshot-hook
-+          required: false
-+          type:
-+            $callable: builtins.int
-+      - $class: argparse._StoreAction
-+        state:
-+          choices: null
-+          const: null
+@@ -26809,0 +26813,8 @@
++      - default: 23
++        dest: snapshot_hook
++        group: options
++        help: null
++        option_strings:
++        - --snapshot-hook
++        type:
++          $callable: builtins.int
