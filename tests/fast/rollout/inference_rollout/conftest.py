@@ -54,6 +54,7 @@ def make_eval_args(*, namespaced_radix_cache: bool = True) -> dict[str, Any]:
         mask_offpolicy_in_partial_rollout=False,
         group_rm=False,
         sglang_router_policy="round_robin",
+        sglang=make_sglang_config(enable_deterministic_inference=False),
         eval_datasets=[EvalDatasetConfig(name="fake_ds", path="fake.jsonl", n_samples_per_eval_prompt=2)],
         hf_checkpoint="fake-checkpoint",
         apply_chat_template=False,
