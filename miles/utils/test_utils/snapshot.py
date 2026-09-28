@@ -152,7 +152,18 @@ def _actions_container_state(container: argparse._ActionsContainer) -> dict[str,
             "description": container.description,
             "dests": [action.dest for action in container._group_actions],
         }
-    return {name: item for name, item in vars(container).items() if name not in _DERIVED_PARSER_STATE}
+    action_group_titles = {
+        id(action): group.title for group in container._action_groups for action in group._group_actions
+    }
+    return {
+        **{name: item for name, item in vars(container).items() if name not in _DERIVED_PARSER_STATE},
+        "_actions": [
+            {**_action_state(action), "group": action_group_titles[id(action)]} for action in container._actions
+        ],
+        "_action_groups": [
+            {"title": group.title, "description": group.description} for group in container._action_groups
+        ],
+    }
 
 
 _DERIVED_PARSER_STATE = frozenset({"_registries", "_option_string_actions", "_optionals", "_positionals"})
