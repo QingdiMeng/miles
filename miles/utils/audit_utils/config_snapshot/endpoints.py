@@ -31,9 +31,15 @@ class SnapshotEndpointNormalizer:
             routers = dict(routers)
             for model, value in routers.items():
                 if (endpoint := endpoints.get(f"router/{model}")) is not None:
-                    if not isinstance(value, dict) or not isinstance(parts := value.get("$tuple"), list) or len(parts) != 2:
+                    if (
+                        not isinstance(value, dict)
+                        or not isinstance(parts := value.get("$tuple"), list)
+                        or len(parts) != 2
+                    ):
                         raise ValueError(f"Invalid router endpoint snapshot: {model}")
-                    host, port = self._normalize_address(endpoint=endpoint, host=parts[0], port=parts[1], endpoints=endpoints)
+                    host, port = self._normalize_address(
+                        endpoint=endpoint, host=parts[0], port=parts[1], endpoints=endpoints
+                    )
                     routers[model] = {**value, "$tuple": [host, port]}
             args["sglang_model_routers"] = routers
             primary = [endpoint for endpoint in endpoints.values() if endpoint.primary]
@@ -41,16 +47,24 @@ class SnapshotEndpointNormalizer:
                 raise ValueError("Multiple primary router snapshot endpoints")
             if primary and args.get("sglang_router_ip") is not None:
                 args["sglang_router_ip"], args["sglang_router_port"] = self._normalize_address(
-                    endpoint=primary[0], host=args["sglang_router_ip"], port=args["sglang_router_port"], endpoints=endpoints
+                    endpoint=primary[0],
+                    host=args["sglang_router_ip"],
+                    port=args["sglang_router_port"],
+                    endpoints=endpoints,
                 )
         if isinstance(instances := args.get("session_server_instances"), list):
-            args["session_server_instances"] = [self._normalize_instance(instance=instance, endpoints=endpoints) for instance in instances]
+            args["session_server_instances"] = [
+                self._normalize_instance(instance=instance, endpoints=endpoints) for instance in instances
+            ]
         return {**config, "args": args}
 
     def _normalize_instance(
         self, *, instance: JsonValue, endpoints: dict[str, ConfigSnapshotAllocatedEndpoint]
     ) -> JsonValue:
-        if not isinstance(instance, dict) or (endpoint := endpoints.get(f"session/{instance.get('instance_id')}")) is None:
+        if (
+            not isinstance(instance, dict)
+            or (endpoint := endpoints.get(f"session/{instance.get('instance_id')}")) is None
+        ):
             return instance
         result = dict(instance)
         for field in ("addr", "external_addr"):
@@ -67,8 +81,13 @@ class SnapshotEndpointNormalizer:
         return result
 
     def _normalize_address(
-        self, *, endpoint: ConfigSnapshotAllocatedEndpoint, host: JsonValue, port: JsonValue,
-        endpoints: dict[str, ConfigSnapshotAllocatedEndpoint], external: bool = False,
+        self,
+        *,
+        endpoint: ConfigSnapshotAllocatedEndpoint,
+        host: JsonValue,
+        port: JsonValue,
+        endpoints: dict[str, ConfigSnapshotAllocatedEndpoint],
+        external: bool = False,
     ) -> tuple[JsonValue, JsonValue]:
         expected_host = endpoint.external_host if external else endpoint.host
         if (expected_host is not None and host != expected_host) or port != endpoint.port:

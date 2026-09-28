@@ -61,8 +61,11 @@ async def resolve_router_addrs(args, *, router_providers: Sequence[BaseWorkerPro
             config={"args": args},
             allocated_endpoints=[
                 ConfigSnapshotAllocatedEndpoint(
-                    owner=f"router/{name}", host=addr.host, port=addr.port,
-                    dynamic_host=True, dynamic_port=dynamic_port,
+                    owner=f"router/{name}",
+                    host=addr.host,
+                    port=addr.port,
+                    dynamic_host=True,
+                    dynamic_port=dynamic_port,
                     primary=name == config.models[0].name,
                 )
                 for name, addr in router_addrs.items()
@@ -126,7 +129,9 @@ async def wait_session_server_ready(args, *, provider: BaseWorkerProvider | None
             config={"args": args},
             allocated_endpoints=[
                 ConfigSnapshotAllocatedEndpoint(
-                    owner=f"session/{instance.instance_id}", host=addr.host, port=addr.port,
+                    owner=f"session/{instance.instance_id}",
+                    host=addr.host,
+                    port=addr.port,
                     dynamic_host=args.session_server_ip is None,
                     dynamic_port=args.session_server_port is None,
                     external_host=(
