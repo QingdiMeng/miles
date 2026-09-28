@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from tests.fast.fixtures.sglang_config_fixtures import make_sglang_config
 
 import miles.rollout.generate_hub.agentic_tool_call as agentic_tool_call
 from miles.ray.rollout.rollout_data_conversion import validate_compact_rollout_ids
@@ -30,7 +31,9 @@ class _Tracer:
         return self.reply
 
 
-def _generate_input(*, evaluation=False, sampling_params=None, **args_kwargs) -> GenerateFnInput:
+def _generate_input(
+    *, evaluation=False, sampling_params=None, speculative_algorithm=None, **args_kwargs
+) -> GenerateFnInput:
     args = SimpleNamespace(
         **{
             "session_server_instances": [SessionServerInstance(addr="127.0.0.1:12345")],
@@ -38,7 +41,7 @@ def _generate_input(*, evaluation=False, sampling_params=None, **args_kwargs) ->
             "max_seq_len": None,
             "partial_rollout": False,
             "use_session_server": "v2",
-            "sglang_speculative_algorithm": None,
+            "sglang": make_sglang_config(speculative_algorithm=speculative_algorithm),
             **args_kwargs,
         }
     )
@@ -152,7 +155,7 @@ async def test_empty_reply_returns_aborted_list(monkeypatch, empty_reason):
 async def test_transport_collection_error_has_no_metrics_owner(monkeypatch):
     tracer = _Tracer(error=TimeoutError("samples unavailable"))
     _patch_agent(monkeypatch, tracer)
-    generate_input = _generate_input(sglang_speculative_algorithm="EAGLE")
+    generate_input = _generate_input(speculative_algorithm="EAGLE")
     generate_input.sample.metadata[SESSION_ROLLOUT_METRICS_KEY] = {"session_id": "stale", "metrics": {}}
 
     output = await agentic_tool_call.generate(generate_input)
@@ -178,7 +181,7 @@ async def test_v2_replaces_stale_metrics_with_shared_authoritative_carrier(monke
     tracer = _Tracer(SamplesReply(samples=leaves, session_metadata=_session_metadata(spec_info), empty_reason=None))
     _patch_agent(monkeypatch, tracer)
 
-    output = await agentic_tool_call.generate(_generate_input(sglang_speculative_algorithm="EAGLE"))
+    output = await agentic_tool_call.generate(_generate_input(speculative_algorithm="EAGLE"))
 
     expected = {"session_id": "sid-1", "metrics": {"spec_info": spec_info}}
     assert [sample.metadata[SESSION_ROLLOUT_METRICS_KEY] for sample in output.samples] == [expected, expected]
@@ -190,7 +193,7 @@ async def test_v2_rejects_missing_server_session_metrics(monkeypatch):
     _patch_agent(monkeypatch, tracer)
 
     with pytest.raises(KeyError, match=SESSION_ROLLOUT_METRICS_KEY):
-        await agentic_tool_call.generate(_generate_input(sglang_speculative_algorithm="EAGLE"))
+        await agentic_tool_call.generate(_generate_input(speculative_algorithm="EAGLE"))
 
 
 @pytest.mark.asyncio
@@ -201,7 +204,7 @@ async def test_v2_rejects_metrics_from_another_session(monkeypatch):
     _patch_agent(monkeypatch, tracer)
 
     with pytest.raises(ValueError, match="does not match the collected session"):
-        await agentic_tool_call.generate(_generate_input(sglang_speculative_algorithm="EAGLE"))
+        await agentic_tool_call.generate(_generate_input(speculative_algorithm="EAGLE"))
 
 
 @pytest.mark.asyncio
@@ -212,7 +215,7 @@ async def test_v2_rejects_unavailable_metrics_from_successful_collect(monkeypatc
     _patch_agent(monkeypatch, tracer)
 
     with pytest.raises(ValueError, match="successful session collect must carry metrics"):
-        await agentic_tool_call.generate(_generate_input(sglang_speculative_algorithm="EAGLE"))
+        await agentic_tool_call.generate(_generate_input(speculative_algorithm="EAGLE"))
 
 
 _INSTANCES_ATTR_ABSENT = object()
