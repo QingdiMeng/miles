@@ -4,6 +4,7 @@ from tests.fast.utils.workers.fake_specs import FakeCommandSpec, FakeServeSpec
 
 from miles.ray.specs.inference import POOL_CATEGORY_INFERENCE_ENGINE
 from miles.ray.specs.train import POOL_CATEGORY_TRAINER_ENGINE
+from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.workers.worker_spec import (
     DEFAULT_RPC_PORT_INFO,
     BaseCommandSpec,
@@ -81,6 +82,7 @@ def make_trainer_spec(
             num_gpu_slots_per_worker=1,
             num_gpus_per_node=num_gpus_per_node,
         ),
+        args=BaseLeafConfig(),
         worker_class="miles.fake.TrainWorker",
         static_meta=StaticMeta(values={"role": "actor"}, include_cell_index=True),
     )
