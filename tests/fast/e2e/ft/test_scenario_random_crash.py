@@ -130,7 +130,8 @@ class TestTheLaunchedTrainArguments:
         """A mode whose generated args fail the real partial-target gate cannot start, whatever the soak checks."""
         mode = MODES[mode_name]
 
-        _run(mode_name, seed=7, num_steps=9)
+        hooks_unsupported = mode.has_real_rollout and mode.num_cells > mode.rollout_num_engines
+        _run(mode_name, seed=7, num_steps=9, requested_triggers=[FaultTrigger.TIMER] if hooks_unsupported else None)
 
         (launch,) = harness.launches
         parsed = parse_fault_tolerance_args(launch.request.train_args)
@@ -224,6 +225,16 @@ class TestTheLaunchedTrainArguments:
         """Training off recorded data proves nothing about generating while training, so it must not start."""
         with pytest.raises(AssertionError, match="fully-async soak"):
             _run(_FAKE_ROLLOUT_MODE, seed=7, num_steps=9, fully_async=True)
+
+        assert harness.prepared == []
+        assert harness.launches == []
+
+    def test_hook_faults_with_more_trainer_cells_than_engines_are_refused_before_anything_is_prepared(
+        self, harness: ScenarioHarness
+    ) -> None:
+        """A trainer cell that sends to no engine never reaches a weight-update hook, so its hook fault could only expire."""
+        with pytest.raises(AssertionError, match="need every trainer cell to send weights to an engine"):
+            _run("kill_train__dp4_cp2_tp2_pp2_ep2_etp2__moe_full", seed=7, num_steps=9)
 
         assert harness.prepared == []
         assert harness.launches == []
