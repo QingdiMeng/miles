@@ -31,6 +31,7 @@ POOL_ID = "e2e-pool"
 RPC_PORT_FLAG = "--rpc-port"
 
 _BLOCK_GUARD_SECONDS = 20.0
+_WORKER_ARGV_ENV_AT_IMPORT = os.environ.get("MILES_E2E_ARGV")
 
 
 class Item(StrictBaseModel):
@@ -89,6 +90,9 @@ class E2eWorker:
 
     async def report_env(self, name: str) -> str | None:
         return os.environ.get(name)
+
+    async def report_argv_env_at_import(self) -> str | None:
+        return _WORKER_ARGV_ENV_AT_IMPORT
 
     async def report_counter(self, tag: str) -> int:
         with self._lock:

@@ -23,6 +23,8 @@ from tests.fast.utils.workers.e2e.harness import (
 )
 from tests.fast.utils.workers.serving.registered_serve import pod_env, serve_config_argv
 
+from miles.utils.workers.rpc.client.handle import RpcWorkerHandle
+
 
 @pytest.fixture
 def spawn_with_config(state_dir: Path, tmp_path: Path) -> Iterator[Callable[..., ServerProcess]]:
@@ -74,6 +76,16 @@ class TestExecChain:
         """The spec is rebuilt from the pool's own config, not from the entrypoint's."""
         recorded = await handle.report_env(name="MILES_E2E_ARGV")
         assert "--state-dir" in recorded
+
+    async def test_the_spec_env_is_applied_before_the_inner_worker_is_imported(
+        self, spawn: Callable[..., ServerProcess], make_handle: Callable[..., RpcWorkerHandle]
+    ) -> None:
+        """The worker's module must observe the spec's environment when the exec'd interpreter imports it."""
+        server = spawn(extra_env={"MILES_E2E_ARGV": "inherited-before-spec-env"})
+        handle = make_handle(server)
+        await handle.wait_ready(timeout=READY_TIMEOUT_SECONDS)
+
+        assert await handle.report_argv_env_at_import() == ",".join(await handle.report_argv())
 
     async def test_parent_environment_is_inherited(self, spawn, make_handle):
         """Environment from the launcher reaches the worker."""
