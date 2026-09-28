@@ -222,7 +222,9 @@ def parse_args_and_get_parser(
         from miles.backends.megatron_utils.arguments import validate_args as megatron_validate_args
 
         args = megatron_parse_args(extra_args_provider=add_miles_arguments_and_capture_parser)
-        training_backend_arg_names.update(vars(args).keys() - {action.dest for action in parser._actions})
+        training_backend_arg_names.update(
+            vars(args).keys() - {action.dest for action in parser._actions} - parser._defaults.keys()
+        )
         previous_arg_names = set(vars(args))
         args.compress_ratios = None
         args.rollout_indexer_topk_num_streams = None
