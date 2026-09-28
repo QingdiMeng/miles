@@ -64,7 +64,7 @@ class FakeEngine:
 class FakeEvalServer:
     def __init__(self, engines, *, engine_gpu_counts=()):
         self._engines = engines
-        self.engine_gpu_counts = list(engine_gpu_counts)
+        self._engine_gpu_counts = list(engine_gpu_counts)
         self.context_lock = ContextLock("FakeEvalServer")
         self.router_ip = "10.0.0.2"
         self.router_port = 31000
@@ -73,6 +73,11 @@ class FakeEvalServer:
     def api_clients(self):
         assert self.context_lock.held_in_current_context, "api_clients is read under the server's lock"
         return list(self._engines)
+
+    @property
+    def engine_gpu_counts(self):
+        assert self.context_lock.held_in_current_context, "engine_gpu_counts is read under the server's lock"
+        return list(self._engine_gpu_counts)
 
 
 class FlakyEngine(FakeEngine):
@@ -117,11 +122,12 @@ def make_fleet(args, engines, *, engine_gpu_counts=()):
 
 
 class TestEvalFleetInfo:
-    def test_describes_the_fleet_its_router_serves(self):
+    @pytest.mark.asyncio
+    async def test_describes_the_fleet_its_router_serves(self):
         """The description the executor retargets its eval args to comes from the server, not its own args."""
         fleet = make_fleet(make_args(eval_num_gpus=4, eval_num_gpus_per_engine=2), [], engine_gpu_counts=[2, 2])
 
-        assert fleet.info == EvalFleetInfo(router=HostAndPort(host="10.0.0.2", port=31000), engine_gpu_counts=[2, 2])
+        assert await fleet.info() == EvalFleetInfo(router=HostAndPort(host="10.0.0.2", port=31000), engine_gpu_counts=[2, 2])
 
 
 def _answers_version(version: str):

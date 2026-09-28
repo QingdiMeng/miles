@@ -285,8 +285,11 @@ class _FakeWorkerProvider(BaseWorkerProvider):
 
 class _RecordingInferenceControllerEvalFleet:
     def __init__(self, info: EvalFleetInfo):
-        self.info = info
+        self._info = info
         self.pins: list[dict] = []
+
+    async def info(self) -> EvalFleetInfo:
+        return self._info
 
     async def pin(self, checkpoint_dir: str, weight_version: str) -> EvalFleetPin:
         self.pins.append(dict(checkpoint_dir=checkpoint_dir, weight_version=weight_version))
