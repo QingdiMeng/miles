@@ -8,6 +8,8 @@ from miles.ray.specs.inference import (
     session_server_worker_name,
 )
 from miles.rollout.session.types import SessionServerInstance
+from miles.utils.audit_utils.config_snapshot.dumper import ConfigSnapshotDumper
+from miles.utils.audit_utils.config_snapshot.models import ConfigSnapshotAllocatedEndpoint
 from miles.utils.http_utils import wait_tcp_ready_async
 from miles.utils.workers.worker_provider.base import BaseWorkerProvider
 from miles.utils.workers.worker_spec import HostAndPort
@@ -47,10 +49,25 @@ async def resolve_router_addrs(args, *, router_providers: Sequence[BaseWorkerPro
     )
     router_addrs = {model_cfg.name: addr for model_cfg, addr in zip(config.models, ready, strict=True)}
 
+    dynamic_port = args.sglang_router_port is None
     primary = router_addrs[config.models[0].name]
     args.sglang_router_ip = primary.host
     args.sglang_router_port = primary.port
     args.sglang_model_routers = {name: (addr.host, addr.port) for name, addr in router_addrs.items()}
+
+    if ConfigSnapshotDumper.is_enabled():
+        ConfigSnapshotDumper.dump(
+            stage="router_endpoints",
+            config={"args": args},
+            allocated_endpoints=[
+                ConfigSnapshotAllocatedEndpoint(
+                    owner=f"router/{name}", host=addr.host, port=addr.port,
+                    dynamic_host=True, dynamic_port=dynamic_port,
+                    primary=name == config.models[0].name,
+                )
+                for name, addr in router_addrs.items()
+            ],
+        )
 
     return router_addrs
 
@@ -102,6 +119,25 @@ async def wait_session_server_ready(args, *, provider: BaseWorkerProvider | None
         for instance_index, addr in enumerate(addrs)
     ]
     _assert_hosts_keep_their_own_external_host(args.session_server_instances)
+
+    if ConfigSnapshotDumper.is_enabled():
+        ConfigSnapshotDumper.dump(
+            stage="session_endpoints",
+            config={"args": args},
+            allocated_endpoints=[
+                ConfigSnapshotAllocatedEndpoint(
+                    owner=f"session/{instance.instance_id}", host=addr.host, port=addr.port,
+                    dynamic_host=args.session_server_ip is None,
+                    dynamic_port=args.session_server_port is None,
+                    external_host=(
+                        addr.host
+                        if args.session_server_external_host is None and instance.external_addr == instance.addr
+                        else None
+                    ),
+                )
+                for instance, addr in zip(args.session_server_instances, addrs, strict=True)
+            ],
+        )
 
     await asyncio.gather(
         *[wait_tcp_ready_async(addr.host, addr.port, timeout=_SESSION_SERVER_READY_TIMEOUT_SECONDS) for addr in addrs]

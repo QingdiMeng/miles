@@ -8,6 +8,7 @@ from typing import Any, ClassVar
 
 from miles.utils.audit_utils.config_snapshot.generated_values import read_generated_values
 from miles.utils.audit_utils.config_snapshot.models import (
+    ConfigSnapshotAllocatedEndpoint,
     ConfigSnapshotContext,
     ConfigSnapshotPoint,
     ConfigSnapshotRecord,
@@ -27,6 +28,10 @@ class _SnapshotState:
 
 class ConfigSnapshotDumper:
     _state: ClassVar[_SnapshotState | None] = None
+
+    @classmethod
+    def is_enabled(cls) -> bool:
+        return cls._state is not None
 
     @classmethod
     def configure(cls, *, args: Namespace, source: ProcessIdentity) -> None:
@@ -50,7 +55,9 @@ class ConfigSnapshotDumper:
         )
 
     @classmethod
-    def dump(cls, *, stage: str, config: Any) -> None:
+    def dump(
+        cls, *, stage: str, config: Any, allocated_endpoints: list[ConfigSnapshotAllocatedEndpoint] | None = None
+    ) -> None:
         if (state := cls._state) is None:
             return
         if not re.fullmatch(r"[a-z_]+", stage):
@@ -63,5 +70,6 @@ class ConfigSnapshotDumper:
             point=ConfigSnapshotPoint(stage=stage, index=index),
             config=redact_config_values(snapshot_values(config)),
             generated_values=read_generated_values(),
+            allocated_endpoints=allocated_endpoints or [],
         )
         state.storage.write(record)

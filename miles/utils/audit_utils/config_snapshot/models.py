@@ -37,6 +37,16 @@ class ConfigSnapshotGeneratedValue(FrozenStrictBaseModel):
     value: str = Field(min_length=1)
 
 
+class ConfigSnapshotAllocatedEndpoint(FrozenStrictBaseModel):
+    owner: str
+    host: str
+    port: int
+    dynamic_host: bool
+    dynamic_port: bool
+    external_host: str | None = None
+    primary: bool = False
+
+
 class ConfigSnapshotRecord(FrozenStrictBaseModel):
     """Store one raw configuration capture with its context and sampling point."""
 
@@ -44,6 +54,7 @@ class ConfigSnapshotRecord(FrozenStrictBaseModel):
     point: ConfigSnapshotPoint
     config: JsonValue
     generated_values: list[ConfigSnapshotGeneratedValue] = Field(default_factory=list)
+    allocated_endpoints: list[ConfigSnapshotAllocatedEndpoint] = Field(default_factory=list)
 
 
 # ============================ Converted snapshots =============================

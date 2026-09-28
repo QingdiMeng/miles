@@ -2,15 +2,19 @@ from pathlib import Path
 
 from pydantic import JsonValue
 
+from miles.utils.audit_utils.config_snapshot.endpoints import SnapshotEndpointNormalizer
 from miles.utils.audit_utils.config_snapshot.models import ConfigSnapshotGeneratedValue, ConfigSnapshotRecord
 from miles.utils.audit_utils.process_identity import ProcessIdentity, TrainProcessIdentity
 
 _RANK = "$RANK"
 
 
-def normalize_record(record: ConfigSnapshotRecord) -> JsonValue:
+def normalize_record(
+    record: ConfigSnapshotRecord, *, endpoints: SnapshotEndpointNormalizer | None = None
+) -> JsonValue:
     context = record.context
-    config = _simple_replace(record.config, src_text=context.run_uuid, dst_text="$RUN_UUID")
+    config = endpoints.normalize(record) if endpoints is not None else record.config
+    config = _simple_replace(config, src_text=context.run_uuid, dst_text="$RUN_UUID")
     config = _normalize_generated_values(config, values=record.generated_values)
     if isinstance(context.source, TrainProcessIdentity):
         if not isinstance(config, dict) or not isinstance(args := config.get("args"), dict):

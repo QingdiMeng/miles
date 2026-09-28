@@ -4,6 +4,7 @@ from collections.abc import Callable
 import pytest
 
 from miles.utils.audit_utils.config_snapshot.models import (
+    ConfigSnapshotAllocatedEndpoint,
     ConfigSnapshotContext,
     ConfigSnapshotPoint,
     ConfigSnapshotRecord,
@@ -58,3 +59,20 @@ def apply_diff() -> Callable[..., str]:
         return "".join(result)
 
     return apply
+
+
+@pytest.fixture
+def make_endpoint_record(make_record: Callable) -> Callable:
+    def create(*, host: str = "10.0.0.1", port: int = 30000, shared: bool = False, dynamic: bool = True):
+        ports = [port, port if shared else port + 1]
+        endpoints = [
+            ConfigSnapshotAllocatedEndpoint(owner=f"session/uuid-0-{i}", host=host, port=value,
+                dynamic_host=dynamic, dynamic_port=dynamic, external_host=host)
+            for i,value in enumerate(ports)
+        ]
+        instances = [
+            {"instance_id": f"uuid-0-{i}", "addr": f"{host}:{value}", "external_addr": f"{host}:{value}"}
+            for i,value in enumerate(ports)
+        ]
+        return make_record(config={"session_server_instances": instances}).model_copy(update={"allocated_endpoints": endpoints})
+    return create
