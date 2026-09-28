@@ -10,12 +10,15 @@ _RANK = "$RANK"
 
 
 def normalize_record(
-    record: ConfigSnapshotRecord, *, endpoints: SnapshotEndpointNormalizer | None = None
+    record: ConfigSnapshotRecord, *, endpoints: SnapshotEndpointNormalizer | None = None,
+    generated_values: list[ConfigSnapshotGeneratedValue] | None = None,
 ) -> JsonValue:
     context = record.context
     config = endpoints.normalize(record) if endpoints is not None else record.config
     config = _simple_replace(config, src_text=context.run_uuid, dst_text="$RUN_UUID")
-    config = _normalize_generated_values(config, values=record.generated_values)
+    config = _normalize_generated_values(
+        config, values=record.generated_values if generated_values is None else generated_values
+    )
     if isinstance(context.source, TrainProcessIdentity):
         if not isinstance(config, dict) or not isinstance(args := config.get("args"), dict):
             raise ValueError("Training snapshots require a config.args object")
@@ -60,10 +63,13 @@ def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapsho
     for key, value in result.items():
         if key in {"args", "backend"} and isinstance(value, dict):
             result[key] = _normalize_generated_values(value, values=values)
-        elif isinstance(value, str) and (key in _PATH_FIELDS or key == "wandb_group"):
+        elif isinstance(value, str) and (key in _PATH_FIELDS or key in {"wandb_group", "wandb_run_id"}):
             for entry in values:
                 token = f"${entry.kind.upper()}_{entry.name}"
-                if key == "wandb_group":
+                if key == "wandb_run_id":
+                    if entry.kind == "wandb_run_id" and value == entry.value:
+                        value = token
+                elif key == "wandb_group":
                     if entry.kind == "ci_commit_name" and value.endswith(f"_{entry.value}"):
                         value = value[: -len(entry.value)] + token
                     elif entry.kind == "run_id":
@@ -82,22 +88,27 @@ def normalized_source_name(source: ProcessIdentity) -> str:
     return source.to_cell_name() if isinstance(source, TrainProcessIdentity) else source.to_name()
 
 
-def validate_generated_values(records: list[ConfigSnapshotRecord]) -> None:
-    observed: dict[tuple[str, str, str, str, str], str] = {}
+def collect_generated_values(
+    records: list[ConfigSnapshotRecord],
+) -> dict[tuple[str, str, str], list[ConfigSnapshotGeneratedValue]]:
+    by_scope: dict[tuple[str, str, str], list[ConfigSnapshotRecord]] = {}
     for record in records:
-        for entry in record.generated_values:
-            if _normalize_generated_values(record.config, values=[entry]) == record.config:
+        scope = (record.context.name, record.context.run_uuid, record.context.deploy_instance_id)
+        by_scope.setdefault(scope, []).append(record)
+
+    result = {}
+    for scope, scoped_records in by_scope.items():
+        candidates = {(entry.kind, entry.name, entry.value): entry for record in scoped_records for entry in record.generated_values}
+        observed: dict[tuple[str, str], ConfigSnapshotGeneratedValue] = {}
+        for entry in sorted(candidates.values(), key=lambda entry: (entry.kind, entry.name, entry.value)):
+            if not any(_normalize_generated_values(record.config, values=[entry]) != record.config for record in scoped_records):
                 continue
-            key = (
-                record.context.name,
-                record.context.run_uuid,
-                record.context.deploy_instance_id,
-                entry.kind,
-                entry.name,
-            )
-            if key in observed and observed[key] != entry.value:
-                raise ValueError(f"Conflicting generated snapshot value for {key}")
-            observed[key] = entry.value
+            key = (entry.kind, entry.name)
+            if key in observed and observed[key] != entry:
+                raise ValueError(f"Conflicting generated snapshot value for {scope}/{key}")
+            observed[key] = entry
+        result[scope] = list(observed.values())
+    return result
 
 
 def _simple_replace(value: JsonValue, *, src_text: str, dst_text: str) -> JsonValue:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import shlex
 from pathlib import Path
@@ -19,6 +20,7 @@ from miles.ray.specs.train import (
 from miles.utils.args.configs.scaling import ScalingConfig
 from miles.utils.args.runtime import OrchestratorConfig
 from miles.utils.arguments import parse_args
+from miles.utils.audit_utils.config_snapshot.generated_values import GENERATED_VALUES_ENV_VAR, register_generated_value
 from miles.utils.env_report.launcher_report import LAUNCHER_REPORT_ENV_VAR
 from miles.utils.external_utils.command_utils.base_backend import (
     CLUSTER_BACKEND_FLAG,
@@ -114,6 +116,8 @@ def execute_train(
         namespace=namespace,
         env=env,
     )
+    if value := os.environ.get(GENERATED_VALUES_ENV_VAR):
+        env[GENERATED_VALUES_ENV_VAR] = value
     deploy_component = DeployComponent(args.deploy_component)
     assert (deploy_component, args.deploy_instance_id) == (config.deploy_component, config.deploy_instance_id), (
         f"the run's pods are told {deploy_component.value}/{args.deploy_instance_id!r}, the release is named "
@@ -399,7 +403,9 @@ def _compute_orchestrator_command(train_script: str, *, args: Any, static_connec
 def _generate_wandb_run_id() -> str:
     from wandb.sdk.lib.runid import generate_id
 
-    return generate_id()
+    value = generate_id()
+    register_generated_value(kind="wandb_run_id", value=value)
+    return value
 
 
 def _compute_mooncake_plan(args) -> MooncakePlan | None:

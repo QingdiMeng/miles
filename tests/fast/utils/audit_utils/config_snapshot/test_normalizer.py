@@ -10,6 +10,7 @@ from miles.utils.audit_utils.config_snapshot.generated_values import (
 )
 from miles.utils.audit_utils.config_snapshot.models import ConfigSnapshotGeneratedValue
 from miles.utils.audit_utils.config_snapshot.normalizer import normalize_record
+from miles.utils.audit_utils.process_identity import SimpleProcessIdentity
 from miles.utils.test_utils.snapshot import SNAPSHOT_RECORD_DIR_ENV_VAR, dump_snapshot
 
 
@@ -34,6 +35,30 @@ class TestGeneratedValueRegistration:
 
 
 class TestGeneratedPathNormalization:
+    def test_source_provenance_reaches_other_processes_in_the_same_launch(self, make_record: Callable) -> None:
+        """A primary's generated tracking ID normalizes consumers even without copied process environments."""
+        results = []
+        for value in ["automatic-one", "automatic-two"]:
+            source = make_record(config={"wandb_run_id": value})
+            source = source.model_copy(update={
+                "context": source.context.model_copy(update={"source": SimpleProcessIdentity(component="main"), "capture_id": "primary"}),
+                "generated_values": [ConfigSnapshotGeneratedValue(kind="wandb_run_id", name="0000", value=value)],
+            })
+            consumer = make_record(config={"wandb_run_id": value})
+            snapshot = dump_snapshot(ConfigSnapshotConverter.convert([consumer, source]))
+            assert value not in snapshot
+            assert snapshot == dump_snapshot(ConfigSnapshotConverter.convert([source, consumer]))
+            results.append(snapshot)
+        assert results[0] == results[1]
+
+    def test_tracking_ids_in_another_launch_do_not_borrow_provenance(self, make_record: Callable) -> None:
+        """An explicit ID in a different launch stays literal despite matching another launch's generated ID."""
+        source = make_record(config={"wandb_run_id": "automatic"}).model_copy(update={"generated_values": [ConfigSnapshotGeneratedValue(kind="wandb_run_id", name="0000", value="automatic")]})
+        consumer = make_record(run=1, config={"wandb_run_id": "automatic"})
+        snapshot = dump_snapshot(ConfigSnapshotConverter.convert([source, consumer]))
+        assert "$WANDB_RUN_ID_0000" in snapshot
+        assert "wandb_run_id: automatic" in snapshot
+
     def test_only_registered_values_in_explicit_fields_are_normalized(self, make_record: Callable) -> None:
         """Random paths stabilize while static roots, suffixes and unrelated strings remain visible."""
         outputs = []

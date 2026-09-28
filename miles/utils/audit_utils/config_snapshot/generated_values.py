@@ -9,7 +9,7 @@ GENERATED_VALUES_ENV_VAR = "MILES_SNAPSHOT_GENERATED_VALUES"
 
 
 def register_generated_value(
-    *, kind: Literal["run_id", "temporary_directory", "ci_commit_name"], value: str, name: str | None = None
+    *, kind: Literal["run_id", "temporary_directory", "ci_commit_name", "wandb_run_id"], value: str, name: str | None = None
 ) -> None:
     if not os.environ.get(SNAPSHOT_RECORD_DIR_ENV_VAR):
         return

@@ -6,6 +6,8 @@ import wandb
 from wandb.sdk.lib.runid import generate_id
 
 from miles.utils.args.utils import config_values
+from miles.utils.audit_utils.config_snapshot.dumper import ConfigSnapshotDumper
+from miles.utils.audit_utils.config_snapshot.generated_values import register_generated_value
 from miles.utils.env_report.launcher_report import read_launcher_report
 
 logger = logging.getLogger(__name__)
@@ -86,7 +88,11 @@ def init_wandb_primary(args):
     _init_wandb_common()
 
     # Set wandb_run_id in args for easy access throughout the training process
+    generated_run_id = args.wandb_run_id is None
     args.wandb_run_id = wandb.run.id
+    if generated_run_id and ConfigSnapshotDumper.is_enabled():
+        register_generated_value(kind="wandb_run_id", value=args.wandb_run_id)
+        ConfigSnapshotDumper.dump(stage="tracking_config", config={"args": args})
 
 
 def _compute_config_for_logging(args):
