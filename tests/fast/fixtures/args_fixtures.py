@@ -34,6 +34,7 @@ _RESOLVED_AFTER_PARSING: dict[str, Any] = dict(
     starts_inference_engines=True,
     use_critic=False,
     multi_lora=False,
+    use_sampling_support_replay=False,
     run_uuid="0" * RUN_UUID_LENGTH,
 )
 
