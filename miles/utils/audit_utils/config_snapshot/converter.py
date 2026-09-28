@@ -10,7 +10,11 @@ from miles.utils.audit_utils.config_snapshot.models import (
     ConfigSnapshotProcessDiff,
     ConfigSnapshotRecord,
 )
-from miles.utils.audit_utils.config_snapshot.normalizer import normalize_record, normalized_source_name
+from miles.utils.audit_utils.config_snapshot.normalizer import (
+    normalize_record,
+    normalized_source_name,
+    validate_generated_values,
+)
 from miles.utils.audit_utils.process_identity import TrainProcessIdentity
 from miles.utils.test_utils.snapshot import dump_snapshot
 
@@ -20,6 +24,7 @@ _BASE = ConfigSnapshotPoint(stage="process_config", index=0).to_key()
 class ConfigSnapshotConverter:
     @classmethod
     def convert(cls, records: list[ConfigSnapshotRecord]) -> ConfigSnapshotCase:
+        validate_generated_values(records)
         by_capture: dict[str, list[ConfigSnapshotRecord]] = defaultdict(list)
         for record in records:
             by_capture[record.context.capture_id].append(record)

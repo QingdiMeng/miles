@@ -49,9 +49,11 @@ class TestSharedProcessBases:
         expected = dump_snapshot(ConfigSnapshotConverter.convert(records))
         if change == "field":
             records = [
-                record.model_copy(update={"config": {"args": {**record.config["args"], "setting_050": -1}}})
-                if record.context.name.endswith("0001")
-                else record
+                (
+                    record.model_copy(update={"config": {"args": {**record.config["args"], "setting_050": -1}}})
+                    if record.context.name.endswith("0001")
+                    else record
+                )
                 for record in records
             ]
         elif change == "stage":

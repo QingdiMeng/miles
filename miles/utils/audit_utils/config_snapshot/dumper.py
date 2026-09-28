@@ -11,6 +11,7 @@ from miles.utils.audit_utils.config_snapshot.models import (
     ConfigSnapshotPoint,
     ConfigSnapshotRecord,
 )
+from miles.utils.audit_utils.config_snapshot.generated_values import read_generated_values
 from miles.utils.audit_utils.config_snapshot.storage import ConfigSnapshotStorage
 from miles.utils.audit_utils.process_identity import ProcessIdentity
 from miles.utils.env_report.redaction import redact_config_values
@@ -61,5 +62,6 @@ class ConfigSnapshotDumper:
             context=state.context,
             point=ConfigSnapshotPoint(stage=stage, index=index),
             config=redact_config_values(snapshot_values(config)),
+            generated_values=read_generated_values(),
         )
         state.storage.write(record)

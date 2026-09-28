@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from pydantic import Field, JsonValue, NonNegativeInt
 
@@ -30,12 +31,19 @@ class ConfigSnapshotPoint(FrozenStrictBaseModel):
         return f"{self.stage}-{self.index:04d}"
 
 
+class ConfigSnapshotGeneratedValue(FrozenStrictBaseModel):
+    kind: Literal["run_id", "temporary_directory", "ci_commit_name"]
+    name: str
+    value: str = Field(min_length=1)
+
+
 class ConfigSnapshotRecord(FrozenStrictBaseModel):
     """Store one raw configuration capture with its context and sampling point."""
 
     context: ConfigSnapshotContext
     point: ConfigSnapshotPoint
     config: JsonValue
+    generated_values: list[ConfigSnapshotGeneratedValue] = Field(default_factory=list)
 
 
 # ============================ Converted snapshots =============================
