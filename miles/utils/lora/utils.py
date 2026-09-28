@@ -31,6 +31,11 @@ def lora_rollout_enabled(args: Namespace) -> bool:
     return is_lora_enabled(args) and not getattr(args, "lora_train_only", False)
 
 
+def lora_adapter_pinned(args: Namespace) -> bool:
+    """SGLang's DP-attention LoRA keeps an adapter in the same slot on every DP rank, so it serves only pinned adapters."""
+    return getattr(args, "sglang_enable_dp_attention", False)
+
+
 def engine_loads_adapter_from_disk(args: Namespace) -> bool:
     """Only when no trainer will push the adapter; otherwise the first weight sync carries it."""
     return args.lora_adapter_path is not None and (args.debug_rollout_only or args.debug_skip_weight_update)

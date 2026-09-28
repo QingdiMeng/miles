@@ -28,7 +28,7 @@ from miles.backends.training_utils.weight_update.session import (
 )
 from miles.backends.training_utils.weight_update.utils import record_lora_checksums
 from miles.utils.distributed_utils import get_gloo_group
-from miles.utils.lora.utils import LORA_ADAPTER_NAME
+from miles.utils.lora.utils import LORA_ADAPTER_NAME, lora_adapter_pinned
 from miles.utils.timer import timer
 
 logger = logging.getLogger(__name__)
@@ -165,6 +165,6 @@ class WeightUpdater:
                 lora_name=lora_name,
                 lora_config=config,
                 # SGLang's DP-attention LoRA needs the adapter in the same slot on every DP rank.
-                pinned=self.args.sglang_enable_dp_attention,
+                pinned=lora_adapter_pinned(self.args),
             )
             self._registered_adapters.add(lora_name)

@@ -11,6 +11,7 @@ from miles.utils.lora.utils import (
     LORA_ADAPTER_NAME,
     engine_loads_adapter_from_disk,
     is_multi_lora_enabled,
+    lora_adapter_pinned,
     lora_base_cpu_backup_enabled,
     lora_rollout_enabled,
 )
@@ -157,14 +158,14 @@ def _compute_server_args(
         kwargs["enable_lora"] = True
         # SGLang's DP-attention LoRA only serves pinned adapters, and a pinned adapter
         # needs a second slot: the anti-starvation check keeps one for the base model.
-        kwargs["max_loras_per_batch"] = 2 if args.sglang_enable_dp_attention else 1
+        kwargs["max_loras_per_batch"] = 2 if lora_adapter_pinned(args) else 1
         kwargs["max_lora_rank"] = max(getattr(args, "lora_rank", 0), 1)
         kwargs["lora_target_modules"] = (
             ["all"] if args.lora_adapter_targets == "all-linear" else args.lora_adapter_targets
         )
 
         if engine_loads_adapter_from_disk(args):
-            if args.sglang_enable_dp_attention:
+            if lora_adapter_pinned(args):
                 kwargs["lora_paths"] = [
                     {"lora_name": LORA_ADAPTER_NAME, "lora_path": args.lora_adapter_path, "pinned": True}
                 ]
