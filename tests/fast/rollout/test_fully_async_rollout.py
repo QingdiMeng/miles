@@ -14,7 +14,6 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-
 from tests.fast.rollout.inference_rollout.conftest import (
     StampRecordingGenerate,
     make_eval_args,
@@ -22,9 +21,9 @@ from tests.fast.rollout.inference_rollout.conftest import (
 )
 
 import miles.rollout.fully_async_data_buffer as data_buffer
-from miles.backends.megatron_utils.megatron_config import resolve_megatron_config
 import miles.rollout.fully_async_rollout as fully_async
 import miles.rollout.inference_rollout.inference_rollout_common as rollout_common
+from miles.backends.megatron_utils.megatron_config import resolve_megatron_config
 from miles.rollout.base_types import BaseRolloutFn, RolloutFnConstructorInput, RolloutFnEvalInput, RolloutFnTrainInput
 from miles.rollout.filter_hub.base_types import FilterOutput
 from miles.rollout.inference_rollout.inference_rollout_common import GenerateState

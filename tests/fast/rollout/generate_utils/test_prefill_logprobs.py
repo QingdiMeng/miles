@@ -80,7 +80,8 @@ async def test_recompute_samples_flushes_each_batch_and_batches_prefill_score(mo
     ]
     args = SimpleNamespace(
         recompute_logprobs_via_prefill=True,
-        lora_rank=0, lora_adapter_path=None,
+        lora_rank=0,
+        lora_adapter_path=None,
         sglang_router_policy="round_robin",
     )
     calls = []
@@ -122,7 +123,8 @@ async def test_recompute_samples_batches_by_logprob_start_len(monkeypatch):
     ]
     args = SimpleNamespace(
         recompute_logprobs_via_prefill=True,
-        lora_rank=0, lora_adapter_path=None,
+        lora_rank=0,
+        lora_adapter_path=None,
         sglang_router_policy="round_robin",
     )
     calls = []

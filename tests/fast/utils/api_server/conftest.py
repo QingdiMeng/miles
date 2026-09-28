@@ -187,7 +187,9 @@ class MockInferenceController:
 
 
 class MockWorkerManager:
-    def __init__(self, summaries: dict[str, CellInfo] | None = None, *, categories: dict[str, str] | None = None) -> None:
+    def __init__(
+        self, summaries: dict[str, CellInfo] | None = None, *, categories: dict[str, str] | None = None
+    ) -> None:
         self._summaries = dict(summaries or {})
         self._categories = dict(categories or {})
         self.stopped_cells: list[list[str]] = []
