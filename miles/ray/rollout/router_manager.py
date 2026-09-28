@@ -135,9 +135,7 @@ async def wait_session_server_ready(args, *, provider: BaseWorkerProvider | None
                     dynamic_host=True,
                     dynamic_port=args.session_server_port is None,
                     external_host=(
-                        addr.host
-                        if args.session_server_external_host is None and addr.external_host is None
-                        else None
+                        addr.host if args.session_server_external_host is None and addr.external_host is None else None
                     ),
                 )
                 for instance, addr in zip(args.session_server_instances, addrs, strict=True)

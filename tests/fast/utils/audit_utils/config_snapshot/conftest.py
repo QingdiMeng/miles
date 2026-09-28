@@ -98,9 +98,16 @@ def wandb_capture_args(capture_args: Namespace, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(wandb_utils.wandb, "define_metric", lambda *args, **kwargs: None)
     monkeypatch.setattr(wandb_utils.wandb, "run", Namespace(id="automatic-id"))
     vars(capture_args).update(
-        env_report=None, use_wandb=True, wandb_mode="offline", wandb_key=None,
-        wandb_random_suffix=False, wandb_group="test", wandb_team=None,
-        wandb_project="test", wandb_run_id=None, wandb_dir=None,
+        env_report=None,
+        use_wandb=True,
+        wandb_mode="offline",
+        wandb_key=None,
+        wandb_random_suffix=False,
+        wandb_group="test",
+        wandb_team=None,
+        wandb_project="test",
+        wandb_run_id=None,
+        wandb_dir=None,
     )
     return capture_args
 

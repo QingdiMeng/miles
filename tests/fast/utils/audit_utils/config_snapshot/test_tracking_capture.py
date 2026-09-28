@@ -23,8 +23,13 @@ class TestTrackingProvenance:
         tracking = [record for record in records if record.point.stage == "tracking_config"]
         assert len(tracking) == (0 if preassigned else 1)
         if tracking:
-            assert [(entry.kind, entry.value) for entry in tracking[0].generated_values] == [("wandb_run_id", "automatic-id")]
-            assert tracking[0].context == next(record for record in records if record.point.stage == "process_config").context
+            assert [(entry.kind, entry.value) for entry in tracking[0].generated_values] == [
+                ("wandb_run_id", "automatic-id")
+            ]
+            assert (
+                tracking[0].context
+                == next(record for record in records if record.point.stage == "process_config").context
+            )
 
     @pytest.mark.parametrize("source", ["generated", "given", "installed"])
     def test_helm_reused_ids_need_existing_generation_provenance(

@@ -13,9 +13,9 @@ from miles.utils.audit_utils.config_snapshot.models import (
     ConfigSnapshotRecord,
 )
 from miles.utils.audit_utils.config_snapshot.normalizer import (
+    collect_generated_values,
     normalize_record,
     normalized_source_name,
-    collect_generated_values,
 )
 from miles.utils.audit_utils.process_identity import TrainProcessIdentity
 from miles.utils.test_utils.snapshot import dump_snapshot
@@ -40,7 +40,8 @@ class ConfigSnapshotConverter:
                 f"{normalized_source_name(context.source)}"
             )
             process = _convert_process(
-                capture_records, endpoints=endpoints,
+                capture_records,
+                endpoints=endpoints,
                 generated_values=generated_values[(context.name, context.run_uuid, context.deploy_instance_id)],
             )
             if (existing := processes.get(name)) is not None:
@@ -81,7 +82,9 @@ def _compress_process_bases(
 
 
 def _convert_process(
-    records: list[ConfigSnapshotRecord], *, endpoints: SnapshotEndpointNormalizer,
+    records: list[ConfigSnapshotRecord],
+    *,
+    endpoints: SnapshotEndpointNormalizer,
     generated_values: list[ConfigSnapshotGeneratedValue],
 ) -> ConfigSnapshotProcess:
     context = records[0].context

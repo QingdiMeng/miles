@@ -40,10 +40,14 @@ class TestGeneratedPathNormalization:
         results = []
         for value in ["automatic-one", "automatic-two"]:
             source = make_record(config={"wandb_run_id": value})
-            source = source.model_copy(update={
-                "context": source.context.model_copy(update={"source": SimpleProcessIdentity(component="main"), "capture_id": "primary"}),
-                "generated_values": [ConfigSnapshotGeneratedValue(kind="wandb_run_id", name="0000", value=value)],
-            })
+            source = source.model_copy(
+                update={
+                    "context": source.context.model_copy(
+                        update={"source": SimpleProcessIdentity(component="main"), "capture_id": "primary"}
+                    ),
+                    "generated_values": [ConfigSnapshotGeneratedValue(kind="wandb_run_id", name="0000", value=value)],
+                }
+            )
             consumer = make_record(config={"wandb_run_id": value})
             snapshot = dump_snapshot(ConfigSnapshotConverter.convert([consumer, source]))
             assert value not in snapshot
@@ -53,7 +57,11 @@ class TestGeneratedPathNormalization:
 
     def test_tracking_ids_in_another_launch_do_not_borrow_provenance(self, make_record: Callable) -> None:
         """An explicit ID in a different launch stays literal despite matching another launch's generated ID."""
-        source = make_record(config={"wandb_run_id": "automatic"}).model_copy(update={"generated_values": [ConfigSnapshotGeneratedValue(kind="wandb_run_id", name="0000", value="automatic")]})
+        source = make_record(config={"wandb_run_id": "automatic"}).model_copy(
+            update={
+                "generated_values": [ConfigSnapshotGeneratedValue(kind="wandb_run_id", name="0000", value="automatic")]
+            }
+        )
         consumer = make_record(run=1, config={"wandb_run_id": "automatic"})
         snapshot = dump_snapshot(ConfigSnapshotConverter.convert([source, consumer]))
         assert "$WANDB_RUN_ID_0000" in snapshot

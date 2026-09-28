@@ -10,7 +10,9 @@ _RANK = "$RANK"
 
 
 def normalize_record(
-    record: ConfigSnapshotRecord, *, endpoints: SnapshotEndpointNormalizer | None = None,
+    record: ConfigSnapshotRecord,
+    *,
+    endpoints: SnapshotEndpointNormalizer | None = None,
     generated_values: list[ConfigSnapshotGeneratedValue] | None = None,
 ) -> JsonValue:
     context = record.context
@@ -98,10 +100,17 @@ def collect_generated_values(
 
     result = {}
     for scope, scoped_records in by_scope.items():
-        candidates = {(entry.kind, entry.name, entry.value): entry for record in scoped_records for entry in record.generated_values}
+        candidates = {
+            (entry.kind, entry.name, entry.value): entry
+            for record in scoped_records
+            for entry in record.generated_values
+        }
         observed: dict[tuple[str, str], ConfigSnapshotGeneratedValue] = {}
         for entry in sorted(candidates.values(), key=lambda entry: (entry.kind, entry.name, entry.value)):
-            if not any(_normalize_generated_values(record.config, values=[entry]) != record.config for record in scoped_records):
+            if not any(
+                _normalize_generated_values(record.config, values=[entry]) != record.config
+                for record in scoped_records
+            ):
                 continue
             key = (entry.kind, entry.name)
             if key in observed and observed[key] != entry:
