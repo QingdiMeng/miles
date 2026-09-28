@@ -108,12 +108,15 @@ RUN pip install -v --no-deps --no-build-isolation "git+https://github.com/QwenLM
 # DeepSelect: the top-k the DeepSeek-V4.1 indexer selects with. It ships sm100a/sm103a only, and
 # the V4.1 plugin falls back to torch.topk on anything older. Its setup.py probes for a GPU with
 # lspci, which a build host does not have, hence pciutils and the explicit target.
+# Its version embeds datetime.now(), so pip's separate metadata and build hooks disagree whenever
+# they straddle a second and pip rejects the wheel as misnamed: build it once, then install the file.
 RUN apt-get update && apt-get install -y --no-install-recommends pciutils && rm -rf /var/lib/apt/lists/* && \
     git clone --recursive --depth 1 https://github.com/deepseek-ai/DeepSelect.git /tmp/DeepSelect && \
     cd /tmp/DeepSelect && git checkout 0f03b68748b304863fdf0181a11458d04ae533a9 && \
     git submodule update --init --depth 1 csrc/3rdparty/cutlass && \
-    DEEP_SELECT_BUILD_TARGET_PLATFORM=CUDA MAX_JOBS=${MAX_JOBS:-32} pip install --no-build-isolation . && \
-    rm -rf /tmp/DeepSelect
+    DEEP_SELECT_BUILD_TARGET_PLATFORM=CUDA MAX_JOBS=${MAX_JOBS:-32} python3 setup.py bdist_wheel -d /tmp/deep_select_dist && \
+    pip install /tmp/deep_select_dist/deep_select-*.whl && \
+    rm -rf /tmp/DeepSelect /tmp/deep_select_dist
 # Prefer the prebuilt wheel; fall back to a source build while the current
 # arch's wheels release doesn't carry it yet (QEMU-emulated arm64 source
 # builds are the expensive path this avoids).
