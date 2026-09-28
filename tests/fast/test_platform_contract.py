@@ -59,7 +59,6 @@ UPPER_LAYER_EXEMPTIONS = {
     "miles/utils/workers/worker_provider": "the infrastructure that owns every provider implementation",
     "miles/utils/workers/backend_capability": "the package that owns every capability implementation",
     "miles/utils/workers/cell_operations": "the package that owns every cell-operations implementation",
-    "miles/ray/placement_group.py": "the driver composition the orchestration scripts delegate their wiring to",
     "miles/utils/ft_utils/mini_ft_controller.py": "kubernetes is the only backend that resumes a cell without being asked",
     "miles/utils/workers/serving/serve_inner.py": "the composition root of a served worker process",
     "miles/utils/workers/serving/serve.py": (
