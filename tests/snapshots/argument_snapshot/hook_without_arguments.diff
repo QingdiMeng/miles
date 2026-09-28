@@ -1,0 +1,20 @@
+--- megatron
++++ hook_without_arguments
+@@ -17,0 +18,2 @@
++- --custom-generate-function-path
++- builtins.str
+@@ -179 +181 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: builtins.str
+@@ -2008 +2010 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: builtins.str
+@@ -3837 +3839 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: builtins.str
+@@ -5665 +5667 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: builtins.str
+@@ -7493 +7495 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: builtins.str

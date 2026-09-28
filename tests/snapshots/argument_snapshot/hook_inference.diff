@@ -1,0 +1,49 @@
+--- megatron
++++ hook_inference
+@@ -17,0 +18,2 @@
++- --custom-inference-engine-provider-path
++- tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -180 +182 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -1664,0 +1667 @@
++    snapshot_hook: 23
+@@ -2009 +2012 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -3493,0 +3497 @@
++    snapshot_hook: 23
+@@ -3838 +3842 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -5321,0 +5326 @@
++    snapshot_hook: 23
+@@ -5666 +5671 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -7149,0 +7155 @@
++    snapshot_hook: 23
+@@ -7494 +7500 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -8977,0 +8984 @@
++    snapshot_hook: 23
+@@ -11292,0 +11300 @@
++    snapshot_hook: 23
+@@ -12829,0 +12838 @@
++          - snapshot_hook
+@@ -49166,0 +49176,14 @@
++          default: 23
++          dest: snapshot_hook
++          help: null
++          metavar: null
++          nargs: null
++          option_strings:
++          - --snapshot-hook
++          required: false
++          type:
++            $callable: builtins.int
++      - $class: argparse._StoreAction
++        state:
++          choices: null
++          const: null

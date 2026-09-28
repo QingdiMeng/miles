@@ -1,0 +1,49 @@
+--- fsdp
++++ hook_fsdp
+@@ -11,0 +12,2 @@
++- --custom-inference-engine-provider-path
++- tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -86 +88 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -958,0 +961 @@
++    snapshot_hook: 23
+@@ -1108 +1111 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -1980,0 +1984 @@
++    snapshot_hook: 23
+@@ -2130 +2134 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -3001,0 +3006 @@
++    snapshot_hook: 23
+@@ -3151 +3156 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -4022,0 +4028 @@
++    snapshot_hook: 23
+@@ -4172 +4178 @@
+-    custom_inference_engine_provider_path: null
++    custom_inference_engine_provider_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -5043,0 +5050 @@
++    snapshot_hook: 23
+@@ -6551,0 +6559 @@
++    snapshot_hook: 23
+@@ -8035,0 +8044 @@
++          - snapshot_hook
+@@ -31427,0 +31437,14 @@
++          default: 23
++          dest: snapshot_hook
++          help: null
++          metavar: null
++          nargs: null
++          option_strings:
++          - --snapshot-hook
++          required: false
++          type:
++            $callable: builtins.int
++      - $class: argparse._StoreAction
++        state:
++          choices: null
++          const: null

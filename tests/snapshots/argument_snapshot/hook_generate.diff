@@ -1,0 +1,49 @@
+--- megatron
++++ hook_generate
+@@ -17,0 +18,2 @@
++- --custom-generate-function-path
++- tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -179 +181 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -1664,0 +1667 @@
++    snapshot_hook: 23
+@@ -2008 +2011 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -3493,0 +3497 @@
++    snapshot_hook: 23
+@@ -3837 +3841 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -5321,0 +5326 @@
++    snapshot_hook: 23
+@@ -5665 +5670 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -7149,0 +7155 @@
++    snapshot_hook: 23
+@@ -7493 +7499 @@
+-    custom_generate_function_path: null
++    custom_generate_function_path: tests.fast.argument_snapshot.argparser.scenarios._Hook
+@@ -8977,0 +8984 @@
++    snapshot_hook: 23
+@@ -11292,0 +11300 @@
++    snapshot_hook: 23
+@@ -12829,0 +12838 @@
++          - snapshot_hook
+@@ -49166,0 +49176,14 @@
++          default: 23
++          dest: snapshot_hook
++          help: null
++          metavar: null
++          nargs: null
++          option_strings:
++          - --snapshot-hook
++          required: false
++          type:
++            $callable: builtins.int
++      - $class: argparse._StoreAction
++        state:
++          choices: null
++          const: null
