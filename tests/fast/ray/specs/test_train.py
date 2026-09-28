@@ -7,36 +7,36 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from tests.fast.fixtures.args_fixtures import (
-    parse_fsdp_test_config,
-    parse_megatron_test_config,
-    replace_config_values,
-)
+from tests.fast.fixtures.args_fixtures import parse_fsdp_test_config, parse_megatron_test_config, replace_config_values
 from tests.fast.fixtures.capability_fixtures import FakeBackendCapability
 from tests.fast.fixtures.megatron_config_fixtures import write_megatron_config, write_megatron_config_trainers
 from tests.fast.ray.rollout.conftest import make_args_with_sglang_config
 
 from miles.ray.placement_group import _get_placement_group_layout
 from miles.ray.specs import train as train_specs
+from miles.ray.specs.entrypoint import SERVE_SPEC_CLASSES
 from miles.ray.specs.train import (
     TRAINER_CONCURRENCY_GROUPS,
     TRAINER_CONTROLLER_WORKER_CLASS,
+    TrainerControllerSpec,
+    TrainerSpec,
     _compute_trainer_controller_provider,
     compute_trainer_configs,
     compute_trainer_controller_pool_id,
     compute_trainer_ids,
     compute_trainer_pool_id,
     external_trainer_controller_addrs,
-    TrainerControllerSpec,
-    TrainerSpec,
     trainer_controller_cell_id,
     trainer_controller_worker_name,
 )
-from miles.ray.specs.entrypoint import SERVE_SPEC_CLASSES
+from miles.ray.train.group import TrainerController
 from miles.ray.train_actor import TrainRayActor
 from miles.utils.args.runtime import AllConfig
 from miles.utils.args.trainer_utils import compute_trainer_config
-from miles.utils.external_utils.command_utils.helm_backend.launcher.values.builder import build_values
+from miles.utils.external_utils.command_utils.helm_backend.launcher.values.builder import (
+    build_values,
+    compute_static_connections,
+)
 from miles.utils.external_utils.command_utils.helm_backend.launcher.values.misc import SECTION_OF_CATEGORY, LaunchPlan
 from miles.utils.workers.rpc.common.metadata import _find_rpc_config, declared_concurrency_groups
 from miles.utils.workers.serving.utils import parse_serve_worker_config
@@ -283,7 +283,9 @@ class TestConstructorArguments:
         )
 
         assert actor_spec.worker_class == actor_class
-        assert [spec.worker_class for spec in critic_specs] == [train_specs._TRAINER_ACTOR_CLASSES[backend]] * use_critic
+        assert [spec.worker_class for spec in critic_specs] == [
+            train_specs._TRAINER_ACTOR_CLASSES[backend]
+        ] * use_critic
 
 
 class TestConcurrencyGroups:
@@ -454,7 +456,10 @@ class TestEnvironmentVariables:
         specs = specs_trainer(args)
         monkeypatch.setattr(train_specs, "default_fp8_block_scaling_fp32_scales", lambda: "1")
 
-        assert [spec.env_var(_make_context(spec, args))["NVTE_FP8_BLOCK_SCALING_FP32_SCALES"] for spec in specs] == ["0", "0"]
+        assert [spec.env_var(_make_context(spec, args))["NVTE_FP8_BLOCK_SCALING_FP32_SCALES"] for spec in specs] == [
+            "0",
+            "0",
+        ]
 
     def test_disk_offload_forwards_backend_flags_and_nondefault_chunk_size(self, monkeypatch):
         """The disk backend must be switched on in place of the cpu one and use the requested chunk size."""
@@ -478,7 +483,8 @@ class TestEnvironmentVariables:
         (spec,) = specs_trainer(args)
 
         directories = [
-            spec.env_var(_make_context(spec, args, cell_index=1, worker_in_cell_index=i))["TMS_DISK_BACKUP_DIR"] for i in range(2)
+            spec.env_var(_make_context(spec, args, cell_index=1, worker_in_cell_index=i))["TMS_DISK_BACKUP_DIR"]
+            for i in range(2)
         ]
         assert directories == ["/tmp/offload/cell00001_rank00000", "/tmp/offload/cell00001_rank00001"]
 
@@ -668,7 +674,12 @@ class TestSpecTrainerController:
         args = _make_args()
         spec = specs_trainer_controller(args)[0]
 
-        values = build_values([spec], _controller_layout(), scaling=args).as_values()
+        values = build_values(
+            [spec],
+            _controller_layout(),
+            scaling=args,
+            static_connections=compute_static_connections([spec], scaling=args),
+        ).as_values()
 
         (entry,) = values["run"]["staticWorkers"]
         assert SECTION_OF_CATEGORY[spec.category] == "staticWorkers"
@@ -702,14 +713,14 @@ class TestSpecTrainerController:
         assert capability.requested_static_pool_ids == []
         assert all("inference_controller" not in entry for entry in kwargs)
 
-    def test_the_run_shape_flags_are_resolved_by_the_spec(self):
-        """These are functions of args, so the worker can answer them from the argv it parses itself."""
+    def test_the_run_shape_flags_are_resolved_from_the_controller_payload(self):
+        """These are functions of the controller's own TrainerConfig, so the worker derives them from its payload."""
         capability = _controller_providers()
 
         spec = specs_trainer_controller(_make_args(kl_coef=0.1, use_opd=True, opd_type="megatron"))[0]
-        kwargs = spec.ctor_kwargs(_controller_context(spec, capability))
+        controller = TrainerController(**spec.ctor_kwargs(_controller_context(spec, capability)))
 
-        assert (kwargs["trainer_id"], kwargs["with_ref"], kwargs["with_opd_teacher"]) == ("actor", True, True)
+        assert (controller._trainer_id, controller._with_ref, controller._with_opd_teacher) == ("actor", True, True)
 
     def test_a_policy_that_switches_off_its_kl_loss_gets_no_reference_cells(self, tmp_path):
         """with_ref is read off that trainer's own args, so one policy may need reference cells while another does not."""
@@ -722,22 +733,29 @@ class TestSpecTrainerController:
 
         spec_a, spec_b = specs_trainer_controller(args)
 
-        assert spec_a.ctor_kwargs(_controller_context(spec_a, _controller_providers()))["with_ref"] is False
-        assert spec_b.ctor_kwargs(_controller_context(spec_b, _controller_providers()))["with_ref"] is True
+        assert (
+            TrainerController(**spec_a.ctor_kwargs(_controller_context(spec_a, _controller_providers())))._with_ref
+            is False
+        )
+        assert (
+            TrainerController(**spec_b.ctor_kwargs(_controller_context(spec_b, _controller_providers())))._with_ref
+            is True
+        )
 
     def test_the_critic_controller_gets_no_reference_or_teacher_cells(self):
         """A critic controller must not hand its cells the actor's KL and OPD settings."""
         spec = specs_trainer_controller(_make_args(use_critic=True, kl_coef=0.1, use_kl_loss=True, use_opd=True))[1]
-        critic_kwargs = spec.ctor_kwargs(_controller_context(spec, _controller_providers()))
+        critic = TrainerController(**spec.ctor_kwargs(_controller_context(spec, _controller_providers())))
 
-        assert (critic_kwargs["with_ref"], critic_kwargs["with_opd_teacher"]) == (False, False)
+        assert (critic._with_ref, critic._with_opd_teacher) == (False, False)
 
-    def test_no_args_are_frozen_into_the_controller_at_spec_time(self):
-        """The spec is built before the driver finishes deriving args, so a captured copy would be stale."""
+    def test_the_controller_is_built_from_its_own_trainer_config_payload(self):
+        """The controller reads its own sliced TrainerConfig, and init only adds the runtime inputs on top."""
         spec = specs_trainer_controller(_make_args())[0]
         actor_kwargs = spec.ctor_kwargs(_controller_context(spec, _controller_providers()))
 
-        assert "args" not in actor_kwargs
+        assert actor_kwargs["args"] is spec.args
+        assert {"trainer_id", "role", "with_ref", "with_opd_teacher"}.isdisjoint(actor_kwargs)
 
     def test_the_controller_pool_name_encodes_the_role(self):
         """The two controllers of a critic run must not collide in the address book."""
