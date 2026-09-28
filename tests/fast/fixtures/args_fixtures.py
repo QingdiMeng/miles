@@ -7,14 +7,16 @@ import os
 import sys
 from argparse import Namespace
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, TypeVar
 from unittest.mock import patch
 
 from miles.backends.megatron_utils.megatron_config import resolve_megatron_config
 from miles.backends.sglang_utils.sglang_config import SglangConfig
-from miles.utils.args.runtime import AllConfig
+from miles.utils.args.runtime import AllConfig, TrainerConfig
 from miles.utils.arguments import get_miles_extra_args_provider, parse_args
 from miles.utils.run_uuid import RUN_UUID_LENGTH
+
+_ConfigT = TypeVar("_ConfigT", AllConfig, TrainerConfig)
 
 # megatron's own parser adds these and miles' code reads them, but a unit test builds only the miles
 # extras, so nothing else would put them on the namespace
@@ -74,9 +76,7 @@ def resolve_parse_boundary_configs(args: Namespace) -> Namespace:
     return args
 
 
-_MEGATRON_TEST_ARGV = [
-    "--train-backend",
-    "megatron",
+_COMMON_TEST_ARGV = [
     "--rollout-batch-size",
     "2",
     "--num-rollout",
@@ -85,6 +85,12 @@ _MEGATRON_TEST_ARGV = [
     "1",
     "--micro-batch-size",
     "1",
+]
+
+_MEGATRON_TEST_ARGV = [
+    "--train-backend",
+    "megatron",
+    *_COMMON_TEST_ARGV,
     "--num-layers",
     "1",
     "--hidden-size",
@@ -93,10 +99,20 @@ _MEGATRON_TEST_ARGV = [
     "2",
 ]
 
+_FSDP_TEST_ARGV = ["--train-backend", "fsdp", *_COMMON_TEST_ARGV]
+
 
 def parse_megatron_test_config(*argv: str) -> AllConfig:
+    return _parse_test_config([*_MEGATRON_TEST_ARGV, *argv])
+
+
+def parse_fsdp_test_config(*argv: str) -> AllConfig:
+    return _parse_test_config([*_FSDP_TEST_ARGV, *argv])
+
+
+def _parse_test_config(argv: list[str]) -> AllConfig:
     environment = {"RANK": "0", "WORLD_SIZE": "1", "LOCAL_RANK": "0", "MILES_SCRIPT_ENV_REPORT": ""}
-    with patch.object(sys, "argv", ["test", *_MEGATRON_TEST_ARGV, *argv]), patch.dict(os.environ, environment):
+    with patch.object(sys, "argv", ["test", *argv]), patch.dict(os.environ, environment):
         return parse_args()
 
 
@@ -124,3 +140,27 @@ def make_trainer_config(**values: Any) -> Any:
 
     args = make_trainer_args(**values)
     return TrainerConfig.model_construct(**vars(args))
+
+
+def replace_config_values(config: _ConfigT, **updates: Any) -> _ConfigT:
+    fields = type(config).model_fields
+    backend_updates = {name: value for name, value in updates.items() if name not in fields}
+    top_level = {name: value for name, value in updates.items() if name in fields}
+    if backend_updates:
+        top_level.update(_replace_backend_values(config, **backend_updates))
+    return config.model_copy(update=top_level)
+
+
+def _replace_backend_values(config: AllConfig | TrainerConfig, **updates: Any) -> dict[str, Any]:
+    if isinstance(config, TrainerConfig):
+        field, backend = "backend", config.backend
+    elif config.train_backend == "megatron":
+        field, backend = "raw_megatron", None
+    else:
+        field, backend = "raw_fsdp", config.raw_fsdp
+    values = dict(config.raw_megatron.base_args) if backend is None else vars(backend)
+    unknown = updates.keys() - values.keys()
+    assert not unknown, f"{sorted(unknown)} are neither {type(config).__name__} fields nor backend arguments"
+    if backend is None:
+        return {field: config.raw_megatron.model_copy(update={"base_args": values | updates})}
+    return {field: type(backend)(**(values | updates))}
