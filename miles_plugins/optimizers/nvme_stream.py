@@ -42,6 +42,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import torch
 from megatron.core.fp8_utils import is_float8tensor
+from megatron.core.optimizer.optimizer import _get_param_grad_norm_group, _is_separate_grad_norm_group
 
 if TYPE_CHECKING:
     from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
@@ -311,6 +312,15 @@ class NVMeOptimizerStateStore:
         self._stager = _Stager(chunk_mb * 1024 * 1024)
         self.buckets = self._build_buckets()
         self._fp32_group_indices, self._fp32_adam = self._build_fp32_optimizer()
+        assert not any(
+            _is_separate_grad_norm_group(_get_param_grad_norm_group(entry.model_param))
+            for bucket in self.buckets
+            for entry in bucket.entries
+        ), "NVMe state store clips streamed grads by the main norm only; separate grad-norm groups are unsupported."
+        # Reduced grad shards of the streamed params, by main param; set by stage_model_grads().
+        self._grad_views: dict[torch.Tensor, torch.Tensor] = {}
+        self._grads_staged = False
+        self._clip_coeff = 1.0
 
         total_gb = sum(b.nbytes for b in self.buckets) / 1024**3
         logger.info(
@@ -395,16 +405,63 @@ class NVMeOptimizerStateStore:
             param_data = dist_opt.buffers[gbuf_index].buckets[bucket_id].param_data
             param_data.view(-1)[world_range.start : world_range.end].copy_(entry.main_param)
 
+    def _shard_grad(self, model_param: torch.nn.Parameter) -> torch.Tensor:
+        param_range = self.dist_opt._get_model_param_range_map(model_param)["param"]
+        return model_param.main_grad.view(-1)[param_range.start : param_range.end]
+
+    # Replaces DistributedOptimizer._copy_model_grads_to_main_grads, which casts every grad shard to
+    # fp32 up front: with BF16 grads that is a second, fp32 copy of the whole shard resident through
+    # the step. Streamed params keep a view of their reduced shard until step() casts it, one bucket at
+    # a time; native-fp32 params take the upstream copy.
+    def stage_model_grads(self) -> None:
+        self._grad_views = {}
+        for bucket in self.buckets:
+            for entry in bucket.entries:
+                self._grad_views[entry.main_param] = self._shard_grad(entry.model_param)
+                entry.main_param.grad = None
+        for model_group, shard_group in zip(self.dist_opt.model_fp32_groups, self.dist_opt.shard_fp32_groups):
+            for model_param, shard_param in zip(model_group, shard_group, strict=True):
+                shard_param.grad = self._shard_grad(model_param).float()
+        self._grads_staged = True
+
+    def grad_view(self, main_param: torch.Tensor) -> torch.Tensor | None:
+        return self._grad_views.get(main_param)
+
+    def set_total_grad_norm(self, total_norm: float) -> None:
+        """Record the chain's grad norm; Megatron's clip only reaches params that hold a ``.grad``.
+
+        Same coefficient as clip_grad_by_total_norm_fp32, applied when step() casts each bucket.
+        """
+        clip_grad = self.dist_opt.config.clip_grad
+        coeff = clip_grad / (total_norm + 1.0e-6) if clip_grad > 0.0 else 1.0
+        self._clip_coeff = min(coeff, 1.0)
+
+    def _attach_grads(self, entries: list[_Entry]) -> None:
+        for entry in entries:
+            grad = self._grad_views[entry.main_param].float()
+            if self._clip_coeff < 1.0:
+                grad.mul_(self._clip_coeff)
+            entry.main_param.grad = grad
+
+    @staticmethod
+    def _detach_grads(entries: list[_Entry]) -> None:
+        for entry in entries:
+            entry.main_param.grad = None
+
     @torch.no_grad()
     def step(self) -> bool:
+        assert self._grads_staged, "step() without staged grads; stage_model_grads() runs in prepare_grads()"
         started = time.monotonic()
         read = written = 0
         for bucket in self.buckets:
             read += bucket.fetch()
             self._sync_lr_wd(bucket.adam, bucket.group_indices)
+            self._attach_grads(bucket.entries)
             bucket.adam.step()
+            self._detach_grads(bucket.entries)
             self._copy_main_to_model_params(bucket.entries)
             written += bucket.flush()
+        self._grad_views, self._grads_staged, self._clip_coeff = {}, False, 1.0
         if self._fp32_adam is not None:
             self._sync_lr_wd(self._fp32_adam, self._fp32_group_indices)
             self._fp32_adam.step()
@@ -517,8 +574,12 @@ def setup_optimizer_state_streaming(args, optimizer) -> None:
     """
     from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
 
+    assert (
+        not args.log_num_zeros_in_grad
+    ), "--log-num-zeros-in-grad reads .grad, which streamed params hold only mid-step"
     dir_root = _state_dir_root(args)
     _purge_rank_dir(dir_root)
+    stores = []
     for dist_opt in optimizer.chained_optimizers:
         assert isinstance(
             dist_opt, DistributedOptimizer
@@ -541,6 +602,8 @@ def setup_optimizer_state_streaming(args, optimizer) -> None:
             f"NVMe optimizer main-param initialization: wrote {written / 1024**3:.1f} GB " f"directly to {store.dir}"
         )
         _bind(dist_opt, store)
+        stores.append(store)
+    _bind_grad_norm(optimizer, stores)
 
 
 def setup_muon_state_on_disk(args) -> None:
@@ -611,7 +674,7 @@ def _purge_rank_dir(dir_root: str) -> str:
 
 
 def _bind(dist_opt: "DistributedOptimizer", store: NVMeOptimizerStateStore) -> None:
-    """Point the five DistributedOptimizer entry points that touch optimizer state at ``store``."""
+    """Point the DistributedOptimizer entry points that touch optimizer state or main grads at ``store``."""
     from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
 
     # The all-gather tail is copied from DistributedOptimizer.step_with_ready_grads and has
@@ -632,6 +695,15 @@ def _bind(dist_opt: "DistributedOptimizer", store: NVMeOptimizerStateStore) -> N
                 lambda: DistributedOptimizer.reload_model_params(self, state_dict=state_dict)
             )
 
+    def _copy_model_grads_to_main_grads(self) -> None:
+        store.stage_model_grads()
+
+    # Streamed params carry no .grad until their bucket steps, so the norm reads their staged shards;
+    # the upstream filter (shared / TP-duplicate / witness / norm group) still decides what counts.
+    def _filter_grads_for_norm(self, params, param_filter=None):
+        views = [_GradView(p, g) if (g := store.grad_view(p)) is not None else p for p in params]
+        return DistributedOptimizer._filter_grads_for_norm(self, views, param_filter=param_filter)
+
     # save_to()/load_from() carry the real state; returning empties here rather than forcing
     # --no-save-optim keeps opt_param_scheduler, saved under the same guard, working.
     def state_dict(self):
@@ -644,8 +716,35 @@ def _bind(dist_opt: "DistributedOptimizer", store: NVMeOptimizerStateStore) -> N
         return {}
 
     dist_opt.step_with_ready_grads = MethodType(step_with_ready_grads, dist_opt)
+    dist_opt._copy_model_grads_to_main_grads = MethodType(_copy_model_grads_to_main_grads, dist_opt)
+    dist_opt._filter_grads_for_norm = MethodType(_filter_grads_for_norm, dist_opt)
     dist_opt.reload_model_params = MethodType(reload_model_params, dist_opt)
     dist_opt.state_dict = MethodType(state_dict, dist_opt)
     dist_opt.load_state_dict = MethodType(load_state_dict, dist_opt)
     dist_opt.sharded_state_dict = MethodType(sharded_state_dict, dist_opt)
     dist_opt._nvme_state_store = store  # how checkpointing.py finds it
+
+
+class _GradView:
+    """A main param as the grad-norm filter sees it, with its staged shard standing in for ``.grad``."""
+
+    def __init__(self, param: torch.Tensor, grad: torch.Tensor):
+        self._param, self.grad = param, grad
+
+    def __getattr__(self, name: str):
+        return getattr(self._param, name)
+
+
+def _bind_grad_norm(optimizer, stores: list[NVMeOptimizerStateStore]) -> None:
+    """Hand the chain's grad norm to every store, which clips its streamed grads bucket by bucket."""
+    if not stores:
+        return
+    chain_get_grad_norm = optimizer.get_grad_norm
+
+    def get_grad_norm(self):
+        grad_norm = chain_get_grad_norm()
+        for store in stores:
+            store.set_total_grad_norm(grad_norm)
+        return grad_norm
+
+    optimizer.get_grad_norm = MethodType(get_grad_norm, optimizer)
