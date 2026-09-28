@@ -72,6 +72,8 @@ def fresh_policy_startup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _Fr
         str(weights),
         "--save",
         str(tmp_path / "checkpoints"),
+        "--save-interval",
+        "2",
     )
     handles = {args.trainer_id: _LoadingTrainer(args=args) for args in TrainerControllerSpec.slice_configs(all_args)}
 
