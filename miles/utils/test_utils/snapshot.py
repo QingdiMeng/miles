@@ -33,6 +33,8 @@ def snapshot_values(value: Any) -> Any:
         return {"$class": _qualified_name(type(value)), "state": snapshot_values(_actions_container_state(value))}
     if isinstance(value, argparse.Action):
         state = {name: item for name, item in vars(value).items() if name != "container"}
+        if isinstance(choices := state["choices"], (list, tuple)):
+            state["choices"] = frozenset(choices)
         return {"$class": _qualified_name(type(value)), "state": snapshot_values(state)}
     if isinstance(value, BaseModel):
         return snapshot_values(
