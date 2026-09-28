@@ -32,10 +32,7 @@ def snapshot_values(value: Any) -> Any:
     if isinstance(value, argparse._ActionsContainer):
         return {"$class": _qualified_name(type(value)), "state": snapshot_values(_actions_container_state(value))}
     if isinstance(value, argparse.Action):
-        state = {name: item for name, item in vars(value).items() if name != "container"}
-        if isinstance(choices := state["choices"], (list, tuple)):
-            state["choices"] = frozenset(choices)
-        return {"$class": _qualified_name(type(value)), "state": snapshot_values(state)}
+        return snapshot_values(_action_state(value))
     if isinstance(value, BaseModel):
         return snapshot_values(
             {
@@ -119,6 +116,31 @@ def assert_matches_snapshot(snapshot: Path, actual: str, subject: str, *, update
             + f"\n--- BEGIN ACTUAL {snapshot.name} ---\n{actual}--- END ACTUAL ---\n"
             + f"Copy the content above to {snapshot}, or regenerate with {SNAPSHOT_UPDATE_ENV_VAR}=1."
         )
+
+
+def _action_state(action: argparse.Action) -> dict[str, Any]:
+    state = {name: item for name, item in vars(action).items() if name != "container"}
+    if isinstance(choices := state["choices"], (list, tuple)):
+        state["choices"] = frozenset(choices)
+    if type(action) is not argparse._StoreAction:
+        state["action"] = type(action)
+    return {
+        name: item
+        for name, item in state.items()
+        if name in _ALWAYS_SNAPSHOTTED_ACTION_FIELDS or item != _ACTION_FIELD_DEFAULTS.get(name, _NO_DEFAULT)
+    }
+
+
+_ALWAYS_SNAPSHOTTED_ACTION_FIELDS = frozenset({"dest", "option_strings", "default", "type", "help"})
+_ACTION_FIELD_DEFAULTS = {
+    "nargs": None,
+    "const": None,
+    "choices": None,
+    "required": False,
+    "metavar": None,
+    "deprecated": False,
+}
+_NO_DEFAULT = object()
 
 
 def _actions_container_state(container: argparse._ActionsContainer) -> dict[str, Any]:
