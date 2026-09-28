@@ -127,7 +127,9 @@ class TestEvalFleetInfo:
         """The description the executor retargets its eval args to comes from the server, not its own args."""
         fleet = make_fleet(make_args(eval_num_gpus=4, eval_num_gpus_per_engine=2), [], engine_gpu_counts=[2, 2])
 
-        assert await fleet.info() == EvalFleetInfo(router=HostAndPort(host="10.0.0.2", port=31000), engine_gpu_counts=[2, 2])
+        assert await fleet.info() == EvalFleetInfo(
+            router=HostAndPort(host="10.0.0.2", port=31000), engine_gpu_counts=[2, 2]
+        )
 
 
 def _answers_version(version: str):
