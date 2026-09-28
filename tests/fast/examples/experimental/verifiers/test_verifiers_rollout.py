@@ -3,6 +3,7 @@ import sys
 from argparse import Namespace
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -193,7 +194,7 @@ def test_renderer_identity_is_inferred_from_standard_checkpoint_paths(checkpoint
     assert _renderer_identity(checkpoint) == expected
 
 
-def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monkeypatch):
+def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     """Local tokenizer files retain the checkpoint's registered renderer identity."""
     renderers = pytest.importorskip("renderers", minversion="0.1.8")
     checkpoint = "/cache/models--Qwen--Qwen3-4B-Instruct-2507/snapshots/revision"
@@ -242,12 +243,12 @@ def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monke
     }
 
 
-def test_canonical_tokenizer_selects_tool_renderer_for_ambiguous_local_checkpoint(monkeypatch):
+def test_canonical_tokenizer_selects_tool_renderer_for_ambiguous_local_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     """Structured tokenizer identity disambiguates local Qwen checkpoints for tools."""
     renderers = pytest.importorskip("renderers", minversion="0.1.8")
     runtime = pytest.importorskip("verifiers.v1.clients.train")
     checkpoint = "/root/models/Qwen3-0.6B"
-    loaded_sources = []
+    loaded_sources: list[str] = []
 
     def load_tokenizer(source: str) -> SimpleNamespace:
         loaded_sources.append(source)
@@ -502,7 +503,7 @@ def test_group_reward_train_count_is_ignored_for_eval_only_runs():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("deterministic", [False, True])
-async def test_verifiers_episode_owns_group_reward_computation(deterministic):
+async def test_verifiers_episode_owns_group_reward_computation(deterministic: bool) -> None:
     """Episodes own rewards and receive distinct seeds only when deterministic."""
     pytest.importorskip("verifiers", minversion="0.2.0")
     pytest.importorskip("renderers", minversion="0.1.8")
@@ -512,17 +513,17 @@ async def test_verifiers_episode_owns_group_reward_computation(deterministic):
     rollouts = [SimpleNamespace(ctx=ctx), SimpleNamespace(ctx=ctx)]
 
     class Episode:
-        def __init__(self):
+        def __init__(self) -> None:
             self.rollouts = rollouts
 
-        async def run(self, semaphore):
+        async def run(self, semaphore: asyncio.Semaphore) -> list[SimpleNamespace]:
             assert semaphore is not None
             traces[0].reward = -1.0
             traces[1].reward = 1.0
             return traces
 
     class Environment:
-        def episode(self, task, ctx, n):
+        def episode(self, task: str, ctx: Any, n: int) -> Episode:
             assert task == "task"
             assert ctx.model == "test-model"
             assert n == 2
