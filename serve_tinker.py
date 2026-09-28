@@ -4,10 +4,15 @@ from contextlib import suppress
 
 import uvicorn
 
-from miles.ray.placement_group import create_trainer_handles, create_training_model, take_over_trainers
+from miles.ray.placement_group import (
+    create_trainer_handles,
+    create_training_model,
+    take_over_trainers,
+)
 from miles.ray.rollout.router_manager import resolve_router_addrs
 from miles.ray.specs.inference import compute_router_providers, create_inference_controller_handle
 from miles.ray.specs.train import ACTOR_ROLE, compute_trainer_configs
+from miles.ray.train.init_request import TrainerControllerInitRequest
 from miles.ray.wiring import get_backend_capability
 from miles.tinker.arguments import configure_tinker_args
 from miles.tinker.core.service import TinkerService
@@ -53,9 +58,9 @@ async def serve(args, *, disposer: Disposer):
     [actor_config] = [config for config in trainer_configs if config.role == ACTOR_ROLE]
     actor_args = compute_trainer_config(args, actor_config)
     actor_info = await create_training_model(
-        actor_args,
         handle=handles[actor_config.trainer_id],
         trainer_id=actor_config.trainer_id,
+        request=TrainerControllerInitRequest.from_args(args),
         requested_start_rollout_id=actor_args.start_rollout_id,
         resumed=resumed,
     )
