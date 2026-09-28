@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import ConfigDict
 
-from miles.utils.args.custom_function import CustomFunctionConfig
 from miles.utils.args.component_trainer import TrainerOnlyConfig
+from miles.utils.args.custom_function import CustomFunctionConfig
 from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.args.schema import BaseConfig
 
