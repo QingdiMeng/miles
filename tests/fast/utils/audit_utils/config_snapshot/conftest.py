@@ -71,9 +71,11 @@ def endpoint_provider() -> Any:
     from miles.utils.workers.worker_spec import HostAndPort
 
     class Provider:
+        external_host: str | None = None
+
         async def get_addrs(self, *, worker_name: str) -> dict[str, HostAndPort]:
             index = int(worker_name.rsplit("-", maxsplit=2)[-2])
-            return {"primary": HostAndPort(host="10.0.0.1", port=30000 + index)}
+            return {"primary": HostAndPort(host="10.0.0.1", port=30000 + index, external_host=self.external_host)}
 
     return Provider()
 

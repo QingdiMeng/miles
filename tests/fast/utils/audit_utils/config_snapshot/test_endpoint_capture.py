@@ -28,6 +28,7 @@ class TestEndpointCapture:
 
     @pytest.mark.parametrize("external_host", [None, "public.example"])
     @pytest.mark.parametrize("bind_host", [None, "0.0.0.0"])
+    @pytest.mark.parametrize("provider_external_host", [None, "10.0.0.1"])
     async def test_session_capture_preserves_explicit_external_hosts(
         self,
         capture_args: Namespace,
@@ -36,10 +37,12 @@ class TestEndpointCapture:
         tmp_path: Path,
         external_host: str | None,
         bind_host: str | None,
+        provider_external_host: str | None,
     ) -> None:
         """Session allocation metadata never treats a configured public hostname as generated."""
         capture_args.session_server_external_host = external_host
         capture_args.session_server_ip = bind_host
+        endpoint_provider.external_host = provider_external_host
         await wait_session_server_ready(capture_args, provider=endpoint_provider)
         records = ConfigSnapshotStorage(directory=tmp_path).read()
         record = next(record for record in records if record.point.stage == "session_endpoints")
@@ -48,5 +51,5 @@ class TestEndpointCapture:
         assert all(endpoint.dynamic_host for endpoint in record.allocated_endpoints)
         assert record.config["args"]["session_server_ip"] == bind_host
         assert [endpoint.external_host for endpoint in record.allocated_endpoints] == (
-            ["10.0.0.1"] * 2 if external_host is None else [None] * 2
+            ["10.0.0.1"] * 2 if external_host is None and provider_external_host is None else [None] * 2
         )
