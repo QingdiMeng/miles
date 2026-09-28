@@ -19,7 +19,6 @@ from miles.tinker.core.service import TinkerService
 from miles.tinker.core.types import GatewayConfig
 from miles.tinker.runtime import MilesBackend
 from miles.tinker.server.app import build_app
-from miles.utils.args.trainer_utils import compute_trainer_config
 from miles.utils.arguments import parse_args
 from miles.utils.async_utils import Disposer, with_disposer
 from miles.utils.hf_config import load_hf_config
@@ -56,12 +55,11 @@ async def serve(args, *, disposer: Disposer):
     handles = create_trainer_handles(args, trainer_configs=trainer_configs)
     resumed = await take_over_trainers(args, handles=handles)
     [actor_config] = [config for config in trainer_configs if config.role == ACTOR_ROLE]
-    actor_args = compute_trainer_config(args, actor_config)
     actor_info = await create_training_model(
         handle=handles[actor_config.trainer_id],
         trainer_id=actor_config.trainer_id,
         request=TrainerControllerInitRequest.from_args(args),
-        requested_start_rollout_id=actor_args.start_rollout_id,
+        requested_start_rollout_id=args.start_rollout_id,
         resumed=resumed,
     )
     trainer = actor_info.handle
