@@ -5,6 +5,8 @@ import sys
 import urllib.error
 from pathlib import Path
 
+import pytest
+
 from tests.ci.ci_register import register_cpu_ci
 
 register_cpu_ci(est_time=1, suite="stage-a-cpu", labels=[])
@@ -131,8 +133,24 @@ def test_rerun_reasons_apply_only_to_current_failures():
         },
     )
     content = markdown(HANDLER.render_ci_status(run(run_attempt=2), current, previous, outcome))
-    assert "Fixed by rerun" in content and "Wrong old reason." not in content
+    assert "Flaky, passed on rerun" in content and "Wrong old reason." not in content
     assert content.count("↳") == 2
+
+
+def test_jobs_fixed_by_the_rerun_count_as_flaky_not_failed():
+    previous = {"flaky": job(10, "flaky"), "still": job(19, "still")}
+    current = [job(20, "still"), job(11, "flaky", "success")]
+    card = HANDLER.render_ci_status(run(run_attempt=2), current, previous)
+    assert card["card"]["header"]["title"]["content"] == "Nightly Test: FAILED (1 of 2 jobs, 1 flaky)"
+    content = markdown(card)
+    assert "**Flaky, passed on rerun (1)**" in content and "**Still failing (1)**" in content
+
+
+def test_a_rerun_that_fixes_every_failure_passes_with_a_flaky_count():
+    previous = {"flaky": job(10, "flaky")}
+    card = HANDLER.render_ci_status(run(run_attempt=2, conclusion="success"), [job(11, "flaky", "success")], previous)
+    assert card["card"]["header"]["title"]["content"] == "Nightly Test: PASSED (1 job, 1 flaky)"
+    assert card["card"]["header"]["template"] == "green"
 
 
 def test_model_failure_adds_one_note_without_removing_original_rows():
@@ -172,6 +190,12 @@ class FakeGitHub:
     def run_attempt_jobs(self, run_id, attempt):
         self.calls.append(("run_attempt_jobs", run_id, attempt))
         return self.previous
+
+    def rerun_failed_jobs(self, run_id):
+        self.calls.append(("rerun_failed_jobs", run_id))
+
+    def rerun_calls(self):
+        return [call for call in self.calls if call[0] == "rerun_failed_jobs"]
 
 
 def args(**overrides):
@@ -219,11 +243,88 @@ def test_unexpected_analyzer_exception_still_posts_original_card_once(monkeypatc
     monkeypatch.setattr(HANDLER, "analyze_failures", lambda **kwargs: (_ for _ in ()).throw(TypeError("bad")))
     posted = []
     monkeypatch.setattr(HANDLER, "post_card", lambda card, webhook, dry_run: posted.append(card))
-    HANDLER.cmd_ci_status(args(), FakeGitHub(run(), [job()]))
+    HANDLER.cmd_ci_status(args(), FakeGitHub(run(run_attempt=2), [job()], [job()]))
     assert len(posted) == 1
     content = markdown(posted[0])
     assert "[unit](https://example/jobs/10)" in content
     assert content.count("AI analysis unavailable") == 1
+
+
+def no_analysis():
+    return HANDLER.AnalysisOutcome(enabled=False, reasons={})
+
+
+def test_first_failed_nightly_attempt_reruns_its_failed_jobs_instead_of_posting(monkeypatch):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda *values: posted.append(values))
+    monkeypatch.setattr(HANDLER, "analyze_failures", lambda **kwargs: pytest.fail("analysis before the rerun"))
+    gh = FakeGitHub(run(), [job(), job(20, "pass", "success")])
+    HANDLER.cmd_ci_status(args(), gh)
+    assert gh.rerun_calls() == [("rerun_failed_jobs", 123)] and posted == []
+
+
+def test_a_rerun_attempt_is_reported_and_never_rerun_again(monkeypatch):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda card, webhook, dry_run: posted.append(card))
+    monkeypatch.setattr(HANDLER, "analyze_failures", lambda **kwargs: no_analysis())
+    gh = FakeGitHub(run(run_attempt=2), [job(20, "still")], [job(19, "still")])
+    HANDLER.cmd_ci_status(args(), gh)
+    assert gh.rerun_calls() == [] and len(posted) == 1
+
+
+def test_cancelled_and_manually_dispatched_runs_are_not_rerun(monkeypatch):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda card, webhook, dry_run: posted.append(card))
+    monkeypatch.setattr(HANDLER, "analyze_failures", lambda **kwargs: no_analysis())
+    cancelled = FakeGitHub(run(conclusion="cancelled"), [job()])
+    HANDLER.cmd_ci_status(args(), cancelled)
+    manual = FakeGitHub(run(event="workflow_dispatch"), [job()])
+    HANDLER.cmd_ci_status(args(any_event=True), manual)
+    assert cancelled.rerun_calls() == [] and manual.rerun_calls() == []
+    assert len(posted) == 2
+
+
+def test_dry_run_announces_the_rerun_without_requesting_it(monkeypatch, capsys):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda *values: posted.append(values))
+    gh = FakeGitHub(run(), [job()])
+    HANDLER.cmd_ci_status(args(dry_run=True), gh)
+    assert gh.rerun_calls() == [] and posted == []
+    assert "would rerun 1 failed job" in capsys.readouterr().out
+
+
+def test_a_refused_rerun_still_posts_the_first_attempt_then_fails(monkeypatch):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda card, webhook, dry_run: posted.append(card))
+    monkeypatch.setattr(HANDLER, "analyze_failures", lambda **kwargs: no_analysis())
+    gh = FakeGitHub(run(), [job()])
+    monkeypatch.setattr(gh, "rerun_failed_jobs", lambda run_id: (_ for _ in ()).throw(RuntimeError("403")))
+    with pytest.raises(RuntimeError, match="403"):
+        HANDLER.cmd_ci_status(args(), gh)
+    assert len(posted) == 1
+    assert posted[0]["card"]["header"]["title"]["content"].endswith("FAILED (1 of 1 job)")
+
+
+def test_rerun_failed_jobs_posts_to_the_run_with_the_token(monkeypatch):
+    requests = []
+
+    class Created:
+        status = 201
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *unused):
+            return False
+
+    monkeypatch.setattr(
+        HANDLER.urllib.request, "urlopen", lambda request, timeout: requests.append(request) or Created()
+    )
+    HANDLER.GitHub("token", "radixark/miles").rerun_failed_jobs(123)
+    (request,) = requests
+    assert request.get_method() == "POST"
+    assert request.full_url == "https://api.github.com/repos/radixark/miles/actions/runs/123/rerun-failed-jobs"
+    assert request.get_header("Authorization") == "Bearer token"
 
 
 def test_rerun_caps_current_failed_rows_across_still_and_new_sections():
@@ -384,12 +485,15 @@ def test_every_configuration_file_the_analyzer_reads_is_checked_out():
         assert f"\n            {relative}\n" in workflow, f"{relative} is missing from sparse-checkout"
 
 
-def test_notifier_workflow_has_pinned_read_only_identity_boundaries():
+def test_notifier_workflow_pins_its_identity_boundaries():
     workflow = WORKFLOW_PATH.read_text()
     assert "workflow_run:" in workflow and 'workflows: ["PR Test"]' in workflow
     assert "github.repository == 'radixark/miles'" in workflow
     assert "github.ref == 'refs/heads/main'" in workflow
     assert "id-token: write" in workflow
+    # the job token's only write scope is the one rerun-failed-jobs needs
+    assert "\n      actions: write" in workflow
+    assert "contents: write" not in workflow and "pull-requests: write" not in workflow
     assert "permission-actions: read" in workflow
     assert "permission-contents: read" in workflow
     assert "permission-pull-requests: read" in workflow
@@ -413,3 +517,63 @@ def test_policy_prompt_and_schema_are_git_versioned_and_strict():
     assert schema["additionalProperties"] is False
     assert schema["properties"]["analyses"]["items"]["additionalProperties"] is False
     assert "untrusted" in prompt and "exactly one factual sentence" in prompt
+
+
+def docker_run(**overrides):
+    return run(name="Docker Build & Push", status="in_progress", conclusion=None, **overrides)
+
+
+def build_job(conclusion="failure"):
+    return {
+        "id": 40,
+        "name": "build-and-push",
+        "conclusion": conclusion,
+        "html_url": "https://example/jobs/40",
+        "steps": [
+            {"name": "Login to Docker Hub", "conclusion": "success"},
+            {"name": "Build and push", "conclusion": conclusion},
+        ],
+    }
+
+
+def test_failed_docker_build_posts_one_card_naming_the_failed_job_and_step(monkeypatch):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda card, webhook, dry_run: posted.append(card))
+    check = {"id": 30, "name": "check-upstream", "conclusion": "success", "html_url": "https://example/jobs/30"}
+    HANDLER.cmd_docker_build_failure(args(), FakeGitHub(docker_run(), [check, build_job()]))
+    assert len(posted) == 1
+    header = posted[0]["card"]["header"]
+    assert header["title"]["content"] == "Docker Build & Push: FAILED" and header["template"] == "red"
+    content = markdown(posted[0])
+    assert "- [build-and-push](https://example/jobs/40) at `Build and push`" in content
+    assert "check-upstream" not in content
+    assert "Scheduled rebuild" in json.dumps(posted[0])
+
+
+def test_push_triggered_build_failure_names_its_branch():
+    card = HANDLER.render_docker_build_failure(docker_run(event="push", head_branch="main"), [build_job()])
+    assert "push to main" in json.dumps(card)
+
+
+def test_docker_build_notifier_skips_a_run_without_failed_jobs(monkeypatch, capsys):
+    posted = []
+    monkeypatch.setattr(HANDLER, "post_card", lambda *values: posted.append(values))
+    HANDLER.cmd_docker_build_failure(args(), FakeGitHub(docker_run(), [build_job("success")]))
+    assert posted == []
+    assert "no failed job" in capsys.readouterr().out
+
+
+def test_docker_build_workflow_reports_only_failed_automatic_builds():
+    workflow = (SCRIPT_DIR.parents[0] / "docker-build.yml").read_text()
+    job = workflow.split("\n  notify-build-failure:\n", 1)[1]
+    assert "needs: [build-and-push]" in job
+    assert "needs.build-and-push.result == 'failure'" in job
+    assert "github.event_name != 'workflow_dispatch'" in job
+    assert "github.repository == 'radixark/miles'" in job
+    assert "secrets.LARK_WEBHOOK" in job and "lark_notify.py docker-build-failure" in job
+    assert "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683" in job
+    assert "persist-credentials: false" in job
+    # lark_notify.py imports ci_failure_analysis, so the sparse checkout must carry both
+    for relative in (".github/workflows/scripts/lark_notify.py", ".github/workflows/scripts/ci_failure_analysis.py"):
+        assert f"\n            {relative}\n" in job
+    assert "write" not in job.split("steps:", 1)[0]

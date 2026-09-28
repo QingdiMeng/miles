@@ -58,14 +58,6 @@ class WeightVersionsPerCall:
 
 
 @dataclass(frozen=True)
-class AdapterRef:
-    """Which LoRA adapter a sample is bound to (training slot routing, inference lora_path); ``None`` = no adapter."""
-
-    name: str
-    slot: int
-
-
-@dataclass(frozen=True)
 class RewardSpec:
     """Per-sample spec of how the response is scored; intentionally decoupled from adapter routing."""
 
@@ -123,13 +115,14 @@ class Sample:
     # metadata used during training, e.g., what loss to use for this sample.
     train_metadata: dict | None = None
 
-    # MultiLoRA: which adapter this sample trains/infers with
-    adapter: AdapterRef | None = None
-    # Per-sample reward dispatch override (e.g., per-adapter RM in multi-LoRA)
+    # Per-sample reward dispatch override
     reward_spec: RewardSpec | None = None
 
     # Per-sample routing key for the router's consistent_hashing policy (sent as X-SMG-Routing-Key)
     routing_key: str | None = None
+
+    # Which policy model this sample trains and generates on; None when the run trains one policy
+    trainer_model_id: str | None = None
 
     non_generation_time: float = 0.0  # time spent in non-generation steps
 
@@ -347,6 +340,7 @@ class Sample:
         self.rollout_routed_experts = None
         self.rollout_indexer_topk = None
         self.status = Sample.Status.ABORTED
+        self.trainer_model_id = None
         self.non_generation_time = 0.0
         self.spec_info = Sample.SpecInfo()
         self.prefix_cache_info = Sample.PrefixCacheInfo()
