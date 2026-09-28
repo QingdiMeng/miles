@@ -36,7 +36,9 @@ def test_hf_mlp_selection_matches_existing_native_export(multimodal):
         hf_prefix="language_model.layers.1.mlp.experts.",
         **{f"w{projection}_{factor}": tensor for projection in (1, 2, 3) for factor in ("A", "B")},
     )
-    plan = _export_dense_mlp(dense, _LocalGather()) + _export_experts(experts, _LocalGather())
+    plan = _export_dense_mlp(dense, _LocalGather(), hf_checkpoint="/unused") + _export_experts(
+        experts, _LocalGather(), hf_checkpoint="/unused"
+    )
     weights = {name: value() if callable(value) else value for name, value in plan}
     assert "language_model.layers.0.mlp.gate_up_proj" in get_adapter_target_modules(weights)
     assert weights["language_model.layers.0.mlp.gate_up_proj.lora_A.weight"] is tensor
