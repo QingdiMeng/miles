@@ -10,7 +10,7 @@ import pytest
 import ray
 from sglang_router.launch_router import RouterArgs
 
-from tests.fast.fixtures.args_fixtures import parser_defaults
+from tests.fast.fixtures.args_fixtures import parser_defaults, resolve_parse_boundary_configs
 
 from miles.utils import object_store
 from miles.utils.types import Sample
@@ -88,7 +88,6 @@ def make_args(**overrides: Any) -> Namespace:
         critic_num_gpus_per_node=0,
         use_critic=False,
         megatron_config=None,
-        critic_train_only=False,
         # sglang router
         sglang_router_ip=None,
         sglang_router_port=None,
@@ -182,7 +181,7 @@ def make_args(**overrides: Any) -> Namespace:
     defaults.setdefault("starts_inference_engines", not defaults["debug_train_only"] or defaults["eval_num_gpus"] > 0)
     if defaults["debug_train_only"]:
         defaults["rollout_num_gpus"] = 0
-    return Namespace(**{**parser_defaults(), **defaults})
+    return resolve_parse_boundary_configs(Namespace(**{**parser_defaults(), **defaults}))
 
 
 def make_sample(
