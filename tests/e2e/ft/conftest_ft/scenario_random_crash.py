@@ -76,7 +76,9 @@ def run_ci(
     ft_mode: FTTestMode = resolve_mode(mode)
     if fully_async:
         assert_mode_supports_fully_async(ft_mode, mode=mode)
-    triggers = fault_triggers.resolve(requested_triggers, has_real_rollout=ft_mode.has_real_rollout)
+    triggers = fault_triggers.resolve(
+        requested_triggers, has_real_rollout=ft_mode.has_real_rollout, trainer_ft="train" in ft_mode.ft_components
+    )
 
     config = create_soak_config(command_utils.default_config())
     test_name: str = TEST_NAME + fault_triggers.compute_test_name_suffix(triggers)
