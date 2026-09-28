@@ -1,4 +1,5 @@
 import re
+import os
 from argparse import Namespace
 from collections.abc import Callable
 from pathlib import Path
@@ -89,14 +90,33 @@ def ready_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def wandb_capture_args(capture_args: Namespace, monkeypatch: pytest.MonkeyPatch) -> Namespace:
+def wandb_capture_client(monkeypatch: pytest.MonkeyPatch) -> Namespace:
     from miles.utils.audit_utils.config_snapshot.generated_values import GENERATED_VALUES_ENV_VAR
     from miles.utils.tracking_utils import wandb_utils
 
     monkeypatch.delenv(GENERATED_VALUES_ENV_VAR, raising=False)
-    monkeypatch.setattr(wandb_utils.wandb, "init", lambda **kwargs: None)
+    for name in ("WANDB_RUN_ID", "WANDB_RESUME", "WANDB_RESUME_FROM", "WANDB_FORK_FROM", "WANDB_SWEEP_ID", "WANDB_LAUNCH"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("WANDB_MODE", "offline")
+    client = Namespace(
+        run=Namespace(id="automatic-id", resumed=False, settings=Namespace(resume=None, resume_from=None, fork_from=None)),
+        setup=Namespace(settings=Namespace(run_id=None, resume=None, resume_from=None, fork_from=None, sweep_id=None, launch=False)),
+    )
+
+    def init(**kwargs: Any) -> Namespace:
+        client.run.id = kwargs.get("id") or os.environ.get("WANDB_RUN_ID") or client.run.id
+        wandb_utils.wandb.run = client.run
+        return client.run
+
+    monkeypatch.setattr(wandb_utils.wandb, "init", init)
+    monkeypatch.setattr(wandb_utils.wandb, "setup", lambda: client.setup)
     monkeypatch.setattr(wandb_utils.wandb, "define_metric", lambda *args, **kwargs: None)
-    monkeypatch.setattr(wandb_utils.wandb, "run", Namespace(id="automatic-id"))
+    monkeypatch.setattr(wandb_utils.wandb, "run", None)
+    return client
+
+
+@pytest.fixture
+def wandb_capture_args(capture_args: Namespace, wandb_capture_client: Namespace) -> Namespace:
     vars(capture_args).update(
         env_report=None,
         use_wandb=True,

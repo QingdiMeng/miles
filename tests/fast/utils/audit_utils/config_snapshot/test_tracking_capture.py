@@ -5,12 +5,50 @@ import pytest
 
 from miles.utils.audit_utils.config_snapshot.generated_values import GENERATED_VALUES_ENV_VAR, read_generated_values
 from miles.utils.audit_utils.config_snapshot.storage import ConfigSnapshotStorage
+from miles.utils.audit_utils.config_snapshot.dumper import ConfigSnapshotDumper
+from miles.utils.audit_utils.config_snapshot.converter import ConfigSnapshotConverter
 from miles.utils.external_utils.command_utils.helm_backend.launcher.entrypoint import _resolve_wandb_run_id
-from miles.utils.test_utils.snapshot import SNAPSHOT_RECORD_DIR_ENV_VAR
+from miles.utils.test_utils.snapshot import SNAPSHOT_RECORD_DIR_ENV_VAR, dump_snapshot
+from miles.utils.tracking_utils import wandb_utils
 from miles.utils.tracking_utils.wandb_utils import init_wandb_primary
 
 
 class TestTrackingProvenance:
+    @pytest.mark.parametrize("run_id", ["explicit-one", "explicit-two"])
+    def test_environment_run_ids_remain_literal(
+        self, wandb_capture_args: Namespace, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, run_id: str
+    ) -> None:
+        """An ID selected through WANDB_RUN_ID is never relabeled as SDK-generated randomness."""
+        monkeypatch.setenv("WANDB_RUN_ID", run_id)
+        init_wandb_primary(wandb_capture_args)
+        ConfigSnapshotDumper.dump(stage="train_first_step", config={"args": wandb_capture_args})
+        records = ConfigSnapshotStorage(directory=tmp_path).read()
+        assert wandb_capture_args.wandb_run_id == run_id
+        assert read_generated_values() == []
+        assert run_id in dump_snapshot(ConfigSnapshotConverter.convert(records))
+
+    @pytest.mark.parametrize("source", ["resumed", "resume_settings", "resume_from", "setup_id", "setup_resume", "active_run"])
+    def test_sdk_recovery_and_preconfigured_ids_are_not_generated(
+        self, wandb_capture_args: Namespace, wandb_capture_client: Namespace, tmp_path: Path, source: str
+    ) -> None:
+        """SDK recovery and already configured run identities remain literal even without an explicit args ID."""
+        if source == "resumed":
+            wandb_capture_client.run.resumed = True
+        elif source == "resume_settings":
+            wandb_capture_client.run.settings.resume = "auto"
+        elif source == "resume_from":
+            wandb_capture_client.run.settings.resume_from = "previous-run"
+        elif source == "setup_id":
+            wandb_capture_client.setup.settings.run_id = "automatic-id"
+        elif source == "setup_resume":
+            wandb_capture_client.setup.settings.resume = "auto"
+        else:
+            wandb_utils.wandb.run = wandb_capture_client.run
+        init_wandb_primary(wandb_capture_args)
+        assert wandb_capture_args.wandb_run_id == "automatic-id"
+        assert read_generated_values() == []
+        assert all(record.point.stage != "tracking_config" for record in ConfigSnapshotStorage(directory=tmp_path).read())
+
     @pytest.mark.parametrize("preassigned", [False, True])
     def test_primary_records_only_automatically_generated_ids(
         self, wandb_capture_args: Namespace, tmp_path: Path, preassigned: bool

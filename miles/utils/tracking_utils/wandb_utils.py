@@ -1,6 +1,7 @@
 import logging
 import os
 from copy import deepcopy
+from typing import Any
 
 import wandb
 from wandb.sdk.lib.runid import generate_id
@@ -83,16 +84,39 @@ def init_wandb_primary(args):
         init_kwargs["dir"] = args.wandb_dir
         logger.info(f"W&B logs will be stored in: {args.wandb_dir}")
 
+    snapshot_fresh_id = (
+        ConfigSnapshotDumper.is_enabled()
+        and "id" not in init_kwargs
+        and wandb.run is None
+        and not any(
+            name in os.environ
+            for name in ("WANDB_RUN_ID", "WANDB_RESUME", "WANDB_RESUME_FROM", "WANDB_FORK_FROM", "WANDB_SWEEP_ID", "WANDB_LAUNCH")
+        )
+    )
     wandb.init(**init_kwargs)
 
     _init_wandb_common()
 
     # Set wandb_run_id in args for easy access throughout the training process
-    generated_run_id = args.wandb_run_id is None
     args.wandb_run_id = wandb.run.id
-    if generated_run_id and ConfigSnapshotDumper.is_enabled():
+    if snapshot_fresh_id and _has_fresh_wandb_id(init_kwargs):
         register_generated_value(kind="wandb_run_id", value=args.wandb_run_id)
         ConfigSnapshotDumper.dump(stage="tracking_config", config={"args": args})
+
+
+def _has_fresh_wandb_id(init_kwargs: dict[str, Any]) -> bool:
+    if wandb.run.resumed is not False:
+        return False
+    if any(init_kwargs.get(name) is not None for name in ("id", "resume", "resume_from", "fork_from")):
+        return False
+
+    settings = wandb.setup().settings
+    if settings.run_id is not None or settings.sweep_id is not None or settings.launch:
+        return False
+    return all(
+        item.resume is None and item.resume_from is None and item.fork_from is None
+        for item in (settings, init_kwargs["settings"], wandb.run.settings)
+    )
 
 
 def _compute_config_for_logging(args):
