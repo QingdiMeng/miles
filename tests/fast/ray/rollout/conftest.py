@@ -13,6 +13,10 @@ from sglang_router.launch_router import RouterArgs
 from tests.fast.fixtures.args_fixtures import parser_defaults, resolve_parse_boundary_configs
 
 from miles.utils import object_store
+from miles.utils.args.component_rollout import InferenceRuntimeMutState
+from miles.utils.args.configs.router import RouterConfig
+from miles.utils.args.custom_function import CustomFunctionConfig
+from miles.utils.args.runtime import AllConfig, RolloutConfig
 from miles.utils.types import Sample
 
 
@@ -141,7 +145,6 @@ def make_args(**overrides: Any) -> Namespace:
         seed=42,
         fp16=False,
         use_rollout_indexer_replay=False,
-        env_report=None,
         env_report_interval_seconds=3600.0,
         # checkpoint / data source
         hf_checkpoint="/fake/model",
@@ -174,14 +177,41 @@ def make_args(**overrides: Any) -> Namespace:
         ci_assert_prefill_lag_max=None,
         # dumper (sglang debug dumper integration)
         dumper_enable=False,
-        dumper_inference=False,
     )
     defaults.update(router_defaults)
+    defaults["inference_runtime_mut_state"] = InferenceRuntimeMutState()
     defaults.update(overrides)
     defaults.setdefault("starts_inference_engines", not defaults["debug_train_only"] or defaults["eval_num_gpus"] > 0)
     if defaults["debug_train_only"]:
         defaults["rollout_num_gpus"] = 0
     return resolve_parse_boundary_configs(Namespace(**{**parser_defaults(), **defaults}))
+
+
+def make_rollout_config(**overrides: Any) -> RolloutConfig:
+    """The typed config the rollout executor receives, sliced from ``make_args``."""
+    args = make_args(**overrides)
+    values = vars(args) | _RESOLVED_ROLLOUT_FIELDS | RouterConfig.from_args(args)
+    for name in _CUSTOM_FUNCTION_FIELDS:
+        if isinstance(path := values[name], str):
+            values[name] = CustomFunctionConfig(path=path)
+    return RolloutConfig.model_validate({name: values[name] for name in RolloutConfig.model_fields if name in values})
+
+
+_RESOLVED_ROLLOUT_FIELDS: dict[str, Any] = dict(
+    ci_enable_metrics_capture=False,
+    eval_datasets=[],
+    ckpt_step=None,
+    num_layers=None,
+    raw_fsdp=None,
+    lora_A_init_method="xavier",
+    lora_B_init_method="zero",
+)
+
+_CUSTOM_FUNCTION_FIELDS = [
+    name
+    for name, field in AllConfig.model_fields.items()
+    if field.annotation in {CustomFunctionConfig, CustomFunctionConfig | None}
+]
 
 
 def make_sample(
