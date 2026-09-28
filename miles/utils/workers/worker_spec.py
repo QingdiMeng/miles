@@ -123,6 +123,13 @@ class BaseSpec(FrozenStrictBaseModel, ABC):
     deploy_component: DeployComponent = DeployComponent.PRIMARY
     platform_access: PlatformAccess = PlatformAccess.NONE
 
+    @model_validator(mode="after")
+    def _reject_selector_component(self) -> "BaseSpec":
+        assert (
+            self.deploy_component is not DeployComponent.ALL
+        ), f"pool {self.name} must name the one component it is deployed with, not the selector for all of them"
+        return self
+
     @classmethod
     @abstractmethod
     def slice_configs(cls, args: Any) -> list[Any]: ...
