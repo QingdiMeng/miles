@@ -310,6 +310,8 @@ def parse_args_and_get_parser(
                 "calculate_per_token_loss",
                 "ckpt_step",
                 "clip_grad",
+                "disable_grad_buffers_cpu_backup",
+                "disable_param_buffers_cpu_backup",
                 "finetune",
                 "load",
                 "mtp_loss_scaling_factor",
