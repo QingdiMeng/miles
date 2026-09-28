@@ -10,13 +10,13 @@ from unittest.mock import patch
 
 import pytest
 
+from miles.ray.rollout.rollout_executor import _compute_rollout_function_config
 from miles.rollout.base_types import GenerateFnInput
 from miles.rollout.inference_rollout.compatibility import load_generate_function
 from miles.rollout.inference_rollout.inference_rollout_common import GenerateState
 from miles.rollout.session.config import compute_session_server_config
 from miles.rollout.session.server import SessionServer
 from miles.rollout.session.types import SessionServerInstance
-from miles.ray.rollout.rollout_executor import _compute_rollout_function_config
 from miles.utils.args.component_rollout import InferenceRuntimeMutState
 from miles.utils.args.custom_view import ImmutableNamespace
 from miles.utils.async_utils import run
