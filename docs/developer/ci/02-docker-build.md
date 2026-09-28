@@ -148,6 +148,7 @@ gh workflow run docker-build.yml -f variant=cu13-x86 -f image_tag=custom -f cust
 | `variant` | yes | `cu13` / `cu13-x86` / `cu13-aarch64` / `cu12-x86` / `rocm724-mi35x` / `rocm10-mi35x` |
 | `image_tag` | yes | `dev` / `latest` / `custom` |
 | `custom_tag` | no | tag name; required when `image_tag=custom` |
+| `build_args` | no | space-separated `KEY=VALUE` pairs, each passed to `build.py` as `--build-arg` (e.g. `MILES_COMMIT=<sha> SGLANG_COMMIT=<sha>`); default empty |
 | `dockerfile` | no | path to Dockerfile (default `docker/Dockerfile`) |
 | `simulate_schedule` | no | `true` runs the `check-upstream` poll first (default `false`) |
 

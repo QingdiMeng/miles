@@ -47,6 +47,11 @@ on:
         required: false
         default: 'docker/Dockerfile'
         type: string
+      build_args:
+        description: 'Extra build args, space-separated KEY=VALUE (e.g. MILES_COMMIT=<sha> SGLANG_COMMIT=<sha>)'
+        required: false
+        default: ''
+        type: string
       simulate_schedule:
         description: '[DEBUG] Simulate a scheduled build (runs upstream check)'
         required: false
@@ -232,12 +237,17 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push
+        env:
+          BUILD_ARGS: ${{ inputs.build_args }}
         run: |
+          extra=()
+          for spec in $BUILD_ARGS; do extra+=(--build-arg "$spec"); done
           python3 docker/build.py \
             --variant ${{ inputs.variant || 'cu13' }} \
             --image-tag ${{ inputs.image_tag || 'dev' }} \
             --dockerfile ${{ inputs.dockerfile || 'docker/Dockerfile' }} \
             ${{ inputs.custom_tag && format('--custom-tag {0}', inputs.custom_tag) || '' }} \
+            "${extra[@]}" \
             --push
 
       - name: Build and push cu12-x86 (automatic builds only)
