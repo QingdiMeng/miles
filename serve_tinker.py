@@ -51,10 +51,12 @@ async def serve(args, *, disposer: Disposer):
     handles = create_trainer_handles(args, trainer_configs=trainer_configs)
     resumed = await take_over_trainers(args, handles=handles)
     [actor_config] = [config for config in trainer_configs if config.role == ACTOR_ROLE]
+    actor_args = compute_trainer_config(args, actor_config)
     actor_info = await create_training_model(
-        compute_trainer_config(args, actor_config),
+        actor_args,
         handle=handles[actor_config.trainer_id],
         trainer_id=actor_config.trainer_id,
+        requested_start_rollout_id=actor_args.start_rollout_id,
         resumed=resumed,
     )
     trainer = actor_info.handle
