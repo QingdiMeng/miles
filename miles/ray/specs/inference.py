@@ -175,6 +175,7 @@ def inference_controller_worker_name() -> str:
 
 class RouterSpec(BaseCommandSpec):
     model_cfg: ModelConfig
+    interpreter_prefix: list[str]
 
     @classmethod
     def create(cls, config: Any) -> list[Self]:
@@ -193,7 +194,7 @@ class RouterSpec(BaseCommandSpec):
     def launch_command(self, ctx: LaunchCommandContext) -> str:
         args = ctx.args
         model_cfg = self.model_cfg
-        interpreter_prefix = python_argv_prefix()
+        interpreter_prefix = self.interpreter_prefix
         primary = ctx.self_addrs["primary"]
 
         has_pd_disaggregation = model_cfg.has_pd_disaggregation or args.rollout_external_router_pd
@@ -233,6 +234,7 @@ def _compute_spec_router(args, model_idx: int, model_cfg: ModelConfig) -> Router
     return RouterSpec(
         args=args,
         model_cfg=model_cfg,
+        interpreter_prefix=python_argv_prefix(),
         name=compute_router_pool_id(model_idx),
         port_infos=[
             _compute_router_primary_port_info(args, model_idx=model_idx),
@@ -248,6 +250,8 @@ def _compute_router_primary_port_info(args, model_idx: int) -> PortInfo:
 
 
 class SessionServerSpec(BaseCommandSpec):
+    interpreter_prefix: list[str]
+
     @classmethod
     def create(cls, config: Any) -> Self:
         return _compute_spec_session_server(config)
@@ -265,7 +269,7 @@ class SessionServerSpec(BaseCommandSpec):
 
     def launch_command(self, ctx: LaunchCommandContext) -> str:
         args = ctx.args
-        interpreter_prefix = python_argv_prefix()
+        interpreter_prefix = self.interpreter_prefix
         (router_addrs,) = ctx.pool_addrs[compute_router_pool_id(0)]
         session_config = compute_session_server_config(
             args,
@@ -282,6 +286,7 @@ class SessionServerSpec(BaseCommandSpec):
 def _compute_spec_session_server(args: Any) -> SessionServerSpec:
     return SessionServerSpec(
         args=args,
+        interpreter_prefix=python_argv_prefix(),
         name=SESSION_SERVER_POOL_ID,
         port_infos=[
             _compute_session_server_primary_port_info(args),
@@ -310,6 +315,7 @@ class InferenceEngineSpec(BaseCommandSpec):
     model_cfg: ModelConfig
     server_group_config: ServerGroupConfig
     group_scaling: ServerGroupScalingConfig
+    interpreter_prefix: list[str]
 
     @classmethod
     def create(cls, config: Any) -> list[Self]:
@@ -341,7 +347,7 @@ class InferenceEngineSpec(BaseCommandSpec):
         args = ctx.args
         server_group_config = self.server_group_config
         num_workers_per_cell = self.scheduling(args).num_workers_per_cell
-        interpreter_prefix = python_argv_prefix()
+        interpreter_prefix = self.interpreter_prefix
         dist_init = ctx.self_addrs["dist_init"]
         # TODO: only node 0's seed is used by sglang; node != 0 should get node 0's number
         random_seed = (
@@ -415,6 +421,7 @@ def _compute_spec_inference_engine(
         model_cfg=model_cfg,
         server_group_config=server_group_config,
         group_scaling=group_scaling,
+        interpreter_prefix=python_argv_prefix(),
         name=compute_engine_pool_id(args, model_idx=model_idx, group_index=group_index),
         category=POOL_CATEGORY_INFERENCE_ENGINE,
         deploy_component=DeployComponent.INFERENCE,
