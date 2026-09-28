@@ -16,7 +16,7 @@ import json
 import os
 from typing import Any
 
-from sglang.srt.entrypoints.openai import encoding_dsv4
+from sglang.srt.entrypoints.openai import encoding_dsv4, encoding_dsv41
 from sglang.srt.entrypoints.openai.protocol import Tool
 
 from miles.utils.chat_template_utils.templates import encoding_dsv32
@@ -133,12 +133,24 @@ class DeepSeekV4Family(DeepSeekFamily):
         return None
 
 
+class DeepSeekV41Family(DeepSeekFamily):
+    template = encoding_dsv41
+
+    def _generation_prompt_suffix(self, tail_role: str | None, thinking_token: str) -> str | None:
+        # V4.1 folds tool results into the user turn, so only user/developer tails open an assistant turn.
+        if tail_role in {"user", "developer"}:
+            return _ASSISTANT_SP_TOKEN + thinking_token
+        return None
+
+
 V32 = DeepSeekV32Family()
 V4 = DeepSeekV4Family()
+V41 = DeepSeekV41Family()
 
 _FAMILIES = {
     "deepseek_v32": V32,
     "deepseek_v4": V4,
+    "deepseek_v41": V41,
 }
 
 
