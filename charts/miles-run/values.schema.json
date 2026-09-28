@@ -551,13 +551,13 @@
           },
           "type": "object"
         },
-        "annotations": {
+        "meta": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
         },
-        "meta": {
+        "annotations": {
           "additionalProperties": {
             "type": "string"
           },
