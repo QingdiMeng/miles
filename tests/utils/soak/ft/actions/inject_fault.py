@@ -120,7 +120,11 @@ class InjectFaultForm(BaseCellFaultForm):
         if hook_target == fault_target:
             return self.action
         return ApiServerFaultAction(
-            base_url=self.base_url, cell_id=fault_target.cell_id, rank=fault_target.rank, inner=self.action
+            base_url=self.base_url,
+            cell_id=fault_target.cell_id,
+            rank=fault_target.rank,
+            workers_hash=fault_target.workers_hash,
+            inner=self.action,
         )
 
     async def _read_effect(

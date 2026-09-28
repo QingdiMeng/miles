@@ -291,7 +291,11 @@ class TestInjectFaultFormExecute:
         [(cell_id, command)] = api.hook_posts
         assert cell_id == _ACTOR_0
         assert command.request.action == ApiServerFaultAction(
-            base_url=_BASE_URL, cell_id=_ROLLOUT_0, rank=0, inner=KillProcessAction()
+            base_url=_BASE_URL,
+            cell_id=_ROLLOUT_0,
+            rank=0,
+            workers_hash=rollout.fault_target.workers_hash,
+            inner=KillProcessAction(),
         )
         assert evidence.target == rollout.fault_target
         assert evidence.observed is ObservedCellFaultKind.MISSING
