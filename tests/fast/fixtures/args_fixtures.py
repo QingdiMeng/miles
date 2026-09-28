@@ -98,3 +98,16 @@ def parse_megatron_test_config(*argv: str) -> AllConfig:
     environment = {"RANK": "0", "WORLD_SIZE": "1", "LOCAL_RANK": "0", "MILES_SCRIPT_ENV_REPORT": ""}
     with patch.object(sys, "argv", ["test", *_MEGATRON_TEST_ARGV, *argv]), patch.dict(os.environ, environment):
         return parse_args()
+
+
+def make_trainer_args(*, train_backend: str = "megatron", **values: Any) -> ConfigNamespace:
+    from miles.backends.fsdp_utils.config import FsdpArgsNamespace
+    from miles.backends.megatron_utils.megatron_config import MegatronArgsNamespace
+    from miles.utils.args.configs.backend_fields import TrainerBackendTraitConfig
+    from miles.utils.args.runtime import TrainerConfig
+
+    trainer_fields = TrainerConfig.model_fields.keys() - TrainerBackendTraitConfig.model_fields.keys()
+    backend_cls = MegatronArgsNamespace if train_backend == "megatron" else FsdpArgsNamespace
+    backend = backend_cls(**{name: value for name, value in values.items() if name not in trainer_fields})
+    trainer = {name: value for name, value in values.items() if name in trainer_fields}
+    return ConfigNamespace(**trainer, train_backend=train_backend, backend=backend)
