@@ -16,6 +16,7 @@ from miles.rollout.inference_rollout.inference_rollout_common import GenerateSta
 from miles.rollout.session.config import compute_session_server_config
 from miles.rollout.session.server import SessionServer
 from miles.rollout.session.types import SessionServerInstance
+from miles.utils.args.component_rollout import InferenceRuntimeMutState
 from miles.utils.async_utils import run
 from miles.utils.http_utils import find_available_port, init_http_client
 from miles.utils.misc import SingletonMeta
@@ -218,6 +219,7 @@ def make_args(
     if moe_router_topk is not None:
         args.moe_router_topk = moe_router_topk
 
+    args.inference_runtime_mut_state.set_(InferenceRuntimeMutState(engine_count=1, gpu_count=1))
     init_http_client(args)
     return args
 
