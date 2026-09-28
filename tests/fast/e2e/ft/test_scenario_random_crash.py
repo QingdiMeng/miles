@@ -134,7 +134,8 @@ class TestTheLaunchedTrainArguments:
 
         (launch,) = harness.launches
         parsed = parse_fault_tolerance_args(launch.request.train_args)
-        assert parsed.ft_components == list(mode.ft_components)
+        extra = ["rollout"] if mode.has_real_rollout and "rollout" not in mode.ft_components else []
+        assert parsed.ft_components == [*mode.ft_components, *extra]
         assert parsed.mini_ft_controller_enable
         assert not parsed.namespace.colocate
         assert "rollout" not in parsed.ft_components or parsed.partial_target_weight_update
