@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 import yaml
-from tests.fast.charts.conftest import vendored_dependencies as vendored_dependencies
+from tests.fast.charts.conftest import vendored_dependencies
 from tests.fast.charts.utils import RUN_CHART_DIR, documents_of, requires_helm
 from tests.fast.e2e.external_rollout_script import load_external_rollout_script
 from tests.fast.launch_scripts.sh_harness import REPO_ROOT
@@ -23,6 +23,7 @@ from miles.utils.workers.serving.utils import override_argv, parse_orchestrator_
 from miles.utils.workers.types import ClusterBackend
 
 script = load_external_rollout_script()
+_ = vendored_dependencies
 
 NAMESPACE = "rl"
 RUN_ID = "260101-000000-000"
