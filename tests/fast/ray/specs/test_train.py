@@ -838,8 +838,9 @@ class TestTrainerConfigs:
         specs = specs_trainer_controller(args)
         kwargs = [spec.ctor_kwargs(_controller_context(spec, _controller_providers())) for spec in specs]
 
-        assert [entry["trainer_id"] for entry in kwargs] == ["alpha-actor", "beta-actor"]
-        assert [entry["role"] for entry in kwargs] == ["actor", "actor"]
+        assert [entry["deployment_identity"].trainer_id for entry in kwargs] == ["alpha-actor", "beta-actor"]
+        assert [entry["args"].trainer_id for entry in kwargs] == ["alpha-actor", "beta-actor"]
+        assert [entry["args"].trainer_role for entry in kwargs] == ["actor", "actor"]
 
     def test_a_worker_is_told_which_policy_it_serves_through_its_args(self, tmp_path):
         """The worker namespaces its logs and metrics by this id; a shared one merges the two runs."""
