@@ -20,8 +20,4 @@ class ConfigSnapshotStorage:
         except FileNotFoundError:
             return []
 
-        return [
-            ConfigSnapshotRecord.model_validate_json(path.read_text())
-            for path in paths
-            if path.suffix == ".json"
-        ]
+        return [ConfigSnapshotRecord.model_validate_json(path.read_text()) for path in paths if path.suffix == ".json"]
