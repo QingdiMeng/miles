@@ -37,7 +37,7 @@ async def serve(args, *, disposer: Disposer):
         trainer_token_limit = args.max_tokens_per_gpu // pad_size * pad_size
         max_tokens_per_datum = min(max_tokens_per_datum, trainer_token_limit)
     assert max_tokens_per_datum > 0, "trainer token budget must fit at least one padding block"
-    _worker_manager = init_orchestration_script(args, disposer=disposer)
+    init_orchestration_script(args, disposer=disposer)
 
     capability = get_backend_capability(args)
     await resolve_router_addrs(args, router_providers=compute_router_providers(args, capability=capability))
