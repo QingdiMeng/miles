@@ -69,6 +69,22 @@ def redact_arg(name: str, value: Any) -> Any:
     return _redact_secret_value(value)
 
 
+def redact_config_values(value: Any) -> Any:
+    if isinstance(value, list):
+        return [redact_config_values(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    return {
+        name: redact_config_values(
+            redact_env_vars(item)
+            if name in {"env", "env_vars", "train_env_vars"} and isinstance(item, dict)
+            else redact_arg(name, item)
+        )
+        for name, item in redact_server_info(value).items()
+    }
+
+
 def _redact(value: str) -> str:
     digest = hashlib.sha256(value.encode()).hexdigest()[:_REDACTED_HASH_CHARS]
     return f"{_REDACTED_PREFIX}{digest}"
