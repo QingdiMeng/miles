@@ -1,68 +1,65 @@
 import gc
 import os
 import shutil
+import sys
+from argparse import Namespace
 
 import torch
 import torch.distributed as dist
 from megatron.core.enums import ModelType
-from megatron.training.arguments import parse_args, validate_args
+from megatron.training.arguments import parse_args as megatron_parse_args
 from megatron.training.checkpointing import get_checkpoint_name, get_checkpoint_tracker_filename, save_checkpoint
 from megatron.training.training import get_model
 
 import miles_plugins.mbridge  # noqa: F401
 from mbridge import AutoBridge
-from miles.backends.megatron_utils.arguments import set_default_megatron_args
 from miles.backends.megatron_utils.fp32_param_utils import enforce_marked_param_dtypes
 from miles.backends.megatron_utils.initialize import init
 from miles.backends.megatron_utils.model_provider import get_model_provider_func
 from miles.backends.training_utils.model_companion import ModelCompanionInstallationUtils
-from miles.utils.args.configs.custom_megatron_plugins import Dsv4MegatronPluginsConfig
+from miles.utils.args.runtime import TrainerConfig
+from miles.utils.args.trainer_utils import compute_trainer_config
+from miles.utils.arguments import parse_args
 from miles.utils.logging_utils import configure_logger_raw
 from miles.utils.memory_utils import print_memory
+from miles.utils.workers.serving.utils import override_argv
 
 
-def add_conversion_args(parser):
-    """Add conversion arguments, plus the plugin arguments the model scripts pass through."""
-    Dsv4MegatronPluginsConfig.add_arguments(parser=parser)
-    parser.add_argument("--hf-checkpoint", type=str, required=True, help="HuggingFace model path")
-    parser.add_argument(
-        "--megatron-to-hf-mode",
-        choices=["raw", "bridge"],
-        default="raw",
-        help="The method to convert megatron weights to hugging face weights for SGLang.",
+def get_args() -> TrainerConfig:
+    world_size = int(os.environ["WORLD_SIZE"])
+    conversion_argv = [
+        *sys.argv[1:],
+        "--train-backend",
+        "megatron",
+        "--debug-train-only",
+        "--actor-num-nodes",
+        "1",
+        "--actor-num-gpus-per-node",
+        str(world_size),
+        "--rollout-batch-size",
+        str(world_size),
+        "--num-rollout",
+        "1",
+        "--no-offload-train",
+        "--micro-batch-size",
+        "1",
+        "--save-interval",
+        "1",
+        *_pipeline_parallel_argv(megatron_parse_args(ignore_unknown_args=True), world_size=world_size),
+    ]
+    with override_argv(conversion_argv):
+        args = parse_args()
+
+    [trainer] = args.raw_megatron.trainers
+    trainer_args = compute_trainer_config(args, trainer)
+    print(
+        f"Using pipeline model parallel size: {trainer_args.backend.pipeline_model_parallel_size}, "
+        f"decoder last pipeline num layers: {trainer_args.backend.decoder_last_pipeline_num_layers}"
     )
-    parser.add_argument(
-        "--custom-model-provider-path",
-        type=str,
-        default=None,
-        help=(
-            "Path to a custom model provider function (e.g. for models like Inkling whose mcore "
-            "module structure differs from a plain GPTModel -- model-level embed_norm, custom "
-            "router/shared-experts). When set, the offline mcore model is built by this provider "
-            "(via miles' get_model_provider_func), then the mbridge bridge populates its weights. "
-            "Signature: def provider(pre_process, post_process, vp_stage=None) -> GPTModel."
-        ),
-    )
-    try:
-        parser.add_argument("--padded-vocab-size", type=int, default=None)
-    except Exception:
-        pass
-    return parser
+    return trainer_args
 
 
-def get_args():
-    args = parse_args(add_conversion_args)
-    args = set_default_megatron_args(args)
-
-    args.debug_deterministic_collective = False
-    args.enable_witness = False
-
-    # set to pass megatron validate_args
-    args.save_interval = 1
-    args.micro_batch_size = 1
-    world_size = int(os.environ.get("WORLD_SIZE", "1"))
-    args.global_batch_size = int(os.environ.get("WORLD_SIZE", "1"))
-
+def _pipeline_parallel_argv(args: Namespace, *, world_size: int) -> list[str]:
     assert args.pipeline_model_parallel_size <= args.num_layers, (
         f"Pipeline model parallel size {args.pipeline_model_parallel_size} must be less than or equal to "
         f"number of layers {args.num_layers}."
@@ -82,29 +79,28 @@ def get_args():
         and world_size > args.expert_model_parallel_size
         and not os.environ.get("CONVERT_KEEP_PP1")
     )
-    if auto_pipeline_parallel:
-        pp_size = world_size // args.expert_model_parallel_size
-        while True:
-            args.pipeline_model_parallel_size = pp_size
-            args.decoder_last_pipeline_num_layers = args.num_layers - ceildiv(
-                args.num_layers, args.pipeline_model_parallel_size
-            ) * (args.pipeline_model_parallel_size - 1)
+    if not auto_pipeline_parallel:
+        return []
 
-            if args.decoder_last_pipeline_num_layers > 0:
-                break
+    pp_size = world_size // args.expert_model_parallel_size
+    while True:
+        decoder_last_pipeline_num_layers = args.num_layers - ceildiv(args.num_layers, pp_size) * (pp_size - 1)
 
-            if pp_size % 2 == 0:
-                pp_size //= 2
-            else:
-                raise ValueError(
-                    f"Cannot find a valid pipeline model parallel size for {args.num_layers} layers and {world_size} GPUs."
-                )
-    print(
-        f"Using pipeline model parallel size: {args.pipeline_model_parallel_size}, decoder last pipeline num layers: {args.decoder_last_pipeline_num_layers}"
-    )
+        if decoder_last_pipeline_num_layers > 0:
+            break
 
-    validate_args(args)
-    return args
+        if pp_size % 2 == 0:
+            pp_size //= 2
+        else:
+            raise ValueError(
+                f"Cannot find a valid pipeline model parallel size for {args.num_layers} layers and {world_size} GPUs."
+            )
+    return [
+        "--pipeline-model-parallel-size",
+        str(pp_size),
+        "--decoder-last-pipeline-num-layers",
+        str(decoder_last_pipeline_num_layers),
+    ]
 
 
 def main():
@@ -128,8 +124,11 @@ def main():
         device_id=torch.device(f"cuda:{local_rank}"),
     )
     args = get_args()
+    with args.backend.mutable():
+        args.backend.rank = dist.get_rank()
     init(args)
-    model = get_model(get_model_provider_func(args), ModelType.encoder_or_decoder, wrap_with_ddp=False)
+    with args.backend.mutable():
+        model = get_model(get_model_provider_func(args), ModelType.encoder_or_decoder, wrap_with_ddp=False)
     enforce_marked_param_dtypes(model)
 
     # Load model
@@ -148,8 +147,8 @@ def main():
     save_checkpoint(1, model, None, None, 0)
 
     if dist.get_rank() == 0:
-        source_dir = get_checkpoint_name(args.save, 1, False, return_base_dir=True)
-        target_dir = get_checkpoint_name(args.save, -1, True, return_base_dir=True)
+        source_dir = get_checkpoint_name(args.backend.save, 1, False, return_base_dir=True)
+        target_dir = get_checkpoint_name(args.backend.save, -1, True, return_base_dir=True)
         shutil.move(source_dir, target_dir)
 
     dist.barrier()
@@ -157,7 +156,7 @@ def main():
     # This modification must be the *last* step and after a `dist.barrier`
     # because the higher-level scripts consider this as a signal that the script has been executed successfully
     if dist.get_rank() == 0:
-        tracker_filename = get_checkpoint_tracker_filename(args.save)
+        tracker_filename = get_checkpoint_tracker_filename(args.backend.save)
         with open(tracker_filename, "w") as f:
             f.write("release")
 
