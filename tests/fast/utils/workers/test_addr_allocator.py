@@ -144,3 +144,54 @@ class TestPortAllocator:
         await asyncio.gather(cursors.alloc(engine, node_ip="10.0.0.1"), _tick())
 
         assert ticks == [0, 1, 2]
+
+
+def _probing_engine(taken: set[int]) -> MagicMock:
+    """An actor whose probe returns the first block at or above ``start_port`` clear of ``taken``, like a real host."""
+    engine = MagicMock()
+
+    async def _probe(start_port: int = 15000, count: int = 1):
+        port = start_port
+        while any(p in taken for p in range(port, port + count)):
+            port += 1
+        return port
+
+    engine._get_free_port_block.remote.side_effect = _probe
+    return engine
+
+
+class TestPortAllocatorAcrossCellNodes:
+    async def test_a_master_block_skips_ports_already_taken_on_a_peer_node(self):
+        """A multi-node engine checks its master ports on every host, so a block free only on the head is rejected."""
+        cursors = PortAllocator()
+        head = _probing_engine(taken=set())
+        peer = _probing_engine(taken={20001})  # e.g. a router's prometheus port on that host
+
+        port = await cursors.alloc(head, node_ip="10.0.0.1", consecutive=4, peers=[("10.0.0.2", peer)])
+
+        assert port == 20002
+
+    async def test_a_master_block_advances_every_peer_cursor(self):
+        """Later allocations on a peer node must not land inside the block the engine will check there."""
+        cursors = PortAllocator()
+        head, peer = _probing_engine(taken=set()), _probing_engine(taken=set())
+
+        port = await cursors.alloc(head, node_ip="10.0.0.1", consecutive=54, peers=[("10.0.0.2", peer)])
+        router_port = await cursors.alloc(peer, node_ip="10.0.0.2", consecutive=2)
+
+        assert cursors._next_port_of_ip["10.0.0.1"] == port + 54
+        assert router_port >= port + 54
+
+    async def test_a_peer_that_never_agrees_raises_instead_of_looping(self):
+        """A peer whose probe always lands elsewhere ends the search with an error and moves no cursor."""
+        cursors = PortAllocator()
+        head = _probing_engine(taken=set())
+        peer = MagicMock()
+
+        async def _elsewhere(start_port: int = 15000, count: int = 1):
+            return start_port + 1
+
+        peer._get_free_port_block.remote.side_effect = _elsewhere
+        with pytest.raises(RuntimeError, match="No block of 2 ports is free"):
+            await cursors.alloc(head, node_ip="10.0.0.1", consecutive=2, peers=[("10.0.0.2", peer)])
+        assert cursors._next_port_of_ip == {}

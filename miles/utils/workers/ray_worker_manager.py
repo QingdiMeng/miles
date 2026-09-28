@@ -338,7 +338,10 @@ class _BaseActorManager(Generic[SpecT]):
                 continue
             if port_info.allow_dynamic:
                 port = await self.manager.port_allocator.alloc(
-                    self.actor_handle, node_ip=node_ip, consecutive=port_info.num_consecutive
+                    self.actor_handle,
+                    node_ip=node_ip,
+                    consecutive=port_info.num_consecutive,
+                    peers=await self._cell_peer_nodes(own_node_ip=node_ip) if port_info.mode == "master" else (),
                 )
             else:
                 port = port_info.static_port + (self.parent.cell_index if port_info.offset_by_cell else 0)
@@ -350,6 +353,16 @@ class _BaseActorManager(Generic[SpecT]):
             )
 
         self.self_addrs = allocated
+
+    async def _cell_peer_nodes(self, *, own_node_ip: str) -> list[tuple[str, ray.actor.ActorHandle]]:
+        """One ``(node_ip, actor)`` per other node of this cell; a multi-node engine checks master ports on each."""
+        others = [a.actor_handle for a in self.parent.actors if a is not self]
+        node_ips = await asyncio.gather(*[handle._get_node_ip.remote() for handle in others])
+        peers: dict[str, ray.actor.ActorHandle] = {}
+        for ip, handle in zip(node_ips, others, strict=True):
+            if ip != own_node_ip:
+                peers.setdefault(ip, handle)
+        return list(peers.items())
 
     async def _assert_static_port_is_free(self, *, port: int, port_name: str, node_ip: str) -> None:
         free = await self.actor_handle._is_port_available.remote(port=port)
