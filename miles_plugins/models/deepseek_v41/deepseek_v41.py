@@ -129,8 +129,8 @@ def v41_pipeline_bounds(config, vp_stage):
     if pp == 1:
         return None
     assert config.virtual_pipeline_model_parallel_size in (None, 1), "DeepSeek-V4.1 plugin: no virtual pipeline"
-    assert config.pipeline_model_parallel_layout is None and config.num_layers_in_first_pipeline_stage is None
-    assert config.num_layers_in_last_pipeline_stage is None and config.num_layers % pp == 0
+    assert config.pipeline_model_parallel_layout is None, "DeepSeek-V4.1 plugin: no custom pipeline layout"
+    # Uneven first/last stages (e.g. 40 layers over PP3) are fine: the offset helpers below follow them.
     offset = get_transformer_layer_offset(config, vp_stage)
     return offset + 1, offset + get_num_layers_to_build(config, vp_stage)
 
