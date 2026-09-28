@@ -3,8 +3,12 @@ import threading
 from collections.abc import Coroutine, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from enum import StrEnum
 from typing import Any
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from backports.strenum import StrEnum
 
 from miles.utils.pydantic_utils import FrozenStrictBaseModel
 from miles.utils.test_utils.fault_injector.actions.base import FaultHookContext, FaultHookResources

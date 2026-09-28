@@ -1,5 +1,9 @@
-from enum import StrEnum
 from typing import Annotated, Literal
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from backports.strenum import StrEnum
 
 from pydantic import Discriminator, Field, model_validator
 
