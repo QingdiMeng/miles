@@ -132,7 +132,7 @@ async def wait_session_server_ready(args, *, provider: BaseWorkerProvider | None
                     owner=f"session/{instance.instance_id}",
                     host=addr.host,
                     port=addr.port,
-                    dynamic_host=args.session_server_ip is None,
+                    dynamic_host=True,
                     dynamic_port=args.session_server_port is None,
                     external_host=(
                         addr.host

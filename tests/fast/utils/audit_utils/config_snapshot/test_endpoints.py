@@ -67,7 +67,9 @@ class TestAllocatedEndpointNormalization:
             SnapshotEndpointNormalizer.create([make_endpoint_record(), make_endpoint_record(port=31000)])
 
     @pytest.mark.parametrize("generation_field", ["deploy_instance_id", "name"])
-    def test_new_deployment_generations_can_reallocate_ports(self, make_endpoint_record: Callable, generation_field: str) -> None:
+    def test_new_deployment_generations_can_reallocate_ports(
+        self, make_endpoint_record: Callable, generation_field: str
+    ) -> None:
         """A restarted deployment may legitimately allocate a different address."""
         first = make_endpoint_record()
         second = make_endpoint_record(port=31000)
