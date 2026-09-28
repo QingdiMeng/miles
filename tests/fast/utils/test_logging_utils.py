@@ -32,7 +32,7 @@ def _worker_class_paths() -> list[str]:
             if name.endswith("_WORKER_CLASS"):
                 paths.add(value)
             elif name.endswith("_CLASSES") and isinstance(value, dict):
-                paths.update(value.values())
+                paths.update(path for path in value.values() if isinstance(path, str))
 
     assert paths, f"no worker classes found in {SPECS_PACKAGE}"
     return sorted(paths)
