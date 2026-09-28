@@ -112,7 +112,10 @@ def _make_spec(
 ) -> BaseServeSpec:
     return FakeServeSpec(
         name=name,
-        port_infos=[PortInfo(name="master", static_port=9000, mode="master", allow_dynamic=True), DEFAULT_RPC_PORT_INFO],
+        port_infos=[
+            PortInfo(name="master", static_port=9000, mode="master", allow_dynamic=True),
+            DEFAULT_RPC_PORT_INFO,
+        ],
         env_vars=env_var if env_var is not None else (lambda _ctx: {}),
         fixed_scheduling=SchedulingSpec(
             num_cells=num_cells,

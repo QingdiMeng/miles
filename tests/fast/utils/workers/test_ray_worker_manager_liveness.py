@@ -26,7 +26,10 @@ _WORKER_CLASS_PATH = f"{DemoWorker.__module__}.{DemoWorker.__qualname__}"
 def _make_spec(name: str, *, num_cells: int = 1, num_workers_per_cell: int = 1) -> BaseServeSpec:
     return FakeServeSpec(
         name=name,
-        port_infos=[PortInfo(name="master", static_port=9000, mode="master", allow_dynamic=True), DEFAULT_RPC_PORT_INFO],
+        port_infos=[
+            PortInfo(name="master", static_port=9000, mode="master", allow_dynamic=True),
+            DEFAULT_RPC_PORT_INFO,
+        ],
         fixed_scheduling=SchedulingSpec(
             num_cells=num_cells, num_workers_per_cell=num_workers_per_cell, num_gpus_per_worker=0
         ),

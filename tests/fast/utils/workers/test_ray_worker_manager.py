@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 from tests.fast.utils.workers.conftest import worker_manager_args
-from tests.fast.utils.workers.fake_specs import FakeCommandSpec
 from tests.fast.utils.workers.fake_ray import EVENT_CREATE, EVENT_KILL, FakeRayCluster
+from tests.fast.utils.workers.fake_specs import FakeCommandSpec
 
 from miles.ray.placement_group import PlacementGroupInfo
 from miles.utils.test_utils.fault_injector.actions.process import KillProcessAction
