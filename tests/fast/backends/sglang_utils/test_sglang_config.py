@@ -7,8 +7,10 @@ from tests.fast.fixtures.sglang_config_fixtures import resolve_sglang_config, re
 
 from miles.backends.sglang_utils.sglang_api_client import WorkerType
 from miles.backends.sglang_utils.sglang_config import (
+    ModelConfig,
     ServerGroupConfig,
     ServerGroupScalingConfig,
+    SglangConfig,
     _compute_megatron_num_gpus,
     _compute_rollout_offset,
 )
@@ -702,3 +704,23 @@ class TestSglangConfigFileArg:
         cfg = resolve_sglang_config(_make_args(sglang_config=encode_pseudo_file(self._YAML)))
 
         assert [model.name for model in cfg.models] == ["actor"]
+
+
+class TestCommonValue:
+    def test_groups_that_agree_share_their_override(self):
+        """Every engine group overriding a field to the same value yields that value."""
+        group = ServerGroupConfig(
+            worker_type=WorkerType.REGULAR, num_gpus_per_engine=1, needs_offload=False, overrides={"x": 2}
+        )
+        model = ModelConfig(name="actor", model_path=None, server_groups=[group, group], update_weights=True)
+
+        assert SglangConfig(models=[model], base_args={"x": 1}).common_value("x") == 2
+
+    def test_a_config_without_engine_groups_reads_the_cli_value(self):
+        """External engines leave no local engine group, so the CLI value is the common value."""
+        assert SglangConfig(models=[], base_args={"x": 1}).common_value("x") == 1
+
+    def test_a_field_nobody_declares_is_rejected(self):
+        """Reading an unknown field fails instead of returning a default."""
+        with pytest.raises(AttributeError, match="No common field 'y'"):
+            SglangConfig(models=[], base_args={"x": 1}).common_value("y")
