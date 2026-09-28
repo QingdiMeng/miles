@@ -30,6 +30,7 @@ from examples.experimental.verifiers.verifiers_rollout import (
 from tests.fast.train_parallel_config_utils import make_train_parallel_config
 
 from miles.rollout.base_types import BaseRolloutFn, RolloutFnConstructorInput
+from miles.utils.args.custom_view import ImmutableNamespace
 from miles.utils.types import Sample
 
 
@@ -540,7 +541,7 @@ def test_eval_args_clear_training_prompt_cap_and_preserve_other_fallbacks():
         rollout_max_response_len=8,
     )
 
-    eval_args = _make_eval_args(args)
+    eval_args = _make_eval_args(ImmutableNamespace.model_validate(vars(args)))
 
     assert eval_args.rollout_max_context_len == 128
     assert eval_args.rollout_max_prompt_len is None
