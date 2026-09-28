@@ -58,13 +58,14 @@ class TestCheckpointTrainingProvenance:
 
         assert result == (0, expected, False)
 
-    def test_loading_hf_weights_preserves_non_finetune_rollout_numbering(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    @pytest.mark.parametrize("finetune", [False, True])
+    def test_loading_hf_weights_never_claims_restored_training_progress(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, finetune: bool
     ) -> None:
-        """HF loading preserves the existing non-finetune rollout numbering."""
+        """HF weights initialize a model without restoring any completed rollout."""
         (tmp_path / "config.json").write_text("{}")
         args = make_trainer_args(
-            load=str(tmp_path), finetune=False, ckpt_step=None, lora_rank=0, lora_adapter_path=None
+            load=str(tmp_path), finetune=finetune, ckpt_step=None, lora_rank=0, lora_adapter_path=None
         )
         monkeypatch.setattr(checkpoint, "_load_checkpoint_hf", lambda **_kwargs: (0, 0))
 
@@ -77,8 +78,9 @@ class TestCheckpointTrainingProvenance:
             args=args,
         )
 
-        assert result == (0, True, False)
+        assert result == (0, False, False)
 
+    @pytest.mark.parametrize("source", ["native", "hf"])
     @pytest.mark.parametrize(
         ("adapter_result", "expected"),
         [
@@ -92,11 +94,15 @@ class TestCheckpointTrainingProvenance:
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        source: str,
         adapter_result: tuple[bool, int | None, bool],
         expected: bool,
     ) -> None:
         """Adapter weights alone cannot be mistaken for a saved iteration-zero training state."""
-        (tmp_path / "latest_checkpointed_iteration.txt").write_text("release")
+        if source == "native":
+            (tmp_path / "latest_checkpointed_iteration.txt").write_text("release")
+        else:
+            (tmp_path / "config.json").write_text("{}")
         args = make_trainer_args(
             load=str(tmp_path),
             finetune=True,
@@ -106,6 +112,7 @@ class TestCheckpointTrainingProvenance:
             no_load_optim=False,
         )
         monkeypatch.setattr(checkpoint, "_load_checkpoint_megatron", lambda **_kwargs: (0, 123))
+        monkeypatch.setattr(checkpoint, "_load_checkpoint_hf", lambda **_kwargs: (0, 0))
         monkeypatch.setattr(checkpoint, "load_lora_adapter", lambda *_args, **_kwargs: adapter_result)
 
         result = checkpoint.load_checkpoint(
