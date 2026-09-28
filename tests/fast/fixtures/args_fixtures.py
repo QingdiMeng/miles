@@ -39,6 +39,11 @@ _RESOLVED_AFTER_PARSING: dict[str, Any] = dict(
 )
 
 
+class ConfigNamespace(argparse.Namespace):
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
+        return iter(vars(self).items())
+
+
 @contextlib.contextmanager
 def _with_relaxed_parser_required_args(parser: argparse.ArgumentParser) -> Iterator[None]:
     required = [action for action in parser._actions if action.required]

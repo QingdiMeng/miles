@@ -16,12 +16,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.fast.fixtures.args_fixtures import ConfigNamespace
+
 from miles.utils.dp_schedule import TrainParallelConfig, build_dp_schedule
-
-
-class _RolloutConfig(SimpleNamespace):
-    def __iter__(self):
-        return iter(vars(self).items())
 
 
 def make_args(
@@ -32,7 +29,7 @@ def make_args(
     balance_data=False,
     balance_by_flops=False,
 ):
-    return _RolloutConfig(
+    return ConfigNamespace(
         micro_batch_size=micro_batch_size,
         use_dynamic_batch_size=use_dynamic_batch_size,
         max_tokens_per_gpu=max_tokens_per_gpu,
