@@ -2,7 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+from pydantic import TypeAdapter
 
+from miles.utils.args.configs.lora import LoraConfig
 from miles.utils.lora.hf_lora_targets import resolve_hf_lora_targets
 from miles.utils.lora.utils import get_adapter_target_modules
 from miles_plugins.models.inkling.lora import _export_dense_mlp, _export_experts, resolve_inkling_adapter_targets
@@ -52,3 +54,11 @@ def test_legacy_config_selects_the_same_native_adapters():
     native = dict(model_type="inkling_text", mlp_layer_types=["dense", "sparse"], n_shared_experts=1)
     assert resolve_hf_lora_targets(legacy) == resolve_hf_lora_targets(native)
     resolve_inkling_adapter_targets(legacy, resolve_hf_lora_targets(legacy))
+
+
+def test_native_adapter_selector_is_a_valid_configured_adapter_target():
+    """The resolved native selector must validate as the configuration's adapter targets."""
+    config = dict(model_type="inkling_text", mlp_layer_types=["dense", "sparse"], n_shared_experts=0)
+    targets = resolve_inkling_adapter_targets(config, resolve_hf_lora_targets(config))
+    annotation = LoraConfig.model_fields["lora_adapter_targets"].annotation
+    assert TypeAdapter(annotation).validate_python(targets) == targets

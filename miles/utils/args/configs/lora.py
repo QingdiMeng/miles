@@ -1,3 +1,5 @@
+from typing import Literal
+
 from miles.utils.args.schema import A, Arg, BaseConfig
 
 
@@ -8,7 +10,7 @@ class LoraConfig(BaseConfig):
     lora_B_init_method: str
     multi_lora: bool
     hf_lora_targets: list[str] | None = None
-    lora_adapter_targets: list[str] | None = None
+    lora_adapter_targets: list[str] | Literal["all-linear"] | None = None
 
     sglang_lora_use_virtual_experts: A[
         bool,
