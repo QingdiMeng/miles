@@ -784,7 +784,14 @@ class TestBuildTrainEnvVars:
             config=command_utils.ExecuteTrainConfig(),
         )
 
-        assert list(env) == ["PYTHONUNBUFFERED", "CUDA_DEVICE_MAX_CONNECTIONS", "NCCL_NVLS_ENABLE", "MASTER_ADDR"]
+        assert list(env) == [
+            "PYTHONUNBUFFERED",
+            "MILES_UPDATE_SNAPSHOTS",
+            "MILES_SNAPSHOT_RECORD_DIR",
+            "CUDA_DEVICE_MAX_CONNECTIONS",
+            "NCCL_NVLS_ENABLE",
+            "MASTER_ADDR",
+        ]
 
     def test_omits_the_connection_limit_for_fsdp(self):
         """Capping the connections breaks FSDP's computation and communication overlap."""
