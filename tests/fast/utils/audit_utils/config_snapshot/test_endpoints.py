@@ -66,12 +66,13 @@ class TestAllocatedEndpointNormalization:
         with pytest.raises(ValueError, match="Conflicting allocated"):
             SnapshotEndpointNormalizer.create([make_endpoint_record(), make_endpoint_record(port=31000)])
 
-    def test_new_deployment_generations_can_reallocate_ports(self, make_endpoint_record: Callable) -> None:
+    @pytest.mark.parametrize("generation_field", ["deploy_instance_id", "name"])
+    def test_new_deployment_generations_can_reallocate_ports(self, make_endpoint_record: Callable, generation_field: str) -> None:
         """A restarted deployment may legitimately allocate a different address."""
         first = make_endpoint_record()
         second = make_endpoint_record(port=31000)
         second = second.model_copy(
-            update={"context": second.context.model_copy(update={"deploy_instance_id": "next", "capture_id": "next"})}
+            update={"context": second.context.model_copy(update={generation_field: "next", "capture_id": "next"})}
         )
         assert len(ConfigSnapshotConverter.convert([first, second]).processes) == 2
 

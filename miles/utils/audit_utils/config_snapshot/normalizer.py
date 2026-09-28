@@ -83,12 +83,12 @@ def normalized_source_name(source: ProcessIdentity) -> str:
 
 
 def validate_generated_values(records: list[ConfigSnapshotRecord]) -> None:
-    observed: dict[tuple[str, str, str, str], str] = {}
+    observed: dict[tuple[str, str, str, str, str], str] = {}
     for record in records:
         for entry in record.generated_values:
             if _normalize_generated_values(record.config, values=[entry]) == record.config:
                 continue
-            key = (record.context.run_uuid, record.context.deploy_instance_id, entry.kind, entry.name)
+            key = (record.context.name, record.context.run_uuid, record.context.deploy_instance_id, entry.kind, entry.name)
             if key in observed and observed[key] != entry.value:
                 raise ValueError(f"Conflicting generated snapshot value for {key}")
             observed[key] = entry.value

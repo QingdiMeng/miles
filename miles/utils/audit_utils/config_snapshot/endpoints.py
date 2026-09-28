@@ -7,13 +7,13 @@ from miles.utils.audit_utils.config_snapshot.models import ConfigSnapshotAllocat
 
 @dataclass(frozen=True)
 class SnapshotEndpointNormalizer:
-    by_generation: dict[tuple[str, str], dict[str, ConfigSnapshotAllocatedEndpoint]]
+    by_generation: dict[tuple[str, str, str], dict[str, ConfigSnapshotAllocatedEndpoint]]
 
     @classmethod
     def create(cls, records: list[ConfigSnapshotRecord]) -> "SnapshotEndpointNormalizer":
-        by_generation: dict[tuple[str, str], dict[str, ConfigSnapshotAllocatedEndpoint]] = {}
+        by_generation: dict[tuple[str, str, str], dict[str, ConfigSnapshotAllocatedEndpoint]] = {}
         for record in records:
-            scope = (record.context.run_uuid, record.context.deploy_instance_id)
+            scope = (record.context.name, record.context.run_uuid, record.context.deploy_instance_id)
             endpoints = by_generation.setdefault(scope, {})
             for endpoint in record.allocated_endpoints:
                 if endpoint.owner in endpoints and endpoints[endpoint.owner] != endpoint:
@@ -23,7 +23,9 @@ class SnapshotEndpointNormalizer:
 
     def normalize(self, record: ConfigSnapshotRecord) -> JsonValue:
         config = record.config
-        endpoints = self.by_generation.get((record.context.run_uuid, record.context.deploy_instance_id), {})
+        endpoints = self.by_generation.get(
+            (record.context.name, record.context.run_uuid, record.context.deploy_instance_id), {}
+        )
         if not endpoints or not isinstance(config, dict) or not isinstance(args := config.get("args"), dict):
             return config
         args = dict(args)
