@@ -3,9 +3,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import Enum
 from importlib import import_module
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 import torch
+from pydantic import BeforeValidator, PlainSerializer
 from pydantic_core import core_schema
 
 
@@ -98,3 +99,10 @@ class _ConfigNamespaceValueCodec:
         if set(value) == {"__tuple__"}:
             return tuple(_ConfigNamespaceValueCodec.deserialize(item) for item in value["__tuple__"])
         return {name: _ConfigNamespaceValueCodec.deserialize(item) for name, item in value.items()}
+
+
+ConfigNamespaceValues = Annotated[
+    dict[str, Any],
+    BeforeValidator(_ConfigNamespaceValueCodec.deserialize),
+    PlainSerializer(_ConfigNamespaceValueCodec.serialize, when_used="json"),
+]

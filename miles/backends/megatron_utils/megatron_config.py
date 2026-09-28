@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Literal
 import pydantic
 import yaml
 
-from miles.utils.args.enhanced_argparse_namespace import EnhancedArgparseNamespace
+from miles.utils.args.enhanced_argparse_namespace import ConfigNamespaceValues, EnhancedArgparseNamespace
 from miles.utils.file_arg_utils import resolve_file_arg
 from miles.utils.megatron_args_utils import compute_trainer_num_cells
 from miles.utils.pydantic_utils import FrozenStrictBaseModel
@@ -229,7 +229,7 @@ class MegatronTrainerConfig(FrozenStrictBaseModel):
 
 class MegatronConfig(FrozenStrictBaseModel):
     trainers: list[MegatronTrainerConfig]
-    base_args: dict[str, Any] = {}
+    base_args: ConfigNamespaceValues = {}
 
     @classmethod
     def add_arguments(cls, parser: argparse.ArgumentParser) -> None:
