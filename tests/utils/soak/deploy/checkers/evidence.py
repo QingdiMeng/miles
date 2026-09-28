@@ -8,8 +8,12 @@ from tests.utils.soak.deploy.types import DEPLOYMENT_TARGET_KIND
 def project_hot_restart_evidence(events: list[SoakEvent], *, release: str) -> HotRestartEvidence:
     recorder = SnapshotRecorder(release=release)
     for event in events:
-        if isinstance(event, SoakObservationEvent) and (details := event.details) is not None:
+        if not isinstance(event, SoakObservationEvent):
+            continue
+        if (details := event.details) is not None:
             recorder.record(details.cluster)
+        elif event.errors:
+            recorder.record_failed_read()
 
     applied = [
         action
