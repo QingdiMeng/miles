@@ -109,7 +109,7 @@ class HotRestartForm(BaseSoakActionForm):
         finally:
             if not launcher.done():
                 launcher.cancel()
-            await asyncio.gather(launcher, return_exceptions=True)
+                await asyncio.gather(launcher, return_exceptions=True)
 
     async def _launch(self, *, request: SoakActionRequest, spec: HotRestartLaunchSpec) -> LaunchOutcome:
         return await note_launch_outcome(
