@@ -6729,7 +6729,6 @@ schema:
           - indep_dp
           - delay_split_train_data_by_dp
           - allgather_cp
-          - low_memory_resume
           - mfu_peak_tflops
           - recompute_logprobs_via_prefill
           - custom_agent_function_path
@@ -6894,6 +6893,7 @@ schema:
           - save_interval
           - async_save
           - seed
+          - low_memory_resume
           - distributed_backend
           - distributed_timeout_minutes
           - eval_interval
@@ -8810,9 +8810,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - ray
+            $set:
             - kubernetes
+            - ray
           const: null
           default: ray
           dest: cluster_backend
@@ -8828,7 +8828,7 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
+            $set:
             - ray
             - rpc
           const: null
@@ -8847,11 +8847,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
+            $set:
             - all
+            - inference
             - primary
             - trainer
-            - inference
           const: null
           default: all
           dest: deploy_component
@@ -9070,8 +9070,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cpu
-          - disk
+            $set:
+            - cpu
+            - disk
           const: null
           default: cpu
           dest: offload_train_target
@@ -9109,11 +9110,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - fp32
-          - bf16
-          - fp16
-          - fp8e4m3
-          - fp8e5m2
+            $set:
+            - bf16
+            - fp16
+            - fp32
+            - fp8e4m3
+            - fp8e5m2
           const: null
           default: fp32
           dest: stream_optimizer_state_moment_dtype
@@ -9168,8 +9170,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cpu
-          - gpu
+            $set:
+            - cpu
+            - gpu
           const: null
           default: cpu
           dest: colocate_memory_peak_device
@@ -9289,8 +9292,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - megatron
-          - fsdp
+            $set:
+            - fsdp
+            - megatron
           const: null
           default: megatron
           dest: train_backend
@@ -9305,8 +9309,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - thd
-          - bshd
+            $set:
+            - bshd
+            - thd
           const: null
           default: thd
           dest: qkv_format
@@ -9321,8 +9326,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - fla
-          - flashqla
+            $set:
+            - fla
+            - flashqla
           const: null
           default: fla
           dest: linear_attention_backend
@@ -9338,8 +9344,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - torch
-          - flashinfer
+            $set:
+            - flashinfer
+            - torch
           const: null
           default: torch
           dest: miles_dsa_topk_backend
@@ -9452,8 +9459,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - raw
-          - bridge
+            $set:
+            - bridge
+            - raw
           const: null
           default: raw
           dest: megatron_to_hf_mode
@@ -9467,8 +9475,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - megatron
-          - tilelang
+            $set:
+            - megatron
+            - tilelang
           const: null
           default: tilelang
           dest: dsa_attention_backend
@@ -9594,19 +9603,6 @@ schema:
           nargs: 0
           option_strings:
           - --allgather-cp
-          required: false
-          type: null
-      - $class: argparse._StoreTrueAction
-        state:
-          choices: null
-          const: true
-          default: false
-          dest: low_memory_resume
-          help: 'Allocate optimizer states on CPU during checkpoint loading to prevent GPU OOM on memory spike. '
-          metavar: null
-          nargs: 0
-          option_strings:
-          - --low-memory-resume
           required: false
           type: null
       - $class: argparse._StoreAction
@@ -9782,9 +9778,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - ray
+            $set:
             - mooncake
+            - ray
           const: null
           default: ray
           dest: object_store_backend
@@ -9827,8 +9823,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - retry
-          - drop
+            $set:
+            - drop
+            - retry
           const: null
           default: drop
           dest: async_unused_samples_handler
@@ -9889,9 +9886,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - abort
-          - retract
-          - in_place
+            $set:
+            - abort
+            - in_place
+            - retract
           const: null
           default: retract
           dest: pause_generation_mode
@@ -9997,9 +9995,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - broadcast
-          - p2p
-          - disk-delta
+            $set:
+            - broadcast
+            - disk-delta
+            - p2p
           const: null
           default: broadcast
           dest: update_weight_transfer_mode
@@ -10047,8 +10046,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - xor
-          - overwrite
+            $set:
+            - overwrite
+            - xor
           const: null
           default: xor
           dest: update_weight_delta_encoding
@@ -10065,9 +10065,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - xxh3-128
-          - blake3
-          - adler32
+            $set:
+            - adler32
+            - blake3
+            - xxh3-128
           const: null
           default: xxh3-128
           dest: update_weight_delta_checksum
@@ -10292,8 +10293,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - group
-          - sample
+            $set:
+            - group
+            - sample
           const: null
           default: null
           dest: rollout_submission_granularity
@@ -10465,8 +10467,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - rollout
-          - train
+            $set:
+            - rollout
+            - train
           const: null
           default: null
           dest: ft_components
@@ -11241,8 +11244,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - backpressure
-          - skip
+            $set:
+            - backpressure
+            - skip
           const: null
           default: backpressure
           dest: eval_overflow_policy
@@ -11520,9 +11524,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - policy_loss
-          - sft_loss
-          - custom_loss
+            $set:
+            - custom_loss
+            - policy_loss
+            - sft_loss
           const: null
           default: policy_loss
           dest: loss_type
@@ -11553,10 +11558,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - k1
-          - k2
-          - k3
-          - low_var_kl
+            $set:
+            - k1
+            - k2
+            - k3
+            - low_var_kl
           const: null
           default: k1
           dest: kl_loss_type
@@ -11571,11 +11577,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - grpo
-          - gspo
-          - reinforce_plus_plus
-          - reinforce_plus_plus_baseline
-          - ppo
+            $set:
+            - grpo
+            - gspo
+            - ppo
+            - reinforce_plus_plus
+            - reinforce_plus_plus_baseline
           const: null
           default: grpo
           dest: advantage_estimator
@@ -12040,6 +12047,19 @@ schema:
           required: false
           type:
             $callable: builtins.int
+      - $class: argparse._StoreTrueAction
+        state:
+          choices: null
+          const: true
+          default: false
+          dest: low_memory_resume
+          help: 'Allocate optimizer states on CPU during checkpoint loading to prevent GPU OOM on memory spike. '
+          metavar: null
+          nargs: 0
+          option_strings:
+          - --low-memory-resume
+          required: false
+          type: null
       - $class: argparse._StoreAction
         state:
           choices: null
@@ -12167,8 +12187,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sglang
-          - megatron
+            $set:
+            - megatron
+            - sglang
           const: null
           default: null
           dest: opd_type
@@ -12241,11 +12262,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - only-student
-          - only-teacher
-          - intersection
-          - union
-          - xor
+            $set:
+            - intersection
+            - only-student
+            - only-teacher
+            - union
+            - xor
           const: null
           default: only-student
           dest: opd_top_k_strategy
@@ -12260,9 +12282,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - student_p
-          - teacher_p
-          - none
+            $set:
+            - none
+            - student_p
+            - teacher_p
           const: null
           default: student_p
           dest: opd_reward_weight_mode
@@ -12379,8 +12402,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lora
-          - canonical_lora
+            $set:
+            - canonical_lora
+            - lora
           const: null
           default: lora
           dest: lora_type
@@ -12537,9 +12561,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - online
-          - offline
-          - disabled
+            $set:
+            - disabled
+            - offline
+            - online
           const: null
           default: null
           dest: wandb_mode
@@ -12929,9 +12954,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - router
-          - direct
+            $set:
+            - auto
+            - direct
+            - router
           const: null
           default: auto
           dest: dashboard_sglang_scrape_mode
@@ -13098,11 +13124,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - random
-          - round_robin
-          - cache_aware
-          - power_of_two
-          - manual
+            $set:
+            - cache_aware
+            - manual
+            - power_of_two
+            - random
+            - round_robin
           const: null
           default: cache_aware
           dest: router_policy
@@ -13117,12 +13144,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - random
-          - round_robin
-          - cache_aware
-          - power_of_two
-          - manual
-          - bucket
+            $set:
+            - bucket
+            - cache_aware
+            - manual
+            - power_of_two
+            - random
+            - round_robin
           const: null
           default: null
           dest: router_prefill_policy
@@ -13137,11 +13165,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - random
-          - round_robin
-          - cache_aware
-          - power_of_two
-          - manual
+            $set:
+            - cache_aware
+            - manual
+            - power_of_two
+            - random
+            - round_robin
           const: null
           default: null
           dest: router_decode_policy
@@ -13256,9 +13285,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - random
-          - min_load
-          - min_group
+            $set:
+            - min_group
+            - min_load
+            - random
           const: null
           default: random
           dest: router_assignment_mode
@@ -13412,10 +13442,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - debug
-          - info
-          - warn
-          - error
+            $set:
+            - debug
+            - error
+            - info
+            - warn
           const: null
           default: info
           dest: router_log_level
@@ -14014,19 +14045,20 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - minimax_m2
-          - pythonic
-          - passthrough
-          - qwen
-          - step3
-          - glm45_moe
-          - deepseek
-          - kimik2
-          - mistral
-          - glm47_moe
-          - llama
-          - json
-          - qwen_coder
+            $set:
+            - deepseek
+            - glm45_moe
+            - glm47_moe
+            - json
+            - kimik2
+            - llama
+            - minimax_m2
+            - mistral
+            - passthrough
+            - pythonic
+            - qwen
+            - qwen_coder
+            - step3
           const: null
           default: null
           dest: router_tool_call_parser
@@ -14055,8 +14087,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sglang
-          - openai
+            $set:
+            - openai
+            - sglang
           const: null
           default: sglang
           dest: router_backend
@@ -14071,11 +14104,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - memory
-          - none
-          - oracle
-          - postgres
-          - redis
+            $set:
+            - memory
+            - none
+            - oracle
+            - postgres
+            - redis
           const: null
           default: memory
           dest: router_history_backend
@@ -14693,9 +14727,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - train_overall
-          - train_actor
-          - train_log_probs
+            $set:
+            - train_actor
+            - train_log_probs
+            - train_overall
           const: null
           default:
           - train_overall
@@ -14711,8 +14746,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - torch
-          - memray
+            $set:
+            - memray
+            - torch
           const: null
           default: torch
           dest: memory_recorder
@@ -14740,9 +14776,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - all
-          - target
-          - draft
+            $set:
+            - all
+            - draft
+            - target
           const: null
           default: all
           dest: check_weight_update_selector
@@ -15098,8 +15135,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - slow
+            $set:
+            - auto
+            - slow
           const: null
           default: auto
           dest: sglang_tokenizer_mode
@@ -15114,8 +15152,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - huggingface
-          - fastokens
+            $set:
+            - fastokens
+            - huggingface
           const: null
           default: huggingface
           dest: sglang_tokenizer_backend
@@ -15172,24 +15211,25 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - pt
-          - safetensors
-          - npcache
-          - dummy
-          - sharded_state
-          - presharded
-          - gguf
-          - expert_pack
-          - bitsandbytes
-          - mistral
-          - layered
-          - flash_rl
-          - remote
-          - remote_instance
-          - fastsafetensors
-          - private
-          - runai_streamer
+            $set:
+            - auto
+            - bitsandbytes
+            - dummy
+            - expert_pack
+            - fastsafetensors
+            - flash_rl
+            - gguf
+            - layered
+            - mistral
+            - npcache
+            - presharded
+            - private
+            - pt
+            - remote
+            - remote_instance
+            - runai_streamer
+            - safetensors
+            - sharded_state
           const: null
           default: auto
           dest: sglang_load_format
@@ -15345,12 +15385,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - half
-          - float16
-          - bfloat16
-          - float
-          - float32
+            $set:
+            - auto
+            - bfloat16
+            - float
+            - float16
+            - float32
+            - half
           const: null
           default: auto
           dest: sglang_dtype
@@ -15378,37 +15419,38 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - awq
-          - fp8
-          - mxfp8
-          - gptq
-          - gptq_marlin
-          - awq_marlin
-          - bitsandbytes
-          - gguf
-          - modelopt
-          - modelopt_fp8
-          - modelopt_fp4
-          - nvfp4_online
-          - modelopt_mixed
-          - petit_nvfp4
-          - w8a8_int8
-          - w8a8_fp8
-          - moe_wna16
-          - w4afp8
-          - mxfp4
-          - auto-round
-          - auto-round-int8
-          - compressed-tensors
-          - modelslim
-          - mxfp_w4a8
-          - quark
-          - quark_int4fp8_moe
-          - quark_mxfp4
-          - mlx_q4
-          - mlx_q8
-          - unquant
-          - humming
+            $set:
+            - auto-round
+            - auto-round-int8
+            - awq
+            - awq_marlin
+            - bitsandbytes
+            - compressed-tensors
+            - fp8
+            - gguf
+            - gptq
+            - gptq_marlin
+            - humming
+            - mlx_q4
+            - mlx_q8
+            - modelopt
+            - modelopt_fp4
+            - modelopt_fp8
+            - modelopt_mixed
+            - modelslim
+            - moe_wna16
+            - mxfp4
+            - mxfp8
+            - mxfp_w4a8
+            - nvfp4_online
+            - petit_nvfp4
+            - quark
+            - quark_int4fp8_moe
+            - quark_mxfp4
+            - unquant
+            - w4afp8
+            - w8a8_fp8
+            - w8a8_int8
           const: null
           default: null
           dest: sglang_quantization
@@ -15438,15 +15480,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - fp8_e5m2
-          - fp8_e4m3
-          - mxfp8
-          - bf16
-          - bfloat16
-          - nvfp4
-          - fp4_mx_block16
-          - fp4_e2m1
+            $set:
+            - auto
+            - bf16
+            - bfloat16
+            - fp4_e2m1
+            - fp4_mx_block16
+            - fp8_e4m3
+            - fp8_e5m2
+            - mxfp8
+            - nvfp4
           const: null
           default: auto
           dest: sglang_kv_cache_dtype
@@ -15717,14 +15760,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lpm
-          - random
-          - fcfs
-          - dfs-weight
-          - lof
-          - priority
-          - routing-key
-          - hrrn
+            $set:
+            - dfs-weight
+            - fcfs
+            - hrrn
+            - lof
+            - lpm
+            - priority
+            - random
+            - routing-key
           const: null
           default: fcfs
           dest: sglang_schedule_policy
@@ -15820,8 +15864,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - length
-          - priority
+            $set:
+            - length
+            - priority
           const: null
           default: length
           dest: sglang_retraction_policy
@@ -15909,10 +15954,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lru
-          - lfu
-          - slru
-          - priority
+            $set:
+            - lfu
+            - lru
+            - priority
+            - slru
           const: null
           default: lru
           dest: sglang_radix_eviction_policy
@@ -16179,11 +16225,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - round_robin
-          - follow_bootstrap_room
-          - total_requests
-          - total_tokens
+            $set:
+            - auto
+            - follow_bootstrap_room
+            - round_robin
+            - total_requests
+            - total_tokens
           const: null
           default: auto
           dest: sglang_load_balance_method
@@ -16243,9 +16290,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - ag_rs
-          - a2a
-          - fi_a2a
+            $set:
+            - a2a
+            - ag_rs
+            - fi_a2a
           const: null
           default: null
           dest: sglang_dcp_comm_backend
@@ -16293,9 +16341,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - zigzag
+            $set:
             - interleave
+            - zigzag
           const: null
           default: null
           dest: sglang_cp_strategy
@@ -17047,8 +17095,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - openai
-          - model
+            $set:
+            - model
+            - openai
           const: null
           default: model
           dest: sglang_sampling_defaults
@@ -17247,10 +17296,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 0
-          - 1
-          - 2
-          - 3
+            $set:
+            - 0
+            - 1
+            - 2
+            - 3
           const: null
           default: 2
           dest: sglang_log_requests_level
@@ -17266,8 +17316,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - text
-          - json
+            $set:
+            - json
+            - text
           const: null
           default: text
           dest: sglang_log_requests_format
@@ -17746,30 +17797,31 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - torch_native
-          - flex_attention
-          - dsa
-          - nsa
-          - qsa
-          - dsv4
-          - compressed
-          - fa3
-          - fa4
-          - flashinfer
-          - flashmla
-          - trtllm_mla
-          - cutedsl_mla
-          - tokenspeed_mla
-          - trtllm_mha
-          - hpc_ops
-          - minicpm_flashattn
-          - minicpm_flashinfer
-          - aiter
-          - wave
-          - intel_amx
-          - ascend
-          - intel_xpu
+            $set:
+            - aiter
+            - ascend
+            - compressed
+            - cutedsl_mla
+            - dsa
+            - dsv4
+            - fa3
+            - fa4
+            - flashinfer
+            - flashmla
+            - flex_attention
+            - hpc_ops
+            - intel_amx
+            - intel_xpu
+            - minicpm_flashattn
+            - minicpm_flashinfer
+            - nsa
+            - qsa
+            - tokenspeed_mla
+            - torch_native
+            - triton
+            - trtllm_mha
+            - trtllm_mla
+            - wave
           const: null
           default: null
           dest: sglang_attention_backend
@@ -17784,30 +17836,31 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - torch_native
-          - flex_attention
-          - dsa
-          - nsa
-          - qsa
-          - dsv4
-          - compressed
-          - fa3
-          - fa4
-          - flashinfer
-          - flashmla
-          - trtllm_mla
-          - cutedsl_mla
-          - tokenspeed_mla
-          - trtllm_mha
-          - hpc_ops
-          - minicpm_flashattn
-          - minicpm_flashinfer
-          - aiter
-          - wave
-          - intel_amx
-          - ascend
-          - intel_xpu
+            $set:
+            - aiter
+            - ascend
+            - compressed
+            - cutedsl_mla
+            - dsa
+            - dsv4
+            - fa3
+            - fa4
+            - flashinfer
+            - flashmla
+            - flex_attention
+            - hpc_ops
+            - intel_amx
+            - intel_xpu
+            - minicpm_flashattn
+            - minicpm_flashinfer
+            - nsa
+            - qsa
+            - tokenspeed_mla
+            - torch_native
+            - triton
+            - trtllm_mha
+            - trtllm_mla
+            - wave
           const: null
           default: null
           dest: sglang_decode_attention_backend
@@ -17837,30 +17890,31 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - torch_native
-          - flex_attention
-          - dsa
-          - nsa
-          - qsa
-          - dsv4
-          - compressed
-          - fa3
-          - fa4
-          - flashinfer
-          - flashmla
-          - trtllm_mla
-          - cutedsl_mla
-          - tokenspeed_mla
-          - trtllm_mha
-          - hpc_ops
-          - minicpm_flashattn
-          - minicpm_flashinfer
-          - aiter
-          - wave
-          - intel_amx
-          - ascend
-          - intel_xpu
+            $set:
+            - aiter
+            - ascend
+            - compressed
+            - cutedsl_mla
+            - dsa
+            - dsv4
+            - fa3
+            - fa4
+            - flashinfer
+            - flashmla
+            - flex_attention
+            - hpc_ops
+            - intel_amx
+            - intel_xpu
+            - minicpm_flashattn
+            - minicpm_flashinfer
+            - nsa
+            - qsa
+            - tokenspeed_mla
+            - torch_native
+            - triton
+            - trtllm_mha
+            - trtllm_mla
+            - wave
           const: null
           default: null
           dest: sglang_prefill_attention_backend
@@ -17875,10 +17929,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - xgrammar
-          - outlines
-          - llguidance
-          - none
+            $set:
+            - llguidance
+            - none
+            - outlines
+            - xgrammar
           const: null
           default: null
           dest: sglang_grammar_backend
@@ -17908,15 +17963,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sdpa
-          - fa3
-          - fa4
-          - triton_attn
-          - ascend_attn
-          - aiter_attn
-          - flashinfer_cudnn
-          - amx_attn
-          - xpu_attn
+            $set:
+            - aiter_attn
+            - amx_attn
+            - ascend_attn
+            - fa3
+            - fa4
+            - flashinfer_cudnn
+            - sdpa
+            - triton_attn
+            - xpu_attn
           const: null
           default: null
           dest: sglang_mm_attention_backend
@@ -17931,15 +17987,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deep_gemm
-          - flashinfer_trtllm
-          - flashinfer_cutlass
-          - flashinfer_deepgemm
-          - flashinfer_cutedsl
-          - cutlass
-          - triton
-          - aiter
+            $set:
+            - aiter
+            - auto
+            - cutlass
+            - deep_gemm
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_deepgemm
+            - flashinfer_trtllm
+            - triton
           const: null
           default: auto
           dest: sglang_fp8_gemm_runner_backend
@@ -17960,12 +18017,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - flashinfer_cudnn
-          - flashinfer_cutedsl
-          - flashinfer_cutlass
-          - flashinfer_trtllm
-          - marlin
+            $set:
+            - auto
+            - flashinfer_cudnn
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_trtllm
+            - marlin
           const: null
           default: auto
           dest: sglang_fp4_gemm_runner_backend
@@ -17984,10 +18042,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - cutedsl
-          - gemv
-          - torch
+            $set:
+            - auto
+            - cutedsl
+            - gemv
+            - torch
           const: null
           default: auto
           dest: sglang_bf16_gemm_backend
@@ -18006,16 +18065,17 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - flashmla_sparse
-          - flashmla_sparse_q8
-          - flashmla_kv
-          - flashmla_auto
-          - flashinfer_sparse_mla
-          - fa3
-          - tilelang
-          - triton
-          - aiter
-          - trtllm
+            $set:
+            - aiter
+            - fa3
+            - flashinfer_sparse_mla
+            - flashmla_auto
+            - flashmla_kv
+            - flashmla_sparse
+            - flashmla_sparse_q8
+            - tilelang
+            - triton
+            - trtllm
           const: null
           default: null
           dest: sglang_dsa_prefill_backend
@@ -18030,9 +18090,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - flashmla_sparse
-          - flashmla_sparse_q8
+            $set:
+            - auto
+            - flashmla_sparse
+            - flashmla_sparse_q8
           const: null
           default: auto
           dest: sglang_dsv4_prefill_backend
@@ -18048,16 +18109,17 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - flashmla_sparse
-          - flashmla_sparse_q8
-          - flashmla_kv
-          - flashmla_auto
-          - flashinfer_sparse_mla
-          - fa3
-          - tilelang
-          - triton
-          - aiter
-          - trtllm
+            $set:
+            - aiter
+            - fa3
+            - flashinfer_sparse_mla
+            - flashmla_auto
+            - flashmla_kv
+            - flashmla_sparse
+            - flashmla_sparse_q8
+            - tilelang
+            - triton
+            - trtllm
           const: null
           default: null
           dest: sglang_dsa_decode_backend
@@ -18072,10 +18134,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deepgemm
-          - cutedsl
-          - aiter
+            $set:
+            - aiter
+            - auto
+            - cutedsl
+            - deepgemm
           const: null
           default: auto
           dest: sglang_dsa_paged_mqa_logits_backend
@@ -18092,9 +18155,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sgl-kernel
-          - torch
-          - flashinfer
+            $set:
+            - flashinfer
+            - sgl-kernel
+            - torch
           const: null
           default: sgl-kernel
           dest: sglang_dsa_topk_backend
@@ -18138,8 +18202,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - flashinfer
+            $set:
+            - flashinfer
+            - triton
           const: null
           default: triton
           dest: sglang_mamba_backend
@@ -18171,11 +18236,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - full
+            $set:
             - breakable
-            - tc_piecewise
             - disabled
+            - full
+            - tc_piecewise
           const: null
           default: null
           dest: sglang_cuda_graph_backend_decode
@@ -18190,11 +18255,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - full
+            $set:
             - breakable
-            - tc_piecewise
             - disabled
+            - full
+            - tc_piecewise
           const: null
           default: null
           dest: sglang_cuda_graph_backend_prefill
@@ -18265,8 +18330,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - eager
-          - inductor
+            $set:
+            - eager
+            - inductor
           const: null
           default: null
           dest: sglang_cuda_graph_tc_compiler
@@ -18605,9 +18671,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - trtllm
-          - mnnvl
+            $set:
+            - auto
+            - mnnvl
+            - trtllm
           const: null
           default: null
           dest: sglang_flashinfer_allreduce_fusion_backend
@@ -18738,24 +18805,25 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - pt
-          - safetensors
-          - npcache
-          - dummy
-          - sharded_state
-          - presharded
-          - gguf
-          - expert_pack
-          - bitsandbytes
-          - mistral
-          - layered
-          - flash_rl
-          - remote
-          - remote_instance
-          - fastsafetensors
-          - private
-          - runai_streamer
+            $set:
+            - auto
+            - bitsandbytes
+            - dummy
+            - expert_pack
+            - fastsafetensors
+            - flash_rl
+            - gguf
+            - layered
+            - mistral
+            - npcache
+            - presharded
+            - private
+            - pt
+            - remote
+            - remote_instance
+            - runai_streamer
+            - safetensors
+            - sharded_state
           const: null
           default: null
           dest: sglang_speculative_draft_load_format
@@ -18946,8 +19014,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - prefill
-          - decode
+            $set:
+            - decode
+            - prefill
           const: null
           default: prefill
           dest: sglang_speculative_attention_mode
@@ -18977,9 +19046,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sgl-kernel
-          - torch
-          - flashinfer
+            $set:
+            - flashinfer
+            - sgl-kernel
+            - torch
           const: null
           default: sgl-kernel
           dest: sglang_speculative_dsa_topk_backend
@@ -18995,11 +19065,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - fp8_e5m2
-          - fp8_e4m3
-          - bf16
-          - bfloat16
+            $set:
+            - auto
+            - bf16
+            - bfloat16
+            - fp8_e4m3
+            - fp8_e5m2
           const: null
           default: null
           dest: sglang_speculative_draft_kv_cache_dtype
@@ -19035,25 +19106,26 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deep_gemm
-          - triton
-          - triton_kernel
-          - flashinfer_trtllm
-          - experimental_sgl_trtllm
-          - flashinfer_trtllm_routed
-          - flashinfer_cutlass
-          - flashinfer_mxfp4
-          - flashinfer_cutedsl
-          - flashinfer_megamoe
-          - cutlass
-          - aiter
-          - marlin
-          - humming
-          - experimental_sgl_marlin
-          - hpc_ops
-          - megamoe
-          - intel_xpu
+            $set:
+            - aiter
+            - auto
+            - cutlass
+            - deep_gemm
+            - experimental_sgl_marlin
+            - experimental_sgl_trtllm
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_megamoe
+            - flashinfer_mxfp4
+            - flashinfer_trtllm
+            - flashinfer_trtllm_routed
+            - hpc_ops
+            - humming
+            - intel_xpu
+            - marlin
+            - megamoe
+            - triton
+            - triton_kernel
           const: null
           default: null
           dest: sglang_speculative_moe_runner_backend
@@ -19068,17 +19140,18 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - deepep
-          - mooncake
-          - nixl
-          - mori
-          - ascend_fuseep
-          - flashinfer
-          - megamoe
-          - deepep_v2
-          - pplx
-          - ascend_tp
+            $set:
+            - ascend_fuseep
+            - ascend_tp
+            - deepep
+            - deepep_v2
+            - flashinfer
+            - megamoe
+            - mooncake
+            - mori
+            - nixl
+            - none
+            - pplx
           const: null
           default: null
           dest: sglang_speculative_moe_a2a_backend
@@ -19093,37 +19166,38 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - awq
-          - fp8
-          - mxfp8
-          - gptq
-          - gptq_marlin
-          - awq_marlin
-          - bitsandbytes
-          - gguf
-          - modelopt
-          - modelopt_fp8
-          - modelopt_fp4
-          - nvfp4_online
-          - modelopt_mixed
-          - petit_nvfp4
-          - w8a8_int8
-          - w8a8_fp8
-          - moe_wna16
-          - w4afp8
-          - mxfp4
-          - auto-round
-          - auto-round-int8
-          - compressed-tensors
-          - modelslim
-          - mxfp_w4a8
-          - quark
-          - quark_int4fp8_moe
-          - quark_mxfp4
-          - mlx_q4
-          - mlx_q8
-          - unquant
-          - humming
+            $set:
+            - auto-round
+            - auto-round-int8
+            - awq
+            - awq_marlin
+            - bitsandbytes
+            - compressed-tensors
+            - fp8
+            - gguf
+            - gptq
+            - gptq_marlin
+            - humming
+            - mlx_q4
+            - mlx_q8
+            - modelopt
+            - modelopt_fp4
+            - modelopt_fp8
+            - modelopt_mixed
+            - modelslim
+            - moe_wna16
+            - mxfp4
+            - mxfp8
+            - mxfp_w4a8
+            - nvfp4_online
+            - petit_nvfp4
+            - quark
+            - quark_int4fp8_moe
+            - quark_mxfp4
+            - unquant
+            - w4afp8
+            - w8a8_fp8
+            - w8a8_int8
           const: null
           default: null
           dest: sglang_speculative_draft_model_quantization
@@ -19235,9 +19309,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'null'
-          - verifier
-          - drafter
+            $set:
+            - drafter
+            - 'null'
+            - verifier
           const: null
           default: 'null'
           dest: sglang_decoupled_spec_role
@@ -19295,8 +19370,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - BFS
-          - PROB
+            $set:
+            - BFS
+            - PROB
           const: null
           default: BFS
           dest: sglang_speculative_ngram_match_type
@@ -19399,18 +19475,19 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - deepep
-          - mooncake
-          - nixl
-          - mori
-          - ascend_fuseep
-          - flashinfer
-          - megamoe
-          - deepep_v2
-          - pplx
-          - ascend_tp
-          - flashinfer_megamoe
+            $set:
+            - ascend_fuseep
+            - ascend_tp
+            - deepep
+            - deepep_v2
+            - flashinfer
+            - flashinfer_megamoe
+            - megamoe
+            - mooncake
+            - mori
+            - nixl
+            - none
+            - pplx
           const: null
           default: none
           dest: sglang_moe_a2a_backend
@@ -19438,8 +19515,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - direct
-          - hybrid
+            $set:
+            - direct
+            - hybrid
           const: null
           default: direct
           dest: sglang_deepep_v2_mode
@@ -19456,25 +19534,26 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deep_gemm
-          - triton
-          - triton_kernel
-          - flashinfer_trtllm
-          - experimental_sgl_trtllm
-          - flashinfer_trtllm_routed
-          - flashinfer_cutlass
-          - flashinfer_mxfp4
-          - flashinfer_cutedsl
-          - flashinfer_megamoe
-          - cutlass
-          - aiter
-          - marlin
-          - humming
-          - experimental_sgl_marlin
-          - hpc_ops
-          - megamoe
-          - intel_xpu
+            $set:
+            - aiter
+            - auto
+            - cutlass
+            - deep_gemm
+            - experimental_sgl_marlin
+            - experimental_sgl_trtllm
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_megamoe
+            - flashinfer_mxfp4
+            - flashinfer_trtllm
+            - flashinfer_trtllm_routed
+            - hpc_ops
+            - humming
+            - intel_xpu
+            - marlin
+            - megamoe
+            - triton
+            - triton_kernel
           const: null
           default: auto
           dest: sglang_moe_runner_backend
@@ -19489,9 +19568,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - default
-          - bf16
-          - fp8
+            $set:
+            - bf16
+            - default
+            - fp8
           const: null
           default: default
           dest: sglang_flashinfer_mxfp4_moe_precision
@@ -19507,9 +19587,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - normal
-          - low_latency
+            $set:
+            - auto
+            - low_latency
+            - normal
           const: null
           default: auto
           dest: sglang_deepep_mode
@@ -19525,8 +19606,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 1
-          - 2
+            $set:
+            - 1
+            - 2
           const: null
           default: 2
           dest: sglang_fuseep_mode
@@ -19542,11 +19624,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - bf16
-          - fp8
-          - int8
-          - nvfp4
+            $set:
+            - auto
+            - bf16
+            - fp8
+            - int8
+            - nvfp4
           const: null
           default: auto
           dest: sglang_deepep_dispatcher_output_dtype
@@ -19575,10 +19658,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - static
-          - dynamic
-          - fake
-          - lp
+            $set:
+            - dynamic
+            - fake
+            - lp
+            - static
           const: null
           default: null
           dest: sglang_ep_dispatch_algorithm
@@ -19676,10 +19760,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - stat
-          - stat_approx
-          - per_pass
-          - per_token
+            $set:
+            - per_pass
+            - per_token
+            - stat
+            - stat_approx
           const: null
           default: null
           dest: sglang_expert_distribution_recorder_mode
@@ -19708,10 +19793,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'off'
-          - server_log
-          - prometheus
-          - both
+            $set:
+            - both
+            - 'off'
+            - prometheus
+            - server_log
           const: null
           default: 'off'
           dest: sglang_expert_balancedness_report_mode
@@ -19755,9 +19841,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - mooncake
-          - nixl
+            $set:
+            - mooncake
+            - nixl
+            - none
           const: null
           default: null
           dest: sglang_elastic_ep_backend
@@ -19816,8 +19903,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - scale
-          - recover
+            $set:
+            - recover
+            - scale
           const: null
           default: null
           dest: sglang_ep_join_mode
@@ -19961,9 +20049,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - float32
-          - bfloat16
-          - float16
+            $set:
+            - bfloat16
+            - float16
+            - float32
           const: null
           default: null
           dest: sglang_mamba_ssm_dtype
@@ -20037,10 +20126,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - no_buffer
-          - extra_buffer
-          - extra_buffer_lazy
+            $set:
+            - auto
+            - extra_buffer
+            - extra_buffer_lazy
+            - no_buffer
           const: null
           default: auto
           dest: sglang_mamba_radix_cache_strategy
@@ -20097,14 +20187,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: triton
           dest: sglang_linear_attn_backend
@@ -20120,14 +20211,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: null
           dest: sglang_linear_attn_decode_backend
@@ -20142,14 +20234,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: null
           dest: sglang_linear_attn_prefill_backend
@@ -20165,15 +20258,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
-          - nv_cutedsl
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nv_cutedsl
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: null
           dest: sglang_linear_attn_verify_backend
@@ -20249,8 +20343,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cache
-          - buffer_only
+            $set:
+            - buffer_only
+            - cache
           const: null
           default: cache
           dest: sglang_hicache_host_memory_mode
@@ -20295,9 +20390,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - write_back
-          - write_through
-          - write_through_selective
+            $set:
+            - write_back
+            - write_through
+            - write_through_selective
           const: null
           default: write_through
           dest: sglang_hicache_write_policy
@@ -20312,9 +20408,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - direct
-          - kernel
-          - kernel_ascend
+            $set:
+            - direct
+            - kernel
+            - kernel_ascend
           const: null
           default: kernel
           dest: sglang_hicache_io_backend
@@ -20329,11 +20426,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - layer_first
-          - page_first
-          - page_first_direct
-          - page_first_kv_split
-          - page_head
+            $set:
+            - layer_first
+            - page_first
+            - page_first_direct
+            - page_first_kv_split
+            - page_head
           const: null
           default: page_first
           dest: sglang_hicache_mem_layout
@@ -20348,18 +20446,19 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - file
-          - sim
-          - mooncake
-          - npu_memcache
-          - hf3fs
-          - nixl
-          - aibrix
-          - dynamic
-          - eic
-          - simm
-          - mori
-          - shm
+            $set:
+            - aibrix
+            - dynamic
+            - eic
+            - file
+            - hf3fs
+            - mooncake
+            - mori
+            - nixl
+            - npu_memcache
+            - shm
+            - sim
+            - simm
           const: null
           default: null
           dest: sglang_hicache_storage_backend
@@ -20376,9 +20475,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - best_effort
-          - wait_complete
-          - timeout
+            $set:
+            - best_effort
+            - timeout
+            - wait_complete
           const: null
           default: timeout
           dest: sglang_hicache_storage_prefetch_policy
@@ -20453,8 +20553,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - mooncake
-          - mori
+            $set:
+            - mooncake
+            - mori
           const: null
           default: mooncake
           dest: sglang_unified_cache_external_linker_backend
@@ -20668,9 +20769,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - torchvision
-          - pil
+            $set:
+            - auto
+            - pil
+            - torchvision
           const: null
           default: auto
           dest: sglang_image_processor_backend
@@ -20685,7 +20787,8 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - mooncake
+            $set:
+            - mooncake
           const: null
           default: mooncake
           dest: sglang_mm_global_cache_backend
@@ -20713,9 +20816,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cpu
-          - cuda_ipc
-          - cuda_vmm
+            $set:
+            - cpu
+            - cuda_ipc
+            - cuda_vmm
           const: null
           default: null
           dest: sglang_mm_feature_transport
@@ -20849,8 +20953,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lru
-          - fifo
+            $set:
+            - fifo
+            - lru
           const: null
           default: lru
           dest: sglang_lora_eviction_policy
@@ -20866,10 +20971,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - csgmv
-          - ascend
-          - torch_native
+            $set:
+            - ascend
+            - csgmv
+            - torch_native
+            - triton
           const: null
           default: csgmv
           dest: sglang_lora_backend
@@ -20884,10 +20990,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 16
-          - 32
-          - 64
-          - 128
+            $set:
+            - 128
+            - 16
+            - 32
+            - 64
           const: null
           default: 16
           dest: sglang_max_lora_chunk_size
@@ -21273,9 +21380,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'null'
-          - prefill
-          - decode
+            $set:
+            - decode
+            - 'null'
+            - prefill
           const: null
           default: 'null'
           dest: sglang_disaggregation_mode
@@ -21291,12 +21399,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - mooncake
-          - nixl
-          - ascend
-          - fake
-          - mori
-          - mooncake_tcp
+            $set:
+            - ascend
+            - fake
+            - mooncake
+            - mooncake_tcp
+            - mori
+            - nixl
           const: null
           default: mooncake
           dest: sglang_disaggregation_transfer_backend
@@ -21369,8 +21478,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cpu_tensor
-          - host_pool
+            $set:
+            - cpu_tensor
+            - host_pool
           const: null
           default: null
           dest: sglang_disaggregation_decode_retraction_backup
@@ -21485,10 +21595,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - zmq_to_scheduler
-          - zmq_to_tokenizer
-          - mooncake
+            $set:
+            - auto
+            - mooncake
+            - zmq_to_scheduler
+            - zmq_to_tokenizer
           const: null
           default: auto
           dest: sglang_encoder_transfer_backend
@@ -21602,8 +21713,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - serial
-          - overlap
+            $set:
+            - overlap
+            - serial
           const: null
           default: serial
           dest: sglang_startup_weight_load_mode
@@ -21732,9 +21844,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - transfer_engine
-          - nccl
-          - modelexpress
+            $set:
+            - modelexpress
+            - nccl
+            - transfer_engine
           const: null
           default: nccl
           dest: sglang_remote_instance_weight_loader_backend
@@ -22009,8 +22122,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - fsdp
-          - fsdp_tp
+            $set:
+            - fsdp
+            - fsdp_tp
           const: null
           default: null
           dest: sglang_rl_on_policy_target
@@ -22025,9 +22139,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - log
-          - raise
+            $set:
+            - log
+            - none
+            - raise
           const: null
           default: none
           dest: sglang_kv_canary
@@ -22221,8 +22336,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - last
-          - full
+            $set:
+            - full
+            - last
           const: null
           default: null
           dest: sglang_return_hidden_states_mode
@@ -22282,9 +22398,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'off'
-          - daemon
-          - client
+            $set:
+            - client
+            - daemon
+            - 'off'
           const: null
           default: 'off'
           dest: sglang_weight_cache_mode
@@ -22460,8 +22577,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - pinned
-          - file
+            $set:
+            - file
+            - pinned
           const: null
           default: pinned
           dest: sglang_ple_offload_backend
@@ -22509,10 +22627,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - bf16
-          - nvfp4
-          - mxfp8
+            $set:
+            - auto
+            - bf16
+            - mxfp8
+            - nvfp4
           const: null
           default: null
           dest: sglang_flashinfer_a2a_dispatch_type
@@ -22540,9 +22659,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - flashmla
-          - trtllm
+            $set:
+            - auto
+            - flashmla
+            - trtllm
           const: null
           default: auto
           dest: sglang_dsv4_attn_backend
@@ -22591,38 +22711,39 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - apertus2509
-          - deepseek-r1
-          - deepseek-v3
-          - deepseek-v4
-          - dots
-          - glm45
-          - ling3
-          - hunyuan
-          - gpt-oss
-          - k2_horizon
-          - kimi
-          - kimi_k2
-          - kimi_k3
-          - mimo
-          - muse
-          - poolside_v1
-          - qwen3
-          - qwen3-thinking
-          - minimax
-          - minimax-append-think
-          - minimax-m3
-          - nanbeige
-          - step3
-          - step3p5
-          - mistral
-          - nemotron_3
-          - granite_thinking_parser
-          - interns1
-          - gemma4
-          - inkling
-          - cohere_command4
+            $set:
+            - apertus2509
+            - auto
+            - cohere_command4
+            - deepseek-r1
+            - deepseek-v3
+            - deepseek-v4
+            - dots
+            - gemma4
+            - glm45
+            - gpt-oss
+            - granite_thinking_parser
+            - hunyuan
+            - inkling
+            - interns1
+            - k2_horizon
+            - kimi
+            - kimi_k2
+            - kimi_k3
+            - ling3
+            - mimo
+            - minimax
+            - minimax-append-think
+            - minimax-m3
+            - mistral
+            - muse
+            - nanbeige
+            - nemotron_3
+            - poolside_v1
+            - qwen3
+            - qwen3-thinking
+            - step3
+            - step3p5
           const: null
           default: null
           dest: sglang_reasoning_parser
@@ -22641,47 +22762,48 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - apertus2509
-          - cohere_command4
-          - deepseekv3
-          - deepseekv31
-          - deepseekv32
-          - deepseekv4
-          - dots
-          - glm
-          - glm45
-          - glm47
-          - gpt-oss
-          - k2_horizon
-          - kimi_k2
-          - kimi_k3
-          - kimi_k2_raw_id
-          - lfm2
-          - ling3
-          - llama3
-          - mimo
-          - minicpm5
-          - mistral
-          - muse
-          - poolside_v1
-          - pythonic
-          - qwen
-          - qwen25
-          - qwen3_coder
-          - spark25
-          - step3
-          - step3p5
-          - minimax-m2
-          - minimax-m3
-          - nanbeige
-          - trinity
-          - interns1
-          - hermes
-          - hunyuan
-          - gigachat3
-          - gemma4
-          - inkling
+            $set:
+            - apertus2509
+            - auto
+            - cohere_command4
+            - deepseekv3
+            - deepseekv31
+            - deepseekv32
+            - deepseekv4
+            - dots
+            - gemma4
+            - gigachat3
+            - glm
+            - glm45
+            - glm47
+            - gpt-oss
+            - hermes
+            - hunyuan
+            - inkling
+            - interns1
+            - k2_horizon
+            - kimi_k2
+            - kimi_k2_raw_id
+            - kimi_k3
+            - lfm2
+            - ling3
+            - llama3
+            - mimo
+            - minicpm5
+            - minimax-m2
+            - minimax-m3
+            - mistral
+            - muse
+            - nanbeige
+            - poolside_v1
+            - pythonic
+            - qwen
+            - qwen25
+            - qwen3_coder
+            - spark25
+            - step3
+            - step3p5
+            - trinity
           const: null
           default: null
           dest: sglang_tool_call_parser
@@ -22701,9 +22823,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - partial
-          - all
+            $set:
+            - all
+            - none
+            - partial
           const: null
           default: none
           dest: sglang_kv_canary_real_data
@@ -22761,8 +22884,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - slow
+            $set:
+            - auto
+            - slow
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_tokenizer_mode
@@ -22777,8 +22901,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - huggingface
-          - fastokens
+            $set:
+            - fastokens
+            - huggingface
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_tokenizer_backend
@@ -22836,24 +22961,25 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - pt
-          - safetensors
-          - npcache
-          - dummy
-          - sharded_state
-          - presharded
-          - gguf
-          - expert_pack
-          - bitsandbytes
-          - mistral
-          - layered
-          - flash_rl
-          - remote
-          - remote_instance
-          - fastsafetensors
-          - private
-          - runai_streamer
+            $set:
+            - auto
+            - bitsandbytes
+            - dummy
+            - expert_pack
+            - fastsafetensors
+            - flash_rl
+            - gguf
+            - layered
+            - mistral
+            - npcache
+            - presharded
+            - private
+            - pt
+            - remote
+            - remote_instance
+            - runai_streamer
+            - safetensors
+            - sharded_state
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_load_format
@@ -23011,12 +23137,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - half
-          - float16
-          - bfloat16
-          - float
-          - float32
+            $set:
+            - auto
+            - bfloat16
+            - float
+            - float16
+            - float32
+            - half
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dtype
@@ -23044,37 +23171,38 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - awq
-          - fp8
-          - mxfp8
-          - gptq
-          - gptq_marlin
-          - awq_marlin
-          - bitsandbytes
-          - gguf
-          - modelopt
-          - modelopt_fp8
-          - modelopt_fp4
-          - nvfp4_online
-          - modelopt_mixed
-          - petit_nvfp4
-          - w8a8_int8
-          - w8a8_fp8
-          - moe_wna16
-          - w4afp8
-          - mxfp4
-          - auto-round
-          - auto-round-int8
-          - compressed-tensors
-          - modelslim
-          - mxfp_w4a8
-          - quark
-          - quark_int4fp8_moe
-          - quark_mxfp4
-          - mlx_q4
-          - mlx_q8
-          - unquant
-          - humming
+            $set:
+            - auto-round
+            - auto-round-int8
+            - awq
+            - awq_marlin
+            - bitsandbytes
+            - compressed-tensors
+            - fp8
+            - gguf
+            - gptq
+            - gptq_marlin
+            - humming
+            - mlx_q4
+            - mlx_q8
+            - modelopt
+            - modelopt_fp4
+            - modelopt_fp8
+            - modelopt_mixed
+            - modelslim
+            - moe_wna16
+            - mxfp4
+            - mxfp8
+            - mxfp_w4a8
+            - nvfp4_online
+            - petit_nvfp4
+            - quark
+            - quark_int4fp8_moe
+            - quark_mxfp4
+            - unquant
+            - w4afp8
+            - w8a8_fp8
+            - w8a8_int8
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_quantization
@@ -23104,15 +23232,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - fp8_e5m2
-          - fp8_e4m3
-          - mxfp8
-          - bf16
-          - bfloat16
-          - nvfp4
-          - fp4_mx_block16
-          - fp4_e2m1
+            $set:
+            - auto
+            - bf16
+            - bfloat16
+            - fp4_e2m1
+            - fp4_mx_block16
+            - fp8_e4m3
+            - fp8_e5m2
+            - mxfp8
+            - nvfp4
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_kv_cache_dtype
@@ -23387,14 +23516,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lpm
-          - random
-          - fcfs
-          - dfs-weight
-          - lof
-          - priority
-          - routing-key
-          - hrrn
+            $set:
+            - dfs-weight
+            - fcfs
+            - hrrn
+            - lof
+            - lpm
+            - priority
+            - random
+            - routing-key
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_schedule_policy
@@ -23494,8 +23624,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - length
-          - priority
+            $set:
+            - length
+            - priority
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_retraction_policy
@@ -23584,10 +23715,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lru
-          - lfu
-          - slru
-          - priority
+            $set:
+            - lfu
+            - lru
+            - priority
+            - slru
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_radix_eviction_policy
@@ -23846,11 +23978,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - round_robin
-          - follow_bootstrap_room
-          - total_requests
-          - total_tokens
+            $set:
+            - auto
+            - follow_bootstrap_room
+            - round_robin
+            - total_requests
+            - total_tokens
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_load_balance_method
@@ -23910,9 +24043,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - ag_rs
-          - a2a
-          - fi_a2a
+            $set:
+            - a2a
+            - ag_rs
+            - fi_a2a
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dcp_comm_backend
@@ -23961,9 +24095,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - zigzag
+            $set:
             - interleave
+            - zigzag
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_cp_strategy
@@ -24738,8 +24872,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - openai
-          - model
+            $set:
+            - model
+            - openai
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_sampling_defaults
@@ -24944,10 +25079,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 0
-          - 1
-          - 2
-          - 3
+            $set:
+            - 0
+            - 1
+            - 2
+            - 3
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_log_requests_level
@@ -24963,8 +25099,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - text
-          - json
+            $set:
+            - json
+            - text
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_log_requests_format
@@ -25452,30 +25589,31 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - torch_native
-          - flex_attention
-          - dsa
-          - nsa
-          - qsa
-          - dsv4
-          - compressed
-          - fa3
-          - fa4
-          - flashinfer
-          - flashmla
-          - trtllm_mla
-          - cutedsl_mla
-          - tokenspeed_mla
-          - trtllm_mha
-          - hpc_ops
-          - minicpm_flashattn
-          - minicpm_flashinfer
-          - aiter
-          - wave
-          - intel_amx
-          - ascend
-          - intel_xpu
+            $set:
+            - aiter
+            - ascend
+            - compressed
+            - cutedsl_mla
+            - dsa
+            - dsv4
+            - fa3
+            - fa4
+            - flashinfer
+            - flashmla
+            - flex_attention
+            - hpc_ops
+            - intel_amx
+            - intel_xpu
+            - minicpm_flashattn
+            - minicpm_flashinfer
+            - nsa
+            - qsa
+            - tokenspeed_mla
+            - torch_native
+            - triton
+            - trtllm_mha
+            - trtllm_mla
+            - wave
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_attention_backend
@@ -25490,30 +25628,31 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - torch_native
-          - flex_attention
-          - dsa
-          - nsa
-          - qsa
-          - dsv4
-          - compressed
-          - fa3
-          - fa4
-          - flashinfer
-          - flashmla
-          - trtllm_mla
-          - cutedsl_mla
-          - tokenspeed_mla
-          - trtllm_mha
-          - hpc_ops
-          - minicpm_flashattn
-          - minicpm_flashinfer
-          - aiter
-          - wave
-          - intel_amx
-          - ascend
-          - intel_xpu
+            $set:
+            - aiter
+            - ascend
+            - compressed
+            - cutedsl_mla
+            - dsa
+            - dsv4
+            - fa3
+            - fa4
+            - flashinfer
+            - flashmla
+            - flex_attention
+            - hpc_ops
+            - intel_amx
+            - intel_xpu
+            - minicpm_flashattn
+            - minicpm_flashinfer
+            - nsa
+            - qsa
+            - tokenspeed_mla
+            - torch_native
+            - triton
+            - trtllm_mha
+            - trtllm_mla
+            - wave
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_decode_attention_backend
@@ -25544,30 +25683,31 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - torch_native
-          - flex_attention
-          - dsa
-          - nsa
-          - qsa
-          - dsv4
-          - compressed
-          - fa3
-          - fa4
-          - flashinfer
-          - flashmla
-          - trtllm_mla
-          - cutedsl_mla
-          - tokenspeed_mla
-          - trtllm_mha
-          - hpc_ops
-          - minicpm_flashattn
-          - minicpm_flashinfer
-          - aiter
-          - wave
-          - intel_amx
-          - ascend
-          - intel_xpu
+            $set:
+            - aiter
+            - ascend
+            - compressed
+            - cutedsl_mla
+            - dsa
+            - dsv4
+            - fa3
+            - fa4
+            - flashinfer
+            - flashmla
+            - flex_attention
+            - hpc_ops
+            - intel_amx
+            - intel_xpu
+            - minicpm_flashattn
+            - minicpm_flashinfer
+            - nsa
+            - qsa
+            - tokenspeed_mla
+            - torch_native
+            - triton
+            - trtllm_mha
+            - trtllm_mla
+            - wave
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_prefill_attention_backend
@@ -25582,10 +25722,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - xgrammar
-          - outlines
-          - llguidance
-          - none
+            $set:
+            - llguidance
+            - none
+            - outlines
+            - xgrammar
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_grammar_backend
@@ -25615,15 +25756,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sdpa
-          - fa3
-          - fa4
-          - triton_attn
-          - ascend_attn
-          - aiter_attn
-          - flashinfer_cudnn
-          - amx_attn
-          - xpu_attn
+            $set:
+            - aiter_attn
+            - amx_attn
+            - ascend_attn
+            - fa3
+            - fa4
+            - flashinfer_cudnn
+            - sdpa
+            - triton_attn
+            - xpu_attn
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_mm_attention_backend
@@ -25638,15 +25780,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deep_gemm
-          - flashinfer_trtllm
-          - flashinfer_cutlass
-          - flashinfer_deepgemm
-          - flashinfer_cutedsl
-          - cutlass
-          - triton
-          - aiter
+            $set:
+            - aiter
+            - auto
+            - cutlass
+            - deep_gemm
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_deepgemm
+            - flashinfer_trtllm
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_fp8_gemm_runner_backend
@@ -25667,12 +25810,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - flashinfer_cudnn
-          - flashinfer_cutedsl
-          - flashinfer_cutlass
-          - flashinfer_trtllm
-          - marlin
+            $set:
+            - auto
+            - flashinfer_cudnn
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_trtllm
+            - marlin
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_fp4_gemm_runner_backend
@@ -25691,10 +25835,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - cutedsl
-          - gemv
-          - torch
+            $set:
+            - auto
+            - cutedsl
+            - gemv
+            - torch
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_bf16_gemm_backend
@@ -25713,16 +25858,17 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - flashmla_sparse
-          - flashmla_sparse_q8
-          - flashmla_kv
-          - flashmla_auto
-          - flashinfer_sparse_mla
-          - fa3
-          - tilelang
-          - triton
-          - aiter
-          - trtllm
+            $set:
+            - aiter
+            - fa3
+            - flashinfer_sparse_mla
+            - flashmla_auto
+            - flashmla_kv
+            - flashmla_sparse
+            - flashmla_sparse_q8
+            - tilelang
+            - triton
+            - trtllm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dsa_prefill_backend
@@ -25737,9 +25883,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - flashmla_sparse
-          - flashmla_sparse_q8
+            $set:
+            - auto
+            - flashmla_sparse
+            - flashmla_sparse_q8
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dsv4_prefill_backend
@@ -25755,16 +25902,17 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - flashmla_sparse
-          - flashmla_sparse_q8
-          - flashmla_kv
-          - flashmla_auto
-          - flashinfer_sparse_mla
-          - fa3
-          - tilelang
-          - triton
-          - aiter
-          - trtllm
+            $set:
+            - aiter
+            - fa3
+            - flashinfer_sparse_mla
+            - flashmla_auto
+            - flashmla_kv
+            - flashmla_sparse
+            - flashmla_sparse_q8
+            - tilelang
+            - triton
+            - trtllm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dsa_decode_backend
@@ -25779,10 +25927,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deepgemm
-          - cutedsl
-          - aiter
+            $set:
+            - aiter
+            - auto
+            - cutedsl
+            - deepgemm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dsa_paged_mqa_logits_backend
@@ -25799,9 +25948,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sgl-kernel
-          - torch
-          - flashinfer
+            $set:
+            - flashinfer
+            - sgl-kernel
+            - torch
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dsa_topk_backend
@@ -25846,8 +25996,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - flashinfer
+            $set:
+            - flashinfer
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_mamba_backend
@@ -25879,11 +26030,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - full
+            $set:
             - breakable
-            - tc_piecewise
             - disabled
+            - full
+            - tc_piecewise
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_cuda_graph_backend_decode
@@ -25898,11 +26049,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-            $tuple:
-            - full
+            $set:
             - breakable
-            - tc_piecewise
             - disabled
+            - full
+            - tc_piecewise
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_cuda_graph_backend_prefill
@@ -25973,8 +26124,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - eager
-          - inductor
+            $set:
+            - eager
+            - inductor
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_cuda_graph_tc_compiler
@@ -26335,9 +26487,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - trtllm
-          - mnnvl
+            $set:
+            - auto
+            - mnnvl
+            - trtllm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_flashinfer_allreduce_fusion_backend
@@ -26471,24 +26624,25 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - pt
-          - safetensors
-          - npcache
-          - dummy
-          - sharded_state
-          - presharded
-          - gguf
-          - expert_pack
-          - bitsandbytes
-          - mistral
-          - layered
-          - flash_rl
-          - remote
-          - remote_instance
-          - fastsafetensors
-          - private
-          - runai_streamer
+            $set:
+            - auto
+            - bitsandbytes
+            - dummy
+            - expert_pack
+            - fastsafetensors
+            - flash_rl
+            - gguf
+            - layered
+            - mistral
+            - npcache
+            - presharded
+            - private
+            - pt
+            - remote
+            - remote_instance
+            - runai_streamer
+            - safetensors
+            - sharded_state
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_draft_load_format
@@ -26681,8 +26835,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - prefill
-          - decode
+            $set:
+            - decode
+            - prefill
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_attention_mode
@@ -26712,9 +26867,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - sgl-kernel
-          - torch
-          - flashinfer
+            $set:
+            - flashinfer
+            - sgl-kernel
+            - torch
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_dsa_topk_backend
@@ -26730,11 +26886,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - fp8_e5m2
-          - fp8_e4m3
-          - bf16
-          - bfloat16
+            $set:
+            - auto
+            - bf16
+            - bfloat16
+            - fp8_e4m3
+            - fp8_e5m2
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_draft_kv_cache_dtype
@@ -26770,25 +26927,26 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deep_gemm
-          - triton
-          - triton_kernel
-          - flashinfer_trtllm
-          - experimental_sgl_trtllm
-          - flashinfer_trtllm_routed
-          - flashinfer_cutlass
-          - flashinfer_mxfp4
-          - flashinfer_cutedsl
-          - flashinfer_megamoe
-          - cutlass
-          - aiter
-          - marlin
-          - humming
-          - experimental_sgl_marlin
-          - hpc_ops
-          - megamoe
-          - intel_xpu
+            $set:
+            - aiter
+            - auto
+            - cutlass
+            - deep_gemm
+            - experimental_sgl_marlin
+            - experimental_sgl_trtllm
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_megamoe
+            - flashinfer_mxfp4
+            - flashinfer_trtllm
+            - flashinfer_trtllm_routed
+            - hpc_ops
+            - humming
+            - intel_xpu
+            - marlin
+            - megamoe
+            - triton
+            - triton_kernel
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_moe_runner_backend
@@ -26803,17 +26961,18 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - deepep
-          - mooncake
-          - nixl
-          - mori
-          - ascend_fuseep
-          - flashinfer
-          - megamoe
-          - deepep_v2
-          - pplx
-          - ascend_tp
+            $set:
+            - ascend_fuseep
+            - ascend_tp
+            - deepep
+            - deepep_v2
+            - flashinfer
+            - megamoe
+            - mooncake
+            - mori
+            - nixl
+            - none
+            - pplx
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_moe_a2a_backend
@@ -26828,37 +26987,38 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - awq
-          - fp8
-          - mxfp8
-          - gptq
-          - gptq_marlin
-          - awq_marlin
-          - bitsandbytes
-          - gguf
-          - modelopt
-          - modelopt_fp8
-          - modelopt_fp4
-          - nvfp4_online
-          - modelopt_mixed
-          - petit_nvfp4
-          - w8a8_int8
-          - w8a8_fp8
-          - moe_wna16
-          - w4afp8
-          - mxfp4
-          - auto-round
-          - auto-round-int8
-          - compressed-tensors
-          - modelslim
-          - mxfp_w4a8
-          - quark
-          - quark_int4fp8_moe
-          - quark_mxfp4
-          - mlx_q4
-          - mlx_q8
-          - unquant
-          - humming
+            $set:
+            - auto-round
+            - auto-round-int8
+            - awq
+            - awq_marlin
+            - bitsandbytes
+            - compressed-tensors
+            - fp8
+            - gguf
+            - gptq
+            - gptq_marlin
+            - humming
+            - mlx_q4
+            - mlx_q8
+            - modelopt
+            - modelopt_fp4
+            - modelopt_fp8
+            - modelopt_mixed
+            - modelslim
+            - moe_wna16
+            - mxfp4
+            - mxfp8
+            - mxfp_w4a8
+            - nvfp4_online
+            - petit_nvfp4
+            - quark
+            - quark_int4fp8_moe
+            - quark_mxfp4
+            - unquant
+            - w4afp8
+            - w8a8_fp8
+            - w8a8_int8
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_draft_model_quantization
@@ -26973,9 +27133,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'null'
-          - verifier
-          - drafter
+            $set:
+            - drafter
+            - 'null'
+            - verifier
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_decoupled_spec_role
@@ -27033,8 +27194,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - BFS
-          - PROB
+            $set:
+            - BFS
+            - PROB
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_speculative_ngram_match_type
@@ -27137,18 +27299,19 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - deepep
-          - mooncake
-          - nixl
-          - mori
-          - ascend_fuseep
-          - flashinfer
-          - megamoe
-          - deepep_v2
-          - pplx
-          - ascend_tp
-          - flashinfer_megamoe
+            $set:
+            - ascend_fuseep
+            - ascend_tp
+            - deepep
+            - deepep_v2
+            - flashinfer
+            - flashinfer_megamoe
+            - megamoe
+            - mooncake
+            - mori
+            - nixl
+            - none
+            - pplx
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_moe_a2a_backend
@@ -27177,8 +27340,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - direct
-          - hybrid
+            $set:
+            - direct
+            - hybrid
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_deepep_v2_mode
@@ -27195,25 +27359,26 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - deep_gemm
-          - triton
-          - triton_kernel
-          - flashinfer_trtllm
-          - experimental_sgl_trtllm
-          - flashinfer_trtllm_routed
-          - flashinfer_cutlass
-          - flashinfer_mxfp4
-          - flashinfer_cutedsl
-          - flashinfer_megamoe
-          - cutlass
-          - aiter
-          - marlin
-          - humming
-          - experimental_sgl_marlin
-          - hpc_ops
-          - megamoe
-          - intel_xpu
+            $set:
+            - aiter
+            - auto
+            - cutlass
+            - deep_gemm
+            - experimental_sgl_marlin
+            - experimental_sgl_trtllm
+            - flashinfer_cutedsl
+            - flashinfer_cutlass
+            - flashinfer_megamoe
+            - flashinfer_mxfp4
+            - flashinfer_trtllm
+            - flashinfer_trtllm_routed
+            - hpc_ops
+            - humming
+            - intel_xpu
+            - marlin
+            - megamoe
+            - triton
+            - triton_kernel
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_moe_runner_backend
@@ -27228,9 +27393,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - default
-          - bf16
-          - fp8
+            $set:
+            - bf16
+            - default
+            - fp8
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_flashinfer_mxfp4_moe_precision
@@ -27246,9 +27412,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - normal
-          - low_latency
+            $set:
+            - auto
+            - low_latency
+            - normal
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_deepep_mode
@@ -27264,8 +27431,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 1
-          - 2
+            $set:
+            - 1
+            - 2
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_fuseep_mode
@@ -27281,11 +27449,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - bf16
-          - fp8
-          - int8
-          - nvfp4
+            $set:
+            - auto
+            - bf16
+            - fp8
+            - int8
+            - nvfp4
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_deepep_dispatcher_output_dtype
@@ -27314,10 +27483,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - static
-          - dynamic
-          - fake
-          - lp
+            $set:
+            - dynamic
+            - fake
+            - lp
+            - static
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_ep_dispatch_algorithm
@@ -27416,10 +27586,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - stat
-          - stat_approx
-          - per_pass
-          - per_token
+            $set:
+            - per_pass
+            - per_token
+            - stat
+            - stat_approx
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_expert_distribution_recorder_mode
@@ -27448,10 +27619,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'off'
-          - server_log
-          - prometheus
-          - both
+            $set:
+            - both
+            - 'off'
+            - prometheus
+            - server_log
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_expert_balancedness_report_mode
@@ -27495,9 +27667,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - mooncake
-          - nixl
+            $set:
+            - mooncake
+            - nixl
+            - none
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_elastic_ep_backend
@@ -27558,8 +27731,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - scale
-          - recover
+            $set:
+            - recover
+            - scale
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_ep_join_mode
@@ -27707,9 +27881,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - float32
-          - bfloat16
-          - float16
+            $set:
+            - bfloat16
+            - float16
+            - float32
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_mamba_ssm_dtype
@@ -27784,10 +27959,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - no_buffer
-          - extra_buffer
-          - extra_buffer_lazy
+            $set:
+            - auto
+            - extra_buffer
+            - extra_buffer_lazy
+            - no_buffer
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_mamba_radix_cache_strategy
@@ -27845,14 +28021,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_linear_attn_backend
@@ -27868,14 +28045,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_linear_attn_decode_backend
@@ -27890,14 +28068,15 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_linear_attn_prefill_backend
@@ -27913,15 +28092,16 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - cutedsl
-          - flashinfer
-          - flashkda
-          - nvidia_kda
-          - ptx_kda
-          - helion
-          - intel_xpu
-          - nv_cutedsl
+            $set:
+            - cutedsl
+            - flashinfer
+            - flashkda
+            - helion
+            - intel_xpu
+            - nv_cutedsl
+            - nvidia_kda
+            - ptx_kda
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_linear_attn_verify_backend
@@ -28000,8 +28180,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cache
-          - buffer_only
+            $set:
+            - buffer_only
+            - cache
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_hicache_host_memory_mode
@@ -28046,9 +28227,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - write_back
-          - write_through
-          - write_through_selective
+            $set:
+            - write_back
+            - write_through
+            - write_through_selective
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_hicache_write_policy
@@ -28063,9 +28245,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - direct
-          - kernel
-          - kernel_ascend
+            $set:
+            - direct
+            - kernel
+            - kernel_ascend
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_hicache_io_backend
@@ -28080,11 +28263,12 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - layer_first
-          - page_first
-          - page_first_direct
-          - page_first_kv_split
-          - page_head
+            $set:
+            - layer_first
+            - page_first
+            - page_first_direct
+            - page_first_kv_split
+            - page_head
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_hicache_mem_layout
@@ -28099,18 +28283,19 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - file
-          - sim
-          - mooncake
-          - npu_memcache
-          - hf3fs
-          - nixl
-          - aibrix
-          - dynamic
-          - eic
-          - simm
-          - mori
-          - shm
+            $set:
+            - aibrix
+            - dynamic
+            - eic
+            - file
+            - hf3fs
+            - mooncake
+            - mori
+            - nixl
+            - npu_memcache
+            - shm
+            - sim
+            - simm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_hicache_storage_backend
@@ -28127,9 +28312,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - best_effort
-          - wait_complete
-          - timeout
+            $set:
+            - best_effort
+            - timeout
+            - wait_complete
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_hicache_storage_prefetch_policy
@@ -28205,8 +28391,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - mooncake
-          - mori
+            $set:
+            - mooncake
+            - mori
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_unified_cache_external_linker_backend
@@ -28426,9 +28613,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - torchvision
-          - pil
+            $set:
+            - auto
+            - pil
+            - torchvision
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_image_processor_backend
@@ -28443,7 +28631,8 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - mooncake
+            $set:
+            - mooncake
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_mm_global_cache_backend
@@ -28472,9 +28661,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cpu
-          - cuda_ipc
-          - cuda_vmm
+            $set:
+            - cpu
+            - cuda_ipc
+            - cuda_vmm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_mm_feature_transport
@@ -28611,8 +28801,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - lru
-          - fifo
+            $set:
+            - fifo
+            - lru
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_lora_eviction_policy
@@ -28628,10 +28819,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - triton
-          - csgmv
-          - ascend
-          - torch_native
+            $set:
+            - ascend
+            - csgmv
+            - torch_native
+            - triton
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_lora_backend
@@ -28646,10 +28838,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 16
-          - 32
-          - 64
-          - 128
+            $set:
+            - 128
+            - 16
+            - 32
+            - 64
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_max_lora_chunk_size
@@ -29041,9 +29234,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'null'
-          - prefill
-          - decode
+            $set:
+            - decode
+            - 'null'
+            - prefill
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_disaggregation_mode
@@ -29059,12 +29253,13 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - mooncake
-          - nixl
-          - ascend
-          - fake
-          - mori
-          - mooncake_tcp
+            $set:
+            - ascend
+            - fake
+            - mooncake
+            - mooncake_tcp
+            - mori
+            - nixl
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_disaggregation_transfer_backend
@@ -29139,8 +29334,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - cpu_tensor
-          - host_pool
+            $set:
+            - cpu_tensor
+            - host_pool
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_disaggregation_decode_retraction_backup
@@ -29258,10 +29454,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - zmq_to_scheduler
-          - zmq_to_tokenizer
-          - mooncake
+            $set:
+            - auto
+            - mooncake
+            - zmq_to_scheduler
+            - zmq_to_tokenizer
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_encoder_transfer_backend
@@ -29377,8 +29574,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - serial
-          - overlap
+            $set:
+            - overlap
+            - serial
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_startup_weight_load_mode
@@ -29510,9 +29708,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - transfer_engine
-          - nccl
-          - modelexpress
+            $set:
+            - modelexpress
+            - nccl
+            - transfer_engine
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_remote_instance_weight_loader_backend
@@ -29792,8 +29991,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - fsdp
-          - fsdp_tp
+            $set:
+            - fsdp
+            - fsdp_tp
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_rl_on_policy_target
@@ -29808,9 +30008,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - log
-          - raise
+            $set:
+            - log
+            - none
+            - raise
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_kv_canary
@@ -30011,8 +30212,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - last
-          - full
+            $set:
+            - full
+            - last
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_return_hidden_states_mode
@@ -30074,9 +30276,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - 'off'
-          - daemon
-          - client
+            $set:
+            - client
+            - daemon
+            - 'off'
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_weight_cache_mode
@@ -30256,8 +30459,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - pinned
-          - file
+            $set:
+            - file
+            - pinned
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_ple_offload_backend
@@ -30305,10 +30509,11 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - bf16
-          - nvfp4
-          - mxfp8
+            $set:
+            - auto
+            - bf16
+            - mxfp8
+            - nvfp4
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_flashinfer_a2a_dispatch_type
@@ -30337,9 +30542,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - flashmla
-          - trtllm
+            $set:
+            - auto
+            - flashmla
+            - trtllm
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_dsv4_attn_backend
@@ -30389,38 +30595,39 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - apertus2509
-          - deepseek-r1
-          - deepseek-v3
-          - deepseek-v4
-          - dots
-          - glm45
-          - ling3
-          - hunyuan
-          - gpt-oss
-          - k2_horizon
-          - kimi
-          - kimi_k2
-          - kimi_k3
-          - mimo
-          - muse
-          - poolside_v1
-          - qwen3
-          - qwen3-thinking
-          - minimax
-          - minimax-append-think
-          - minimax-m3
-          - nanbeige
-          - step3
-          - step3p5
-          - mistral
-          - nemotron_3
-          - granite_thinking_parser
-          - interns1
-          - gemma4
-          - inkling
-          - cohere_command4
+            $set:
+            - apertus2509
+            - auto
+            - cohere_command4
+            - deepseek-r1
+            - deepseek-v3
+            - deepseek-v4
+            - dots
+            - gemma4
+            - glm45
+            - gpt-oss
+            - granite_thinking_parser
+            - hunyuan
+            - inkling
+            - interns1
+            - k2_horizon
+            - kimi
+            - kimi_k2
+            - kimi_k3
+            - ling3
+            - mimo
+            - minimax
+            - minimax-append-think
+            - minimax-m3
+            - mistral
+            - muse
+            - nanbeige
+            - nemotron_3
+            - poolside_v1
+            - qwen3
+            - qwen3-thinking
+            - step3
+            - step3p5
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_reasoning_parser
@@ -30439,47 +30646,48 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - auto
-          - apertus2509
-          - cohere_command4
-          - deepseekv3
-          - deepseekv31
-          - deepseekv32
-          - deepseekv4
-          - dots
-          - glm
-          - glm45
-          - glm47
-          - gpt-oss
-          - k2_horizon
-          - kimi_k2
-          - kimi_k3
-          - kimi_k2_raw_id
-          - lfm2
-          - ling3
-          - llama3
-          - mimo
-          - minicpm5
-          - mistral
-          - muse
-          - poolside_v1
-          - pythonic
-          - qwen
-          - qwen25
-          - qwen3_coder
-          - spark25
-          - step3
-          - step3p5
-          - minimax-m2
-          - minimax-m3
-          - nanbeige
-          - trinity
-          - interns1
-          - hermes
-          - hunyuan
-          - gigachat3
-          - gemma4
-          - inkling
+            $set:
+            - apertus2509
+            - auto
+            - cohere_command4
+            - deepseekv3
+            - deepseekv31
+            - deepseekv32
+            - deepseekv4
+            - dots
+            - gemma4
+            - gigachat3
+            - glm
+            - glm45
+            - glm47
+            - gpt-oss
+            - hermes
+            - hunyuan
+            - inkling
+            - interns1
+            - k2_horizon
+            - kimi_k2
+            - kimi_k2_raw_id
+            - kimi_k3
+            - lfm2
+            - ling3
+            - llama3
+            - mimo
+            - minicpm5
+            - minimax-m2
+            - minimax-m3
+            - mistral
+            - muse
+            - nanbeige
+            - poolside_v1
+            - pythonic
+            - qwen
+            - qwen25
+            - qwen3_coder
+            - spark25
+            - step3
+            - step3p5
+            - trinity
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_tool_call_parser
@@ -30499,9 +30707,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - none
-          - partial
-          - all
+            $set:
+            - all
+            - none
+            - partial
           const: null
           default: ==SUPPRESS==
           dest: eval_sglang_kv_canary_real_data
@@ -30640,23 +30849,24 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - default
-          - qwen3
-          - qwen35
-          - qwen36
-          - qwen38small
-          - qwen4exp
-          - qwennext
-          - glm47
-          - glm53
-          - nemotron3
-          - kimi25
-          - kimi26
-          - minimax_m25
-          - minimax_m27
-          - deepseekv32
-          - deepseekv4
-          - inkling
+            $set:
+            - deepseekv32
+            - deepseekv4
+            - default
+            - glm47
+            - glm53
+            - inkling
+            - kimi25
+            - kimi26
+            - minimax_m25
+            - minimax_m27
+            - nemotron3
+            - qwen3
+            - qwen35
+            - qwen36
+            - qwen38small
+            - qwen4exp
+            - qwennext
           const: null
           default: default
           dest: tito_model
@@ -30961,9 +31171,10 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - qwen
-          - qwen3
-          - distill_qwen
+            $set:
+            - distill_qwen
+            - qwen
+            - qwen3
           const: null
           default: qwen
           dest: loss_mask_type
@@ -31349,8 +31560,9 @@ schema:
       - $class: argparse._StoreAction
         state:
           choices:
-          - miles
-          - megatron
+            $set:
+            - megatron
+            - miles
           const: null
           default: megatron
           dest: dsv4_impl
