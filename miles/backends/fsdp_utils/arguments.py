@@ -8,9 +8,6 @@ import yaml
 
 @dataclass
 class FSDPArgs:
-    no_load_optim: bool = False
-    no_load_rng: bool = False
-
     # Optim
     optimizer: str = "adam"  # Optimizer type: "adam" (AdamW)
     lr: float = 2e-5

@@ -316,6 +316,8 @@ def parse_args_and_get_parser(
                 "load",
                 "mtp_loss_scaling_factor",
                 "mtp_num_layers",
+                "no_load_optim",
+                "no_load_rng",
                 "no_save_optim",
                 "rank",
                 "world_size",
