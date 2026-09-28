@@ -53,7 +53,9 @@ def inkling_provider_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Ite
     )
     monkeypatch.setattr(model, "get_model", _build_local_model)
     monkeypatch.setattr(model, "is_first_replica_megatron_main_rank", lambda: True)
-    monkeypatch.setattr(model, "get_megatron_muon_optimizer", lambda *, config, **kwargs: SimpleNamespace(config=config))
+    monkeypatch.setattr(
+        model, "get_megatron_muon_optimizer", lambda *, config, **kwargs: SimpleNamespace(config=config)
+    )
     monkeypatch.setattr(model, "get_optimizer_param_scheduler", lambda args, optimizer: None)
     monkeypatch.setattr(model, "check_peak_gpu_memory_after_load", lambda args: None)
     monkeypatch.setattr(model, "clear_memory", lambda: None)
@@ -101,7 +103,9 @@ def inkling_reload_env(
         optimizer=_OptimizerMasters(inkling_adapter_model),
         native_optimizer_restored=False,
     )
-    monkeypatch.setattr(env.module, "load_checkpoint", lambda *args, **kwargs: (0, False, env.native_optimizer_restored))
+    monkeypatch.setattr(
+        env.module, "load_checkpoint", lambda *args, **kwargs: (0, False, env.native_optimizer_restored)
+    )
     return env
 
 
