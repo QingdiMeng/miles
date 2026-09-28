@@ -3884,7 +3884,7 @@ processes:
             rotary_seq_len_interpolation_factor: null
             run_workload_inspector_server: false
             sample_rate: 1.0
-            save: /root/shared_data/260928-183558-900/checkpoints
+            save: /root/shared_data/$RUN_ID_0000/checkpoints
             save_activations_interval: null
             save_dgrads_interval: null
             save_interval: 20
@@ -5831,7 +5831,7 @@ processes:
             rotary_seq_len_interpolation_factor: null
             run_workload_inspector_server: false
             sample_rate: 1.0
-            save: /root/shared_data/260928-183558-900/checkpoints
+            save: /root/shared_data/$RUN_ID_0000/checkpoints
             save_activations_interval: null
             save_dgrads_interval: null
             save_interval: 20
@@ -9623,7 +9623,7 @@ processes:
             rotary_seq_len_interpolation_factor: null
             run_workload_inspector_server: false
             sample_rate: 1.0
-            save: /root/shared_data/260928-183558-900/checkpoints
+            save: /root/shared_data/$RUN_ID_0000/checkpoints
             save_activations_interval: null
             save_dgrads_interval: null
             save_interval: 20
