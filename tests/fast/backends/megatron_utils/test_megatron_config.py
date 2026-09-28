@@ -558,7 +558,10 @@ class TestTrainerCheckpointDirs:
         path = _write_yaml({"trainers": [{"model_id": "a", "trainer_id": "a-second"}, {"model_id": "b"}]}, tmp_path)
         args = _make_args(path, save="/ckpt/run")
 
-        saves = [compute_trainer_args(args, trainer).save for trainer in resolve_megatron_config(args, base_args={}).trainers]
+        saves = [
+            compute_trainer_args(args, trainer).save
+            for trainer in resolve_megatron_config(args, base_args={}).trainers
+        ]
 
         assert saves == ["/ckpt/run/trainers/a-second", "/ckpt/run/trainers/b-actor"]
 
@@ -833,7 +836,11 @@ class TestSynthesizedCriticTrainer:
         """The overlay order is what neutralizes the critic, so a policy override of the same field must not win."""
         path = _write_yaml({"trainers": [{"model_id": "alpha", "overrides": {"lr": 5e-7, "eps_clip": 0.3}}]}, tmp_path)
 
-        overrides = resolve_megatron_config(_make_args(path, use_critic=True, critic_lr=2e-6), base_args={}).trainers[1].overrides
+        overrides = (
+            resolve_megatron_config(_make_args(path, use_critic=True, critic_lr=2e-6), base_args={})
+            .trainers[1]
+            .overrides
+        )
 
         assert (overrides["lr"], overrides["eps_clip"]) == (2e-6, 0.3)
 

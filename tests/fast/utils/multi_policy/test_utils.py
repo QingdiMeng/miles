@@ -11,6 +11,7 @@ from tests.fast.fixtures.args_fixtures import parser_defaults
 from tests.fast.fixtures.megatron_config_fixtures import encode_megatron_config
 
 from miles.backends.megatron_utils.megatron_config import MegatronConfig, resolve_megatron_config
+from miles.ray.train.init_request import TrainerControllerInitRequest
 from miles.utils.args.runtime import AllConfig
 from miles.utils.arguments import parse_args
 from miles.utils.multi_policy import utils as multi_policy_utils
@@ -19,7 +20,9 @@ from miles.utils.multi_policy.utils import TrainerInfo
 
 
 def _make_config(*model_ids: str) -> MegatronConfig:
-    return resolve_megatron_config(Namespace(megatron_config=encode_megatron_config(*model_ids), use_critic=False), base_args={})
+    return resolve_megatron_config(
+        Namespace(megatron_config=encode_megatron_config(*model_ids), use_critic=False), base_args={}
+    )
 
 
 def _make_args(*model_ids: str, **overrides: Any) -> Namespace:
@@ -52,7 +55,9 @@ def _sglang_models(*names_updatable: tuple[str, bool]) -> SimpleNamespace:
 
 class TestValidateMultiPolicyArgs:
     def _validate(self, args: Namespace) -> None:
-        multi_policy_utils.validate_multi_policy_args(args, megatron_config=resolve_megatron_config(args, base_args={}))
+        multi_policy_utils.validate_multi_policy_args(
+            args, megatron_config=resolve_megatron_config(args, base_args={})
+        )
 
     def test_a_run_naming_every_policy_on_both_sides_is_accepted(self):
         """The happy path has to stay reachable, or every refusal below is vacuous."""
@@ -94,7 +99,14 @@ class TestValidateMultiPolicyArgs:
 
     def test_a_run_saving_rollout_data_is_accepted(self):
         """Rollout dumps are keyed per policy since the executor stamps the trainer model id into the stem."""
-        self._validate(_make_args("a", "b", save_debug_rollout_data="/tmp/{rollout_id}.pt", sglang=_sglang_models(("a", True), ("b", True))))
+        self._validate(
+            _make_args(
+                "a",
+                "b",
+                save_debug_rollout_data="/tmp/{rollout_id}.pt",
+                sglang=_sglang_models(("a", True), ("b", True)),
+            )
+        )
 
     def test_a_shared_engine_evaluating_run_is_accepted(self):
         """train_multi_policy.py dispatches shared-engine eval, so --eval-interval alone is a valid run."""
@@ -103,7 +115,15 @@ class TestValidateMultiPolicyArgs:
     def test_a_snapshot_evaluating_run_is_refused(self):
         """A snapshot backend exports one trainer's checkpoint, which cannot represent several policies."""
         with pytest.raises(AssertionError, match="shared rollout engines only"):
-            self._validate(_make_args("a", "b", eval_interval=10, eval_uses_snapshots=True, sglang=_sglang_models(("a", True), ("b", True))))
+            self._validate(
+                _make_args(
+                    "a",
+                    "b",
+                    eval_interval=10,
+                    eval_uses_snapshots=True,
+                    sglang=_sglang_models(("a", True), ("b", True)),
+                )
+            )
 
     def test_a_run_without_an_sglang_config_is_refused(self):
         """Without --sglang-config the run deploys one default model, so every update would land on the same engines."""
@@ -112,7 +132,9 @@ class TestValidateMultiPolicyArgs:
 
     def test_a_checkpointing_run_is_accepted(self):
         """Saving was refused until the global checkpoint existed, and nothing else must reintroduce the refusal."""
-        self._validate(_make_args("a", "b", save="/ckpt", save_interval=10, sglang=_sglang_models(("a", True), ("b", True))))
+        self._validate(
+            _make_args("a", "b", save="/ckpt", save_interval=10, sglang=_sglang_models(("a", True), ("b", True)))
+        )
 
 
 @functools.cache
@@ -142,6 +164,9 @@ def _make_trainer_args(*model_ids: str, **overrides: Any) -> AllConfig:
     return _parse_trainer_args(model_ids).model_copy(update=overrides)
 
 
+_CAPABILITY = object()
+
+
 class TestCreatePolicyTrainers:
     @staticmethod
     def _stub_create_training_model(
@@ -149,28 +174,40 @@ class TestCreatePolicyTrainers:
     ) -> list[dict]:
         created: list[dict] = []
 
-        async def _create(trainer_args, *, handle, trainer_id, resumed):
+        async def _create(*, handle, trainer_id, request, requested_start_rollout_id, resumed):
             handle.get_train_parallel_config = AsyncMock(return_value=f"parallel-config-of-{trainer_id}")
-            created.append(dict(trainer_id=trainer_id, args=trainer_args, handle=handle, resumed=resumed))
-            return SimpleNamespace(handle=handle, start_rollout_id=start_rollout_ids[trainer_args.trainer_model_id])
+            created.append(
+                dict(
+                    trainer_id=trainer_id,
+                    request=request,
+                    requested_start_rollout_id=requested_start_rollout_id,
+                    handle=handle,
+                    resumed=resumed,
+                )
+            )
+            return SimpleNamespace(
+                handle=handle, start_rollout_id=start_rollout_ids[trainer_id.removesuffix("-actor")]
+            )
+
+        def _create_trainer_handles(args, *, trainer_configs, capability):
+            assert capability is _CAPABILITY
+            return {config.trainer_id: AsyncMock() for config in trainer_configs}
 
         monkeypatch.setattr(multi_policy_utils, "create_training_model", _create)
-        monkeypatch.setattr(
-            multi_policy_utils,
-            "create_trainer_handles",
-            lambda args, *, trainer_configs: {config.trainer_id: AsyncMock() for config in trainer_configs},
-        )
+        monkeypatch.setattr(multi_policy_utils, "create_trainer_handles", _create_trainer_handles)
         monkeypatch.setattr(multi_policy_utils, "take_over_trainers", AsyncMock(return_value=resumed))
         return created
 
     async def test_every_policy_gets_a_trainer_keyed_by_its_model_id(self, monkeypatch):
         """The driver looks a trainer up by model id on every round; a wrong key trains the wrong policy."""
         created = self._stub_create_training_model(monkeypatch, dict(a=0, b=0))
+        args = _make_trainer_args("a", "b")
 
-        trainers = await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=AsyncMock())
+        trainers = await multi_policy_utils.create_trainers(args, rollout_executor=AsyncMock(), capability=_CAPABILITY)
 
         assert [entry["trainer_id"] for entry in created] == ["a-actor", "b-actor"]
-        assert [entry["args"].trainer_model_id for entry in created] == ["a", "b"]
+        assert [entry["request"] for entry in created] == [TrainerControllerInitRequest.from_args(args)] * 2
+        assert [entry["requested_start_rollout_id"] for entry in created] == [args.start_rollout_id] * 2
         assert list(trainers) == ["a", "b"]
         assert [trainer.model_id for trainer in trainers.values()] == ["a", "b"]
         assert [trainer.handle for trainer in trainers.values()] == [entry["handle"] for entry in created]
@@ -179,7 +216,9 @@ class TestCreatePolicyTrainers:
         """Each policy resumes from its own position, so the position travels beside its handle."""
         self._stub_create_training_model(monkeypatch, dict(a=4, b=2))
 
-        trainers = await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=AsyncMock())
+        trainers = await multi_policy_utils.create_trainers(
+            _make_trainer_args("a", "b"), rollout_executor=AsyncMock(), capability=_CAPABILITY
+        )
 
         assert {model_id: trainer.start_rollout_id for model_id, trainer in trainers.items()} == dict(a=4, b=2)
 
@@ -188,7 +227,9 @@ class TestCreatePolicyTrainers:
         self._stub_create_training_model(monkeypatch, dict(a=0, b=0))
         rollout_executor = AsyncMock()
 
-        await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=rollout_executor)
+        await multi_policy_utils.create_trainers(
+            _make_trainer_args("a", "b"), rollout_executor=rollout_executor, capability=_CAPABILITY
+        )
 
         assert [
             (call.args[0], call.kwargs["trainer_model_id"])
@@ -200,7 +241,9 @@ class TestCreatePolicyTrainers:
         self._stub_create_training_model(monkeypatch, dict(a=4, b=2))
         rollout_executor = AsyncMock()
 
-        await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=rollout_executor)
+        await multi_policy_utils.create_trainers(
+            _make_trainer_args("a", "b"), rollout_executor=rollout_executor, capability=_CAPABILITY
+        )
 
         rollout_executor.load.assert_awaited_once_with(3)
 
@@ -209,7 +252,9 @@ class TestCreatePolicyTrainers:
         self._stub_create_training_model(monkeypatch, dict(a=2, b=9))
         rollout_executor = AsyncMock()
 
-        await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=rollout_executor)
+        await multi_policy_utils.create_trainers(
+            _make_trainer_args("a", "b"), rollout_executor=rollout_executor, capability=_CAPABILITY
+        )
 
         rollout_executor.load.assert_awaited_once_with(1)
 
@@ -218,7 +263,9 @@ class TestCreatePolicyTrainers:
         created = self._stub_create_training_model(monkeypatch, dict(a=4, b=2), resumed=True)
         rollout_executor = AsyncMock()
 
-        await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=rollout_executor)
+        await multi_policy_utils.create_trainers(
+            _make_trainer_args("a", "b"), rollout_executor=rollout_executor, capability=_CAPABILITY
+        )
 
         assert [entry["resumed"] for entry in created] == [True, True]
         rollout_executor.load.assert_awaited_once_with(3)
@@ -228,7 +275,9 @@ class TestCreatePolicyTrainers:
         self._stub_create_training_model(monkeypatch, dict(a=0, b=0))
         rollout_executor = AsyncMock()
 
-        await multi_policy_utils.create_trainers(_make_trainer_args("a", "b"), rollout_executor=rollout_executor)
+        await multi_policy_utils.create_trainers(
+            _make_trainer_args("a", "b"), rollout_executor=rollout_executor, capability=_CAPABILITY
+        )
 
         rollout_executor.load.assert_not_awaited()
 
@@ -238,7 +287,7 @@ class TestCreatePolicyTrainers:
 
         with pytest.raises(AssertionError, match="rollout/3 is missing"):
             await multi_policy_utils.create_trainers(
-                _make_trainer_args("a", "b", load=str(tmp_path)), rollout_executor=AsyncMock()
+                _make_trainer_args("a", "b", load=str(tmp_path)), rollout_executor=AsyncMock(), capability=_CAPABILITY
             )
 
     async def test_a_resume_with_the_global_rollout_state_loads_it(self, monkeypatch, tmp_path):
@@ -248,7 +297,7 @@ class TestCreatePolicyTrainers:
         rollout_executor = AsyncMock()
 
         await multi_policy_utils.create_trainers(
-            _make_trainer_args("a", "b", load=str(tmp_path)), rollout_executor=rollout_executor
+            _make_trainer_args("a", "b", load=str(tmp_path)), rollout_executor=rollout_executor, capability=_CAPABILITY
         )
 
         rollout_executor.load.assert_awaited_once_with(3)
@@ -259,7 +308,7 @@ class TestCreatePolicyTrainers:
 
         with pytest.raises(AssertionError, match="carries no policy model id"):
             await multi_policy_utils.create_trainers(
-                _make_trainer_args(), rollout_executor=AsyncMock()
+                _make_trainer_args(), rollout_executor=AsyncMock(), capability=_CAPABILITY
             )
 
 
@@ -367,18 +416,21 @@ class TestTheIterationAResumeStartsFrom:
         """The followers would restore the leader's iteration and only fail the consistency check afterwards."""
         with pytest.raises(AssertionError, match="every policy stands at an iteration of its own"):
             multi_policy_utils.validate_multi_policy_args(
-                _make_args("a", "b", ckpt_step=7, sglang=_sglang_models(("a", True), ("b", True))), megatron_config=_make_config("a", "b")
+                _make_args("a", "b", ckpt_step=7, sglang=_sglang_models(("a", True), ("b", True))),
+                megatron_config=_make_config("a", "b"),
             )
 
     def test_the_iteration_zero_a_selector_can_name_is_refused_too(self):
         """Zero is a checkpoint like any other, and a falsy check would let this one resume."""
         with pytest.raises(AssertionError, match="--ckpt-step"):
             multi_policy_utils.validate_multi_policy_args(
-                _make_args("a", "b", ckpt_step=0, sglang=_sglang_models(("a", True), ("b", True))), megatron_config=_make_config("a", "b")
+                _make_args("a", "b", ckpt_step=0, sglang=_sglang_models(("a", True), ("b", True))),
+                megatron_config=_make_config("a", "b"),
             )
 
     def test_a_run_that_names_no_iteration_is_accepted(self):
         """Every multi policy resume reads the iteration each policy recorded, and this is that run."""
         multi_policy_utils.validate_multi_policy_args(
-            _make_args("a", "b", ckpt_step=None, sglang=_sglang_models(("a", True), ("b", True))), megatron_config=_make_config("a", "b")
+            _make_args("a", "b", ckpt_step=None, sglang=_sglang_models(("a", True), ("b", True))),
+            megatron_config=_make_config("a", "b"),
         )

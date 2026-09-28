@@ -3,10 +3,9 @@ from __future__ import annotations
 from argparse import Namespace
 
 import pytest
-
-from miles.backends.sglang_utils.sglang_api_client import WorkerType
 from tests.fast.fixtures.sglang_config_fixtures import resolve_sglang_config, resolve_sglang_config_and_scaling
 
+from miles.backends.sglang_utils.sglang_api_client import WorkerType
 from miles.backends.sglang_utils.sglang_config import (
     ServerGroupConfig,
     ServerGroupScalingConfig,
