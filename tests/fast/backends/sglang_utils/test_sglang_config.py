@@ -176,7 +176,7 @@ class TestNumServerCells:
             rollout_num_gpus=16,
         )
 
-        assert scaling.num_server_cells(cfg.models[0]) == 4
+        assert cfg.models[0].num_server_cells(scaling) == 4
 
 
 class TestOverridesResolution:
