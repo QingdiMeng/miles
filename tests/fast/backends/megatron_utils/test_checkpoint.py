@@ -1,8 +1,8 @@
-from argparse import Namespace
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from tests.fast.fixtures.args_fixtures import make_trainer_args
 
 from miles.backends.megatron_utils import checkpoint
 
@@ -37,8 +37,7 @@ class TestCheckpointTrainingProvenance:
             (load_path / "metadata.json").write_text("{}")
         else:
             (load_path / "latest_checkpointed_iteration.txt").write_text(source)
-        args = Namespace(load=str(load_path), finetune=finetune, ckpt_step=ckpt_step, lora_rank=0)
-        monkeypatch.setattr(checkpoint, "get_args", lambda: args)
+        args = make_trainer_args(load=str(load_path), finetune=finetune, ckpt_step=ckpt_step, lora_rank=0, lora_adapter_path=None)
         monkeypatch.setattr(checkpoint, "_load_checkpoint_megatron", lambda **_kwargs: (0, 123))
         checkpointing_context = (
             None
@@ -52,6 +51,7 @@ class TestCheckpointTrainingProvenance:
             opt_param_scheduler=None,
             checkpointing_context=checkpointing_context,
             skip_load_to_model_and_opt=False,
+            args=args,
         )
 
         assert result == (0, expected, False)
@@ -61,8 +61,7 @@ class TestCheckpointTrainingProvenance:
     ) -> None:
         """HF loading preserves the existing non-finetune rollout numbering."""
         (tmp_path / "config.json").write_text("{}")
-        args = Namespace(load=str(tmp_path), finetune=False, ckpt_step=None, lora_rank=0)
-        monkeypatch.setattr(checkpoint, "get_args", lambda: args)
+        args = make_trainer_args(load=str(tmp_path), finetune=False, ckpt_step=None, lora_rank=0, lora_adapter_path=None)
         monkeypatch.setattr(checkpoint, "_load_checkpoint_hf", lambda **_kwargs: (0, 0))
 
         result = checkpoint.load_checkpoint(
@@ -71,6 +70,7 @@ class TestCheckpointTrainingProvenance:
             opt_param_scheduler=None,
             checkpointing_context=None,
             skip_load_to_model_and_opt=False,
+            args=args,
         )
 
         assert result == (0, True, False)
@@ -93,7 +93,7 @@ class TestCheckpointTrainingProvenance:
     ) -> None:
         """Adapter weights alone cannot be mistaken for a saved iteration-zero training state."""
         (tmp_path / "latest_checkpointed_iteration.txt").write_text("release")
-        args = Namespace(
+        args = make_trainer_args(
             load=str(tmp_path),
             finetune=True,
             ckpt_step=None,
@@ -101,7 +101,6 @@ class TestCheckpointTrainingProvenance:
             lora_adapter_path=str(tmp_path / "adapter"),
             no_load_optim=False,
         )
-        monkeypatch.setattr(checkpoint, "get_args", lambda: args)
         monkeypatch.setattr(checkpoint, "_load_checkpoint_megatron", lambda **_kwargs: (0, 123))
         monkeypatch.setattr(checkpoint, "load_lora_adapter", lambda *_args, **_kwargs: adapter_result)
 
@@ -111,6 +110,7 @@ class TestCheckpointTrainingProvenance:
             opt_param_scheduler=None,
             checkpointing_context=None,
             skip_load_to_model_and_opt=False,
+            args=args,
         )
 
         assert result == (0, expected, adapter_result[2])

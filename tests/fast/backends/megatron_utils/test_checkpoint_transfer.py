@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from tests.fast.fixtures.args_fixtures import make_trainer_args
 import torch
 import torch.distributed as dist
 from megatron.core.dist_checkpointing.mapping import ShardedTensor
@@ -228,6 +229,7 @@ class TestSendCkptRecords:
 
         with caplog.at_level(logging.INFO, logger=_CKPT_TRANSFER_LOGGER):
             checkpoint_transfer.send_ckpt(
+                args=make_trainer_args(),
                 indep_dp=GroupInfo(rank=0, size=2, group=None),
                 model=[],
                 optimizer=object(),
