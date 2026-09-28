@@ -1,10 +1,10 @@
 import json
 import subprocess
 from pathlib import Path
-from types import SimpleNamespace
 from typing import NamedTuple
 
 import pytest
+from tests.fast.utils.external_utils.command_utils.helm_backend.launcher.utils import LauncherArgs
 import yaml
 from tests.fast.charts.utils import REPO_ROOT
 from tests.fast.utils.external_utils.command_utils.fake_launch_guard import GuardRefusedError, RecordingLaunchGuard
@@ -46,15 +46,7 @@ def _stub_launch_inputs(monkeypatch, *, specs, colocate: bool = False, deploy_co
     monkeypatch.setattr(
         entrypoint,
         "parse_args",
-        lambda: SimpleNamespace(
-            colocate=colocate,
-            deploy_component=deploy_component,
-            deploy_instance_id=None,
-            argv=[],
-            train_env_vars={},
-            use_wandb=False,
-            wandb_run_id=None,
-        ),
+        lambda: LauncherArgs(colocate=colocate, deploy_component=deploy_component),
     )
     monkeypatch.setattr(MooncakeInfo, "plan_of_args", staticmethod(lambda args: None))
     monkeypatch.setattr(entrypoint, "_follow_until_finished", lambda **kwargs: followed.append(kwargs))
