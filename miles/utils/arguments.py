@@ -19,7 +19,8 @@ from miles.backends.megatron_utils.megatron_config import (
 )
 from miles.backends.sglang_utils.arguments import collect_eval_sglang_overrides
 from miles.backends.sglang_utils.arguments import validate_args as sglang_validate_args
-from miles.backends.sglang_utils.sglang_config import SglangConfig, SglangScalingConfig
+from miles.backends.sglang_utils.sglang_config import SglangConfig
+from miles.backends.sglang_utils.sglang_scaling_config import SglangScalingConfig
 from miles.dashboard.args import validate_dashboard_args
 from miles.ray.specs.train import external_trainer_controller_addrs
 from miles.rollout.checkpoint_eval import is_checkpoint_eval_fn
@@ -429,7 +430,7 @@ def _compute_init_expected_num_cells(
         return declared
     if args.rollout_external or not DeployComponent(args.deploy_component).deploys_own_inference_engines():
         return None
-    return {model.name: sglang_scaling.num_server_cells(model) for model in sglang.models}
+    return {model.name: model.num_server_cells(sglang_scaling) for model in sglang.models}
 
 
 def _compute_rollout_external(args: argparse.Namespace) -> bool:

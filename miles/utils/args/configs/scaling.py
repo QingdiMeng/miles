@@ -1,4 +1,4 @@
-from miles.backends.sglang_utils.sglang_config import SglangScalingConfig
+from miles.backends.sglang_utils.sglang_scaling_config import SglangScalingConfig
 from miles.utils.args.schema import A, Arg, BaseConfig
 
 

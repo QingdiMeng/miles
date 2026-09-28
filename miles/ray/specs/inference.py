@@ -5,7 +5,8 @@ from typing import Any, ClassVar, Self
 
 from miles.backends.sglang_utils.router_args_utils import compute_sglang_router_args, router_args_to_argv
 from miles.backends.sglang_utils.sglang_api_client import WorkerType
-from miles.backends.sglang_utils.sglang_config import ModelConfig, ServerGroupConfig, ServerGroupScalingConfig
+from miles.backends.sglang_utils.sglang_config import ModelConfig, ServerGroupConfig
+from miles.backends.sglang_utils.sglang_scaling_config import ServerGroupScalingConfig
 from miles.backends.sglang_utils.sglang_engine import compute_engine_launch_cmd
 from miles.ray.utils import NOSET_VISIBLE_DEVICES_ENV_VARS_LIST
 from miles.rollout.session.config import compute_session_server_config
