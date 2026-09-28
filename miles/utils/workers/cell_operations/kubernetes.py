@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from miles.utils.test_utils.fault_injector.controller import FaultHookCommand
+from miles.utils.test_utils.fault_injector.controller import FaultHookCommand, FaultHookConflictError
 from miles.utils.test_utils.fault_injector.models import FaultHookRecord, ObservedFaultHookTarget
 from miles.utils.workers.cell_operations.base import BaseCellOperations, StaleFaultTargetError
 from miles.utils.workers.k8s_client import core_v1_api
-from miles.utils.workers.rpc.client.misc import ServerRestartedError
+from miles.utils.workers.rpc.client.misc import RpcWorkerCallError, ServerRestartedError
+from miles.utils.workers.rpc.common.protocol import exception_type_name
 from miles.utils.workers.worker_provider.base import CellInfo, StopWatchFn
 from miles.utils.workers.worker_provider.kubernetes.core.provider import KubernetesWorkerProvider
 from miles.utils.workers.worker_provider.utils import build_rpc_handle_of_worker_info
@@ -83,6 +84,10 @@ class KubernetesCellOperations(BaseCellOperations):
             )
         except ServerRestartedError as error:
             raise StaleFaultTargetError("Fault hook worker changed its boot identity") from error
+        except RpcWorkerCallError as error:
+            if error.error_type == exception_type_name(FaultHookConflictError):
+                raise FaultHookConflictError(str(error)) from error
+            raise
 
     async def _ensure_watching(self) -> None:
         if self._watching is None:
