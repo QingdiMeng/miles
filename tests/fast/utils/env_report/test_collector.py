@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from tests.fast.utils.env_report.conftest import SAMPLE_PIP_INSPECT, make_args
 
+from miles.backends.megatron_utils.megatron_config import MegatronArgsNamespace
 from miles.utils.audit_utils.event_logger.models import EnvReport, EnvReportEditablePackageInfo
 from miles.utils.env_report.collector import (
     _collect_key_versions,
@@ -138,6 +139,14 @@ class TestDumpArgs:
         dump = _dump_args(make_args(model=object(), lr=1.0))
         assert dump.skipped_names == ["model"]
         assert "model" not in dump.values
+        assert dump.values["lr"] == 1.0
+
+    def test_reports_trainer_backend_values_beside_the_miles_values(self) -> None:
+        """A trainer rank records the Megatron arguments it was built with, not an opaque backend entry."""
+        dump = _dump_args(make_args(lr=1.0, backend=MegatronArgsNamespace(swiglu=True, num_layers=2)))
+        assert "backend" not in dump.values
+        assert dump.values["swiglu"] is True
+        assert dump.values["num_layers"] == 2
         assert dump.values["lr"] == 1.0
 
     def test_redacts_a_declared_secret_arg(self) -> None:
