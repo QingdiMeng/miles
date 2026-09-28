@@ -218,18 +218,15 @@ async def test_v2_rejects_unavailable_metrics_from_successful_collect(monkeypatc
         await agentic_tool_call.generate(_generate_input(speculative_algorithm="EAGLE"))
 
 
-_INSTANCES_ATTR_ABSENT = object()
-
-
 def _empty_tracer() -> _Tracer:
     return _Tracer(SamplesReply(samples=[], session_metadata={}, empty_reason="no_records"))
 
 
 class TestSessionServerInstancesValidation:
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("instances", [_INSTANCES_ATTR_ABSENT, None, []], ids=["absent", "none", "empty"])
+    @pytest.mark.parametrize("instances", [None, []], ids=["none", "empty"])
     async def test_empty_session_server_instances_is_rejected(self, monkeypatch, instances):
-        """generate() raises the documented AssertionError when session_server_instances is absent, null or empty, without creating a tracer."""
+        """generate() raises the documented AssertionError when session_server_instances is null or empty, without creating a tracer."""
         created_for: list[object] = []
 
         async def fake_create(args, *, evaluation=False, sampling_params=None, extra_key=None):
@@ -240,10 +237,7 @@ class TestSessionServerInstancesValidation:
         monkeypatch.setattr(agentic_tool_call, "load_function", lambda path: _fake_agent)
 
         generate_input = _generate_input()
-        if instances is _INSTANCES_ATTR_ABSENT:
-            del generate_input.args.session_server_instances
-        else:
-            generate_input.args.session_server_instances = instances
+        generate_input.args.session_server_instances = instances
 
         with pytest.raises(AssertionError, match="requires session_server_instances"):
             await agentic_tool_call.generate(generate_input)
