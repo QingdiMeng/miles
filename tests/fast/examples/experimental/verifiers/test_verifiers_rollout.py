@@ -50,7 +50,7 @@ def _args(**overrides) -> Namespace:
         "sglang_router_ip": "127.0.0.1",
         "sglang_router_policy": "round_robin",
         "sglang_router_port": 30000,
-        "sglang": SglangConfig(models=[], base_args={"tokenizer_path": None}),
+        "sglang": SglangConfig(models=[], base_args={"tokenizer_path": None, "enable_deterministic_inference": False}),
     }
     values.update(overrides)
     return Namespace(**values)
@@ -501,13 +501,19 @@ def test_group_reward_train_count_is_ignored_for_eval_only_runs():
 
 
 @pytest.mark.asyncio
-async def test_verifiers_episode_owns_group_reward_computation():
+@pytest.mark.parametrize("deterministic", [False, True])
+async def test_verifiers_episode_owns_group_reward_computation(deterministic):
+    """Episodes own rewards and receive distinct seeds only when deterministic."""
     pytest.importorskip("verifiers", minversion="0.2.0")
     pytest.importorskip("renderers", minversion="0.1.8")
     traces = [_trace(id="a", reward=0.0), _trace(id="b", reward=0.0)]
+    runtime = _import_verifiers()
+    ctx = runtime.ModelContext(client=object(), model="test-model", sampling=runtime.SamplingConfig(sampling_seed=19))
+    rollouts = [SimpleNamespace(ctx=ctx), SimpleNamespace(ctx=ctx)]
 
     class Episode:
-        rollouts = []
+        def __init__(self):
+            self.rollouts = rollouts
 
         async def run(self, semaphore):
             assert semaphore is not None
@@ -518,18 +524,22 @@ async def test_verifiers_episode_owns_group_reward_computation():
     class Environment:
         def episode(self, task, ctx, n):
             assert task == "task"
-            assert ctx == "ctx"
+            assert ctx.model == "test-model"
             assert n == 2
             return Episode()
 
     adapter = object.__new__(VerifiersRolloutFn)
-    adapter.args = _args(sglang_enable_deterministic_inference=False)
+    adapter.args = _args(sglang=SglangConfig(models=[], base_args={"enable_deterministic_inference": deterministic}))
     adapter.env = Environment()
-    adapter.ctx = "ctx"
+    adapter.ctx = ctx
+    adapter.model = "test-model"
 
-    result = await adapter._run_task_group("task", 2, asyncio.Semaphore(2), seed_base=0)
+    result = await adapter._run_task_group("task", 2, asyncio.Semaphore(2), seed_base=41)
 
     assert [trace.reward for trace in result] == [-1.0, 1.0]
+    assert [rollout.ctx.sampling.sampling_seed for rollout in rollouts] == ([41, 42] if deterministic else [19, 19])
+    assert ctx.sampling.sampling_seed == 19
+    assert all(rollout.ctx.client is ctx.client and rollout.ctx.model == ctx.model for rollout in rollouts)
 
 
 def test_sampling_config_preserves_miles_minimum_tokens():
