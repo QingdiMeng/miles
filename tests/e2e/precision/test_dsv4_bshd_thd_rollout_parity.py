@@ -16,8 +16,8 @@ from scripts.run_deepseek_v4 import (
 )
 from tests.ci.ci_register import register_cuda_ci
 
-from miles.utils.test_utils.comparisons.metrics import compare_metrics
 from miles.utils.audit_utils.config_snapshot.generated_values import register_generated_value
+from miles.utils.test_utils.comparisons.metrics import compare_metrics
 from miles.utils.types import Sample
 
 register_cuda_ci(

@@ -31,16 +31,25 @@ def normalize_record(record: ConfigSnapshotRecord) -> JsonValue:
 
 _PATH_FIELDS = frozenset(
     {
-        "save", "load", "requested_load", "critic_save", "critic_load", "ref_load", "dump_details",
-        "save_debug_event_data", "save_debug_train_data", "save_debug_trajectory_data", "save_debug_rollout_data",
-        "load_debug_rollout_data", "ci_save_grad_norm", "te_precision_config_file",
+        "save",
+        "load",
+        "requested_load",
+        "critic_save",
+        "critic_load",
+        "ref_load",
+        "dump_details",
+        "save_debug_event_data",
+        "save_debug_train_data",
+        "save_debug_trajectory_data",
+        "save_debug_rollout_data",
+        "load_debug_rollout_data",
+        "ci_save_grad_norm",
+        "te_precision_config_file",
     }
 )
 
 
-def _normalize_generated_values(
-    config: JsonValue, *, values: list[ConfigSnapshotGeneratedValue]
-) -> JsonValue:
+def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapshotGeneratedValue]) -> JsonValue:
     if not isinstance(config, dict):
         return config
     result = dict(config)
@@ -57,8 +66,10 @@ def _normalize_generated_values(
                         value = "_".join(token if part == entry.value else part for part in value.split("_"))
                 elif entry.kind == "run_id":
                     value = "/".join(token if part == entry.value else part for part in value.split("/"))
-                elif entry.kind == "temporary_directory" and (value == entry.value or value.startswith(entry.value + "/")):
-                    value = str(Path(entry.value).parent / token) + value[len(entry.value):]
+                elif entry.kind == "temporary_directory" and (
+                    value == entry.value or value.startswith(entry.value + "/")
+                ):
+                    value = str(Path(entry.value).parent / token) + value[len(entry.value) :]
             result[key] = value
     return result
 
