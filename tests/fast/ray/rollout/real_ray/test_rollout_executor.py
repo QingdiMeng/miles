@@ -8,12 +8,16 @@ from unittest.mock import MagicMock
 
 import pytest
 import ray
-from tests.fast.ray.rollout.conftest import make_args, make_rollout_config, make_samples_grouped
+from tests.fast.ray.rollout.conftest import (
+    FakeInferenceTopologyProvider,
+    make_args,
+    make_rollout_config,
+    make_samples_grouped,
+)
 from tests.fast.train_parallel_config_utils import make_train_parallel_config
 
 from miles.ray.rollout.debug_data import save_debug_rollout_data
 from miles.ray.rollout.rollout_executor import RolloutExecutor, _compute_rollout_function_config
-from miles.ray.specs.inference import inference_controller_worker_name
 from miles.rollout.base_types import (
     BaseRolloutFn,
     RolloutFnEvalInput,
@@ -74,24 +78,12 @@ class _NeverUsedProvider:
         raise AssertionError("the stubbed resolution must not ask the provider for an address")
 
 
-class _InferenceControllerProvider:
-    def __init__(self, state: InferenceRuntimeImmutState) -> None:
-        self._state = state
-
-    def get_handle(self, worker_name: str) -> _InferenceControllerProvider:
-        assert worker_name == inference_controller_worker_name()
-        return self
-
-    async def get_inference_runtime_immut_state(self) -> InferenceRuntimeImmutState:
-        return self._state
-
-
 async def _make_executor(args):
     executor = RolloutExecutor(
         args=args,
         router_providers=[_NeverUsedProvider()],
         session_server_provider=None,
-        inference_controller_provider=_InferenceControllerProvider(
+        inference_controller_provider=FakeInferenceTopologyProvider(
             InferenceRuntimeImmutState(engine_count=8, gpu_count=8)
         ),
     )
