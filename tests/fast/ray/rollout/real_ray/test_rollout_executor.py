@@ -78,7 +78,7 @@ class _InferenceControllerProvider:
     def __init__(self, state: InferenceRuntimeImmutState) -> None:
         self._state = state
 
-    def get_handle(self, worker_name: str) -> "_InferenceControllerProvider":
+    def get_handle(self, worker_name: str) -> _InferenceControllerProvider:
         assert worker_name == inference_controller_worker_name()
         return self
 
@@ -555,7 +555,9 @@ class TestCustomHooks:
         monkeypatch.setattr(
             rexec,
             "load_function",
-            lambda path: conversion_hook if path == CustomFunctionConfig(path="pkg.convert") else (lambda *a, **kw: None),
+            lambda path: (
+                conversion_hook if path == CustomFunctionConfig(path="pkg.convert") else (lambda *a, **kw: None)
+            ),
         )
         args = _make_test_args(global_batch_size=4, custom_convert_samples_to_train_data_path="pkg.convert")
 
@@ -924,7 +926,9 @@ class TestCheckpointWithoutARolloutFunction:
         """A run without --load names no checkpoint directory, so there is nothing for the data source to read."""
         monkeypatch.delenv("MILES_USE_LEGACY_ROLLOUT_V1", raising=False)
         executor = await _make_executor(
-            _make_test_args(save=str(tmp_path), load=None, load_debug_rollout_data="/nonexistent/rollout_{rollout_id}.pt")
+            _make_test_args(
+                save=str(tmp_path), load=None, load_debug_rollout_data="/nonexistent/rollout_{rollout_id}.pt"
+            )
         )
         executor.data_source = MagicMock()
 
