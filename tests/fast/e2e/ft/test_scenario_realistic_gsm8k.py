@@ -151,13 +151,8 @@ class TestWhatTheGsm8kSoakIsJudgedBy:
         events = soak["event_log"].events
         assert harness.checker_names == ["assert_hook_evidence", "assert_healing"]
         ((hook_args, hook_kwargs),) = harness.calls_of("assert_hook_evidence")
-        assert hook_args == (frozenset({FaultTrigger.TIMER, FaultTrigger.HOOK}),)
-        assert hook_kwargs == {
-            "ft_components": ("train", "rollout"),
-            "config": soak["config"],
-            "events": events,
-            "dump_dir": str(soak["dump_dir"]),
-        }
+        assert hook_args == ()
+        assert hook_kwargs == {"forms": soak["forms"], "events": events, "dump_dir": str(soak["dump_dir"])}
         ((healing_args, healing_kwargs),) = harness.calls_of("assert_healing")
         assert healing_args == (("train", "rollout"),)
         assert healing_kwargs["events"] == events

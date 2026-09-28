@@ -86,13 +86,7 @@ def run_ci(
         )
     )
 
-    fault_triggers.assert_hook_evidence(
-        triggers,
-        ft_components=FT_COMPONENTS,
-        config=run.launch_spec.config,
-        events=injector.event_log.events,
-        dump_dir=run.dump_dir,
-    )
+    fault_triggers.assert_hook_evidence(forms=injector.forms, events=injector.event_log.events, dump_dir=run.dump_dir)
     assert_healing(
         FT_COMPONENTS,
         events=injector.event_log.events,

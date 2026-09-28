@@ -110,13 +110,7 @@ def run_ci(
         cell_fault_forms=create_cell_fault_forms(config, triggers=triggers, weight_update_all_gathers=False),
     )
 
-    fault_triggers.assert_hook_evidence(
-        triggers,
-        ft_components=ft_mode.ft_components,
-        config=config,
-        events=injector.event_log.events,
-        dump_dir=dump_dir,
-    )
+    fault_triggers.assert_hook_evidence(forms=injector.forms, events=injector.event_log.events, dump_dir=dump_dir)
     assert_healing(
         ft_mode.ft_components,
         events=injector.event_log.events,

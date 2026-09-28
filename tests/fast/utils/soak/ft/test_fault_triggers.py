@@ -4,6 +4,8 @@ from typing import Any
 import pytest
 from tests.utils.soak.core.events import SoakEvent
 from tests.utils.soak.ft import fault_triggers
+from tests.utils.soak.ft.actions import factory as factory_module
+from tests.utils.soak.ft.actions.factory import CELL_TYPE_OF_FT_COMPONENT, create_cell_fault_forms
 from tests.utils.soak.ft.types import FaultTrigger
 
 from miles.utils.external_utils import command_utils
@@ -76,16 +78,20 @@ class TestAssertHookEvidence:
             return _check
 
         monkeypatch.setattr(fault_triggers, "read_training_events", _read)
+        monkeypatch.setattr(factory_module, "compute_base_url", lambda config: "http://api:1")
         for name in ("assert_hook_dispatches", "assert_p2p_receiver_failures", "assert_trainer_peers_progress"):
             monkeypatch.setattr(fault_triggers, name, _recorder(name))
         return calls
 
     @staticmethod
     def _check(triggers: set[FaultTrigger], *, ft_components: tuple[str, ...], backend: ClusterBackend) -> None:
+        forms = create_cell_fault_forms(
+            command_utils.ExecuteTrainConfig(cluster_backend=backend, namespace="ns", run_id="run-1"),
+            triggers=frozenset(triggers),
+        )
+        kinds = [CELL_TYPE_OF_FT_COMPONENT[component] for component in ft_components]
         fault_triggers.assert_hook_evidence(
-            frozenset(triggers),
-            ft_components=ft_components,
-            config=command_utils.ExecuteTrainConfig(cluster_backend=backend, namespace="ns"),
+            forms={kind: forms[kind] for kind in kinds},
             events=[],
             dump_dir="/dump",
         )
