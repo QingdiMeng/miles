@@ -43,7 +43,13 @@ class TestGeneratedPathNormalization:
                 config={
                     "raw_megatron": {
                         "trainers": [
-                            {"trainer_id": "actor", "model_id": None, "role": "actor", "actor_index": 0, "overrides": {}}
+                            {
+                                "trainer_id": "actor",
+                                "model_id": None,
+                                "role": "actor",
+                                "actor_index": 0,
+                                "overrides": {},
+                            }
                         ],
                         "base_args": {
                             "te_precision_config_file": f"{directory}/te_precision.yaml",
@@ -55,7 +61,7 @@ class TestGeneratedPathNormalization:
             record = record.model_copy(
                 update={
                     "context": record.context.model_copy(
-                        update={"source": SimpleProcessIdentity(component="rollout_executor")}
+                        update={"source": SimpleProcessIdentity(component="rollout_executor"), "capture_id": "rollout"}
                     ),
                     "generated_values": [
                         ConfigSnapshotGeneratedValue(kind="temporary_directory", name="dsv4_parity", value=directory)
@@ -73,7 +79,21 @@ class TestGeneratedPathNormalization:
             assert record.config["args"]["raw_megatron"]["base_args"]["te_precision_config_file"] == (
                 f"{directory}/te_precision.yaml"
             )
-            snapshots.append(dump_snapshot(ConfigSnapshotConverter.convert([record])))
+            raw_snapshot = dump_snapshot(ConfigSnapshotConverter.convert([record]))
+            assert directory not in raw_snapshot
+            trainer = make_record(
+                config={
+                    "backend": {
+                        "backend_name": "megatron",
+                        "rank": 0,
+                        "te_precision_config_file": f"{directory}/te_precision.yaml",
+                    }
+                }
+            )
+            snapshot = dump_snapshot(ConfigSnapshotConverter.convert([record, trainer]))
+            assert directory not in snapshot
+            assert snapshot.count("$TEMPORARY_DIRECTORY_dsv4_parity/te_precision.yaml") == 2
+            snapshots.append(snapshot)
         assert snapshots[0] == snapshots[1]
         assert "$TEMPORARY_DIRECTORY_dsv4_parity/te_precision.yaml" in snapshots[0]
 
@@ -112,8 +132,9 @@ class TestGeneratedPathNormalization:
         """Registered directory normalization preserves precision file selection differences."""
         directory = "/tmp/miles-dsv4-bshd-thd-u1ae27up"
         records = [
-            make_record(config={"raw_megatron": {"base_args": {"te_precision_config_file": f"{directory}/{name}"}}})
-            .model_copy(
+            make_record(
+                config={"raw_megatron": {"base_args": {"te_precision_config_file": f"{directory}/{name}"}}}
+            ).model_copy(
                 update={
                     "generated_values": [
                         ConfigSnapshotGeneratedValue(kind="temporary_directory", name="dsv4_parity", value=directory)
