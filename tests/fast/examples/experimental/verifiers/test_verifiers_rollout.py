@@ -29,6 +29,7 @@ from examples.experimental.verifiers.verifiers_rollout import (
 )
 from tests.fast.train_parallel_config_utils import make_train_parallel_config
 
+from miles.backends.sglang_utils.sglang_config import SglangConfig
 from miles.rollout.base_types import BaseRolloutFn, RolloutFnConstructorInput
 from miles.utils.args.custom_view import ImmutableNamespace
 from miles.utils.types import Sample
@@ -49,7 +50,7 @@ def _args(**overrides) -> Namespace:
         "sglang_router_ip": "127.0.0.1",
         "sglang_router_policy": "round_robin",
         "sglang_router_port": 30000,
-        "sglang_tokenizer_path": None,
+        "sglang": SglangConfig(models=[], base_args={"tokenizer_path": None}),
     }
     values.update(overrides)
     return Namespace(**values)
@@ -193,6 +194,7 @@ def test_renderer_identity_is_inferred_from_standard_checkpoint_paths(checkpoint
 
 
 def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monkeypatch):
+    """Local tokenizer files retain the checkpoint's registered renderer identity."""
     renderers = pytest.importorskip("renderers", minversion="0.1.8")
     checkpoint = "/cache/models--Qwen--Qwen3-4B-Instruct-2507/snapshots/revision"
     seen = {}
@@ -225,7 +227,7 @@ def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monke
     monkeypatch.setattr("renderers.base.load_tokenizer", load_tokenizer)
     runtime = SimpleNamespace(TrainClient=BaseTrainClient)
 
-    args = _args(sglang_tokenizer_path="/models/custom-tokenizer")
+    args = _args(sglang=SglangConfig(models=[], base_args={"tokenizer_path": "/models/custom-tokenizer"}))
     client = _train_client(runtime, args, checkpoint, pool_size=3)
     pool = client._renderer_pool(checkpoint, chat_template_kwargs={"enable_thinking": False})
 
@@ -238,6 +240,31 @@ def test_train_client_uses_local_tokenizer_with_inferred_renderer_identity(monke
         "kwargs": {"enable_thinking": False},
         "renderer": "renderer",
     }
+
+
+def test_canonical_tokenizer_selects_tool_renderer_for_ambiguous_local_checkpoint(monkeypatch):
+    """Structured tokenizer identity disambiguates local Qwen checkpoints for tools."""
+    renderers = pytest.importorskip("renderers", minversion="0.1.8")
+    runtime = pytest.importorskip("verifiers.v1.clients.train")
+    checkpoint = "/root/models/Qwen3-0.6B"
+    loaded_sources = []
+
+    def load_tokenizer(source: str) -> SimpleNamespace:
+        loaded_sources.append(source)
+        return SimpleNamespace(name_or_path=source, convert_tokens_to_ids=lambda token: 1, unk_token_id=0)
+
+    monkeypatch.setattr("renderers.base.load_tokenizer", load_tokenizer)
+    args = ImmutableNamespace.model_validate(
+        vars(_args(sglang=SglangConfig(models=[], base_args={"tokenizer_path": "Qwen/Qwen3-0.6B"})))
+    )
+    assert _renderer_identity(checkpoint) is None
+
+    client = _train_client(runtime, args, checkpoint, pool_size=1)
+    pool = client._renderer_pool(checkpoint)
+
+    assert isinstance(pool, renderers.RendererPool)
+    assert pool.supports_tools is True
+    assert loaded_sources == ["Qwen/Qwen3-0.6B"]
 
 
 @pytest.mark.asyncio

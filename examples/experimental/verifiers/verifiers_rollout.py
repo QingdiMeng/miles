@@ -167,7 +167,7 @@ def _train_client(
     *,
     router_args: Namespace | None = None,
 ):
-    tokenizer_source = getattr(args, "sglang_tokenizer_path", None) or model
+    tokenizer_source = args.sglang.common_value("tokenizer_path") or model
     identity = _renderer_identity(model) or _renderer_identity(tokenizer_source)
 
     # TrainClient uses one path for both tokenizer loading and renderer lookup.
