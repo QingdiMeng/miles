@@ -73,9 +73,7 @@ def fresh_policy_startup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _Fr
         "--save",
         str(tmp_path / "checkpoints"),
     )
-    handles = {
-        args.trainer_id: _LoadingTrainer(args=args) for args in TrainerControllerSpec.slice_configs(all_args)
-    }
+    handles = {args.trainer_id: _LoadingTrainer(args=args) for args in TrainerControllerSpec.slice_configs(all_args)}
 
     def create_handles(
         args: OrchestratorConfig,
@@ -91,6 +89,4 @@ def fresh_policy_startup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _Fr
     monkeypatch.setattr(model, "check_peak_gpu_memory_after_load", lambda args: None)
     monkeypatch.setattr(model, "check_model_hashes", lambda *args: None)
 
-    return _FreshPolicyStartup(
-        args=OrchestratorConfig.slice_from(all_args), handles=handles, rollout=_Rollout()
-    )
+    return _FreshPolicyStartup(args=OrchestratorConfig.slice_from(all_args), handles=handles, rollout=_Rollout())
