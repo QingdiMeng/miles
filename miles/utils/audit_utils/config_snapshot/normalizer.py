@@ -65,6 +65,11 @@ def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapsho
     for key, value in result.items():
         if key in {"args", "backend"} and isinstance(value, dict):
             result[key] = _normalize_generated_values(value, values=values)
+        elif key == "raw_megatron" and isinstance(value, dict) and isinstance(value.get("base_args"), dict):
+            result[key] = {
+                **value,
+                "base_args": _normalize_generated_values(value["base_args"], values=values),
+            }
         elif isinstance(value, str) and (key in _PATH_FIELDS or key in {"wandb_group", "wandb_run_id"}):
             for entry in values:
                 token = f"${entry.kind.upper()}_{entry.name}"

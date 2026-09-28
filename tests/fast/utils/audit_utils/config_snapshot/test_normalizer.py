@@ -35,6 +35,95 @@ class TestGeneratedValueRegistration:
 
 
 class TestGeneratedPathNormalization:
+    def test_raw_megatron_precision_paths_use_registered_temporary_directories(self, make_record: Callable) -> None:
+        """Raw Megatron precision paths stabilize across generated directories without dropping config fields."""
+        snapshots = []
+        for directory in ["/tmp/miles-dsv4-bshd-thd-u1ae27up", "/tmp/miles-dsv4-bshd-thd-other"]:
+            record = make_record(
+                config={
+                    "raw_megatron": {
+                        "trainers": [
+                            {"trainer_id": "actor", "model_id": None, "role": "actor", "actor_index": 0, "overrides": {}}
+                        ],
+                        "base_args": {
+                            "te_precision_config_file": f"{directory}/te_precision.yaml",
+                            "tensor_model_parallel_size": 4,
+                        },
+                    }
+                }
+            )
+            record = record.model_copy(
+                update={
+                    "context": record.context.model_copy(
+                        update={"source": SimpleProcessIdentity(component="rollout_executor")}
+                    ),
+                    "generated_values": [
+                        ConfigSnapshotGeneratedValue(kind="temporary_directory", name="dsv4_parity", value=directory)
+                    ],
+                }
+            )
+            normalized = normalize_record(record)
+            assert normalized["args"]["raw_megatron"] == {
+                "trainers": record.config["args"]["raw_megatron"]["trainers"],
+                "base_args": {
+                    "te_precision_config_file": "/tmp/$TEMPORARY_DIRECTORY_dsv4_parity/te_precision.yaml",
+                    "tensor_model_parallel_size": 4,
+                },
+            }
+            assert record.config["args"]["raw_megatron"]["base_args"]["te_precision_config_file"] == (
+                f"{directory}/te_precision.yaml"
+            )
+            snapshots.append(dump_snapshot(ConfigSnapshotConverter.convert([record])))
+        assert snapshots[0] == snapshots[1]
+        assert "$TEMPORARY_DIRECTORY_dsv4_parity/te_precision.yaml" in snapshots[0]
+
+    @pytest.mark.parametrize("registered", [False, True])
+    def test_raw_megatron_unregistered_and_unrelated_paths_remain_literal(
+        self, make_record: Callable, registered: bool
+    ) -> None:
+        """Only registered directory boundaries in known raw Megatron path fields may change."""
+        directory = "/tmp/miles-dsv4-bshd-thd-u1ae27up"
+        path = f"{directory}/te_precision.yaml"
+        record = make_record(
+            config={
+                "raw_megatron": {
+                    "base_args": {
+                        "te_precision_config_file": path if not registered else f"{directory}-other/te_precision.yaml",
+                        "custom_path": path,
+                        "custom_config": {"te_precision_config_file": path},
+                    },
+                    "te_precision_config_file": path,
+                },
+                "base_args": {"te_precision_config_file": path},
+                "custom_config": {"raw_megatron": {"base_args": {"te_precision_config_file": path}}},
+            }
+        ).model_copy(
+            update={
+                "generated_values": (
+                    [ConfigSnapshotGeneratedValue(kind="temporary_directory", name="dsv4_parity", value=directory)]
+                    if registered
+                    else []
+                )
+            }
+        )
+        assert normalize_record(record) == record.config
+
+    def test_raw_megatron_precision_filename_changes_remain_visible(self, make_record: Callable) -> None:
+        """Registered directory normalization preserves precision file selection differences."""
+        directory = "/tmp/miles-dsv4-bshd-thd-u1ae27up"
+        records = [
+            make_record(config={"raw_megatron": {"base_args": {"te_precision_config_file": f"{directory}/{name}"}}})
+            .model_copy(
+                update={
+                    "generated_values": [
+                        ConfigSnapshotGeneratedValue(kind="temporary_directory", name="dsv4_parity", value=directory)
+                    ]
+                }
+            )
+            for name in ["te_precision.yaml", "other_precision.yaml"]
+        ]
+        assert normalize_record(records[0]) != normalize_record(records[1])
+
     def test_source_provenance_reaches_other_processes_in_the_same_launch(self, make_record: Callable) -> None:
         """A primary's generated tracking ID normalizes consumers even without copied process environments."""
         results = []
