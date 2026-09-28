@@ -9,11 +9,10 @@ from unittest.mock import MagicMock
 import pytest
 import ray
 from sglang_router.launch_router import RouterArgs
-
 from tests.fast.fixtures.args_fixtures import parser_defaults, resolve_parse_boundary_configs
 
-from miles.utils import object_store
 from miles.ray.specs.inference import inference_controller_worker_name
+from miles.utils import object_store
 from miles.utils.args.component_rollout import InferenceRuntimeImmutState, InferenceRuntimeMutState
 from miles.utils.args.configs.router import RouterConfig
 from miles.utils.args.custom_function import CustomFunctionConfig

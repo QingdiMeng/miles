@@ -5,12 +5,7 @@ from pathlib import Path
 
 import pytest
 import torch
-from tests.fast.ray.rollout.conftest import (
-    FakeInferenceTopologyProvider,
-    make_args,
-    make_rollout_config,
-    make_sample,
-)
+from tests.fast.ray.rollout.conftest import FakeInferenceTopologyProvider, make_args, make_rollout_config, make_sample
 from tests.fast.train_parallel_config_utils import make_train_parallel_config
 
 from miles.backends.megatron_utils.ft.types import TrainStepOutcome
