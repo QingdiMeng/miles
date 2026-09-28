@@ -90,7 +90,7 @@ class _ConfigNamespaceValueCodec:
             return dtype
         if set(value) == {"__enum__"}:
             module_name, class_name, member_name = value["__enum__"].split(":")
-            if module_name not in {"megatron.core.transformer.enums", "megatron.core.enums"}:
+            if module_name not in {"megatron.core.transformer.enums", "megatron.core.enums", "signal"}:
                 raise ValueError(f"Unsupported backend enum module {module_name!r}")
             enum_class = vars(import_module(module_name))[class_name]
             if not isinstance(enum_class, type) or not issubclass(enum_class, Enum):
