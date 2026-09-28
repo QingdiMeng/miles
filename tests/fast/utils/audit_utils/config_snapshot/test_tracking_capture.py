@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
+from miles.utils.audit_utils.config_snapshot.converter import ConfigSnapshotConverter
+from miles.utils.audit_utils.config_snapshot.dumper import ConfigSnapshotDumper
 from miles.utils.audit_utils.config_snapshot.generated_values import GENERATED_VALUES_ENV_VAR, read_generated_values
 from miles.utils.audit_utils.config_snapshot.storage import ConfigSnapshotStorage
-from miles.utils.audit_utils.config_snapshot.dumper import ConfigSnapshotDumper
-from miles.utils.audit_utils.config_snapshot.converter import ConfigSnapshotConverter
 from miles.utils.external_utils.command_utils.helm_backend.launcher.entrypoint import _resolve_wandb_run_id
 from miles.utils.test_utils.snapshot import SNAPSHOT_RECORD_DIR_ENV_VAR, dump_snapshot
 from miles.utils.tracking_utils import wandb_utils
@@ -27,7 +27,9 @@ class TestTrackingProvenance:
         assert read_generated_values() == []
         assert run_id in dump_snapshot(ConfigSnapshotConverter.convert(records))
 
-    @pytest.mark.parametrize("source", ["resumed", "resume_settings", "resume_from", "setup_id", "setup_resume", "active_run"])
+    @pytest.mark.parametrize(
+        "source", ["resumed", "resume_settings", "resume_from", "setup_id", "setup_resume", "active_run"]
+    )
     def test_sdk_recovery_and_preconfigured_ids_are_not_generated(
         self, wandb_capture_args: Namespace, wandb_capture_client: Namespace, tmp_path: Path, source: str
     ) -> None:
@@ -47,7 +49,9 @@ class TestTrackingProvenance:
         init_wandb_primary(wandb_capture_args)
         assert wandb_capture_args.wandb_run_id == "automatic-id"
         assert read_generated_values() == []
-        assert all(record.point.stage != "tracking_config" for record in ConfigSnapshotStorage(directory=tmp_path).read())
+        assert all(
+            record.point.stage != "tracking_config" for record in ConfigSnapshotStorage(directory=tmp_path).read()
+        )
 
     @pytest.mark.parametrize("preassigned", [False, True])
     def test_primary_records_only_automatically_generated_ids(

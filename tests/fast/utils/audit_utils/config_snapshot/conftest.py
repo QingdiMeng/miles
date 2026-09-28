@@ -1,5 +1,5 @@
-import re
 import os
+import re
 from argparse import Namespace
 from collections.abc import Callable
 from pathlib import Path
@@ -95,12 +95,23 @@ def wandb_capture_client(monkeypatch: pytest.MonkeyPatch) -> Namespace:
     from miles.utils.tracking_utils import wandb_utils
 
     monkeypatch.delenv(GENERATED_VALUES_ENV_VAR, raising=False)
-    for name in ("WANDB_RUN_ID", "WANDB_RESUME", "WANDB_RESUME_FROM", "WANDB_FORK_FROM", "WANDB_SWEEP_ID", "WANDB_LAUNCH"):
+    for name in (
+        "WANDB_RUN_ID",
+        "WANDB_RESUME",
+        "WANDB_RESUME_FROM",
+        "WANDB_FORK_FROM",
+        "WANDB_SWEEP_ID",
+        "WANDB_LAUNCH",
+    ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("WANDB_MODE", "offline")
     client = Namespace(
-        run=Namespace(id="automatic-id", resumed=False, settings=Namespace(resume=None, resume_from=None, fork_from=None)),
-        setup=Namespace(settings=Namespace(run_id=None, resume=None, resume_from=None, fork_from=None, sweep_id=None, launch=False)),
+        run=Namespace(
+            id="automatic-id", resumed=False, settings=Namespace(resume=None, resume_from=None, fork_from=None)
+        ),
+        setup=Namespace(
+            settings=Namespace(run_id=None, resume=None, resume_from=None, fork_from=None, sweep_id=None, launch=False)
+        ),
     )
 
     def init(**kwargs: Any) -> Namespace:

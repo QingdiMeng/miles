@@ -90,7 +90,14 @@ def init_wandb_primary(args):
         and wandb.run is None
         and not any(
             name in os.environ
-            for name in ("WANDB_RUN_ID", "WANDB_RESUME", "WANDB_RESUME_FROM", "WANDB_FORK_FROM", "WANDB_SWEEP_ID", "WANDB_LAUNCH")
+            for name in (
+                "WANDB_RUN_ID",
+                "WANDB_RESUME",
+                "WANDB_RESUME_FROM",
+                "WANDB_FORK_FROM",
+                "WANDB_SWEEP_ID",
+                "WANDB_LAUNCH",
+            )
         )
     )
     wandb.init(**init_kwargs)
