@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import functools
+import os
 import sys
 from argparse import Namespace
 from collections.abc import Iterator
@@ -11,7 +12,8 @@ from unittest.mock import patch
 
 from miles.backends.megatron_utils.megatron_config import resolve_megatron_config
 from miles.backends.sglang_utils.sglang_config import SglangConfig
-from miles.utils.arguments import get_miles_extra_args_provider
+from miles.utils.args.runtime import AllConfig
+from miles.utils.arguments import get_miles_extra_args_provider, parse_args
 from miles.utils.run_uuid import RUN_UUID_LENGTH
 
 # megatron's own parser adds these and miles' code reads them, but a unit test builds only the miles
@@ -31,6 +33,7 @@ _RESOLVED_AFTER_PARSING: dict[str, Any] = dict(
     eval_uses_snapshots=False,
     starts_inference_engines=True,
     use_critic=False,
+    multi_lora=False,
     run_uuid="0" * RUN_UUID_LENGTH,
 )
 
@@ -63,3 +66,29 @@ def resolve_parse_boundary_configs(args: Namespace) -> Namespace:
     args.raw_megatron = resolve_megatron_config(args, base_args={})
     args.sglang, args.sglang_scaling = SglangConfig.parse_args(args)
     return args
+
+
+_MEGATRON_TEST_ARGV = [
+    "--train-backend",
+    "megatron",
+    "--rollout-batch-size",
+    "2",
+    "--num-rollout",
+    "1",
+    "--actor-num-gpus-per-node",
+    "1",
+    "--micro-batch-size",
+    "1",
+    "--num-layers",
+    "1",
+    "--hidden-size",
+    "128",
+    "--num-attention-heads",
+    "2",
+]
+
+
+def parse_megatron_test_config(*argv: str) -> AllConfig:
+    environment = {"RANK": "0", "WORLD_SIZE": "1", "LOCAL_RANK": "0", "MILES_SCRIPT_ENV_REPORT": ""}
+    with patch.object(sys, "argv", ["test", *_MEGATRON_TEST_ARGV, *argv]), patch.dict(os.environ, environment):
+        return parse_args()
