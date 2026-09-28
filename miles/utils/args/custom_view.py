@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import ConfigDict
 
 from miles.utils.args.custom_function import CustomFunctionConfig
-from miles.utils.args.runtime import TrainerConfig
+from miles.utils.args.component_trainer import TrainerOnlyConfig
 from miles.utils.args.runtime_base import BaseLeafConfig
 from miles.utils.args.schema import BaseConfig
 
@@ -20,7 +20,7 @@ def compute_custom_function_config(
     nested_functions: Iterable[CustomFunctionConfig | None] = (),
 ) -> ImmutableNamespace:
     sources = [dict(args)]
-    if isinstance(args, TrainerConfig):
+    if isinstance(args, TrainerOnlyConfig):
         sources.append(vars(args.backend))
     for hook in (function, *nested_functions):
         if hook is not None and (config := hook.config) is not None:
