@@ -4,8 +4,8 @@ from argparse import Namespace
 from types import SimpleNamespace
 
 import pytest
-from tests.fast.fixtures.args_fixtures import make_trainer_args
 import torch
+from tests.fast.fixtures.args_fixtures import make_trainer_args
 
 import miles.backends.megatron_utils.lora.utils as lora_utils
 from miles.backends.megatron_utils.lora.utils import (

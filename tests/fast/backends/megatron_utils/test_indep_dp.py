@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from tests.fast.fixtures.args_fixtures import make_trainer_args
 import torch
+from tests.fast.fixtures.args_fixtures import make_trainer_args
 
 from miles.backends.megatron_utils.ft import indep_dp
 from miles.utils.ft_utils.indep_dp import IndepDPInfo

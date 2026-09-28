@@ -1,6 +1,5 @@
 import sys
 import types
-from argparse import Namespace
 from contextlib import ExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING

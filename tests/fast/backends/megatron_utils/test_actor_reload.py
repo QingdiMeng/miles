@@ -252,7 +252,12 @@ class TestTheCheckpointAReloadRollsBackTo:
         _actor(actor_module, role="actor", args=args).load_state()
 
         assert args.backend.load == str(tmp_path / "pretrain")
-        assert (args.backend.finetune, args.backend.no_load_optim, args.backend.no_load_rng, args.backend.ckpt_step) == (
+        assert (
+            args.backend.finetune,
+            args.backend.no_load_optim,
+            args.backend.no_load_rng,
+            args.backend.ckpt_step,
+        ) == (
             True,
             True,
             True,

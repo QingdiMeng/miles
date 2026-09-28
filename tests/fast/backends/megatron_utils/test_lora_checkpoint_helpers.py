@@ -5,7 +5,6 @@ save_checkpoint_with_lora / load_checkpoint — the latter using mocks to avoid
 GPU / distributed requirements.
 """
 
-from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
 import pytest

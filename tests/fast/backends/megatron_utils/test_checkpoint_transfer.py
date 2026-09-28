@@ -5,11 +5,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from tests.fast.fixtures.args_fixtures import make_trainer_args
 import torch
 import torch.distributed as dist
 from megatron.core.dist_checkpointing.mapping import ShardedTensor
 from megatron.core.dist_checkpointing.tensor_aware_state_dict import MCoreTensorAwareStateDict
+from tests.fast.fixtures.args_fixtures import make_trainer_args
 from torch.utils._pytree import tree_flatten_with_path, tree_unflatten
 
 from miles.backends.megatron_utils.ft import checkpoint_transfer, in_memory_checkpoint

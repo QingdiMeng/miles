@@ -8,9 +8,9 @@ from typing import Any
 from unittest.mock import Mock, call
 
 import pytest
-from tests.fast.fixtures.args_fixtures import make_trainer_args
 import ray
 import torch
+from tests.fast.fixtures.args_fixtures import make_trainer_args
 from tests.fast.train_parallel_config_utils import make_train_parallel_config
 
 from miles.backends.megatron_utils.ft.types import TrainStepOutcome, TrainStepOutput
@@ -78,7 +78,9 @@ def actor_module():
 def _worker(actor_module, role, *, asleep=True):
     worker = object.__new__(actor_module.MegatronTrainRayActor)
     worker._config_snapshot_train_recorded = True
-    worker.args = make_trainer_args(offload_train=True, debug_rollout_only=False, enable_sample_ownership_checker=False)
+    worker.args = make_trainer_args(
+        offload_train=True, debug_rollout_only=False, enable_sample_ownership_checker=False
+    )
     worker.role = role
     worker._asleep = asleep
     worker._heartbeat = Mock()
@@ -292,7 +294,12 @@ def test_save_model_does_not_manage_lifecycle(actor_module, monkeypatch):
     worker.save_model(6)
 
     save.assert_called_once_with(
-        worker.args, 6, worker.model, worker.optimizer, worker.opt_param_scheduler, snapshot_publisher=worker.snapshot_publisher
+        worker.args,
+        6,
+        worker.model,
+        worker.optimizer,
+        worker.opt_param_scheduler,
+        snapshot_publisher=worker.snapshot_publisher,
     )
     worker.wake_up.assert_not_called()
     worker.sleep.assert_not_called()

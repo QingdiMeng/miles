@@ -6,8 +6,8 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from tests.fast.fixtures.args_fixtures import make_trainer_args, with_backend_values
 import torch
+from tests.fast.fixtures.args_fixtures import make_trainer_args, with_backend_values
 from tests.fast.utils.test_utils.fault_injector.fakes import _arm_marker_hook
 
 from miles.backends.training_utils.data import DataIterator

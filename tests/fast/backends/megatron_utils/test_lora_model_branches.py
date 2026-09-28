@@ -4,7 +4,6 @@ Validates that setup_model_and_optimizer, save, and save_hf_model correctly
 route to LoRA-specific code paths depending on configuration — without GPU.
 """
 
-from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
 import pytest

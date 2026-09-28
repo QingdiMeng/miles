@@ -4,7 +4,6 @@ from tests.ci.ci_register import register_cpu_ci
 
 register_cpu_ci(est_time=60, suite="stage-a-cpu", labels=[])
 
-from argparse import Namespace
 from types import SimpleNamespace
 
 import pytest
@@ -25,7 +24,12 @@ class _Iterator(MegatronHfWeightIteratorBase):
 
 def _make(speculative, mtp_num_layers):
     model = [SimpleNamespace(config=SimpleNamespace(mtp_num_layers=mtp_num_layers))]
-    args = make_trainer_args(**with_parser_defaults_and_sglang_config(dict(sglang_speculative_algorithm=speculative, fp16=False, rollout_num_gpus=1)), q_lora_rank=None)
+    args = make_trainer_args(
+        **with_parser_defaults_and_sglang_config(
+            dict(sglang_speculative_algorithm=speculative, fp16=False, rollout_num_gpus=1)
+        ),
+        q_lora_rank=None
+    )
     return _Iterator(
         args, model, placement=WeightUpdatePlacement(gather_pp=True), model_name="qwen", quantization_config=None
     )
