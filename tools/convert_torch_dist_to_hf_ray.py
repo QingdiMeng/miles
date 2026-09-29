@@ -1100,7 +1100,11 @@ class ConversionWorker:
             prepared = prepare_moe_block_task_tensors(task, self.input_dir, self.metadata)
         else:
             prepared = prepare_whole_source_task_tensors(
-                task, self.input_dir, self.megatron_args, self.model_name, self.metadata,
+                task,
+                self.input_dir,
+                self.megatron_args,
+                self.model_name,
+                self.metadata,
                 origin_hf_dir=self.origin_hf_dir,
             )
         shards, total_size = write_prepared_tensor_groups(
