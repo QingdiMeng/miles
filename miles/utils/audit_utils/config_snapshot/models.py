@@ -41,7 +41,7 @@ class ConfigSnapshotPoint(FrozenStrictBaseModel):
 
 
 class ConfigSnapshotGeneratedValue(FrozenStrictBaseModel):
-    kind: Literal["run_id", "temporary_directory", "ci_commit_name"]
+    kind: Literal["run_id", "temporary_directory", "ci_commit_name", "host", "port", "external_host"]
     name: str
     value: str = Field(min_length=1)
 

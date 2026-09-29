@@ -16,7 +16,7 @@ _generated_values: list[ConfigSnapshotGeneratedValue] = [
 
 def register_generated_value(
     *,
-    kind: Literal["run_id", "temporary_directory", "ci_commit_name"],
+    kind: Literal["run_id", "temporary_directory", "ci_commit_name", "host", "port", "external_host"],
     value: str,
     name: str | None = None,
 ) -> None:

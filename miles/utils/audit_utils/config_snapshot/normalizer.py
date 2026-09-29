@@ -67,6 +67,8 @@ _CONFIG_PATHS = (("args",), ("backend",))
 
 def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapshotGeneratedValue]) -> JsonValue:
     result = deepcopy(config)
+    if isinstance(result, dict) and isinstance(args := result.get("args"), dict):
+        _normalize_endpoints(args, values=values)
     for fields in _config_objects(result):
         fields.update(
             {
@@ -76,6 +78,41 @@ def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapsho
             }
         )
     return result
+
+
+def _normalize_endpoints(fields: dict[str, JsonValue], *, values: list[ConfigSnapshotGeneratedValue]) -> None:
+    hosts = {entry.value for entry in values if entry.kind == "host"}
+    ports = {entry.value for entry in values if entry.kind == "port"}
+    external_hosts = {entry.value for entry in values if entry.kind == "external_host"}
+    if not (hosts or ports or external_hosts):
+        return
+
+    if isinstance(host := fields.get("sglang_router_ip"), str) and host in hosts:
+        fields["sglang_router_ip"] = "$HOST"
+    if type(port := fields.get("sglang_router_port")) is int and str(port) in ports:
+        fields["sglang_router_port"] = "$PORT"
+    if isinstance(routers := fields.get("sglang_model_routers"), dict):
+        for model, value in routers.items():
+            if not isinstance(value, dict) or not isinstance(parts := value.get("$tuple"), list) or len(parts) != 2:
+                raise ValueError(f"Invalid router endpoint snapshot: {model}")
+            host, port = parts
+            value["$tuple"] = [
+                "$HOST" if isinstance(host, str) and host in hosts else host,
+                "$PORT" if type(port) is int and str(port) in ports else port,
+            ]
+    if isinstance(instances := fields.get("session_server_instances"), list):
+        for instance in instances:
+            if not isinstance(instance, dict):
+                continue
+            for field in ("addr", "external_addr"):
+                if not isinstance(value := instance.get(field), str):
+                    raise ValueError(f"Invalid session endpoint snapshot: {instance}")
+                host, separator, port = value.rpartition(":")
+                if not separator or not port.isdecimal():
+                    raise ValueError(f"Invalid session endpoint address: {value}")
+                host = "$HOST" if host in (external_hosts if field == "external_addr" else hosts) else host
+                port = "$PORT" if str(int(port)) in ports else port
+                instance[field] = f"{host}:{port}"
 
 
 def _config_objects(config: JsonValue) -> Iterator[dict[str, JsonValue]]:
