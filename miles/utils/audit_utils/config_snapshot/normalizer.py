@@ -76,7 +76,7 @@ def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapsho
     for fields in _config_objects(result):
         fields.update(
             {
-                key: _normalize_field(value, key=key, values=values)
+                key: _normalize_field(value, key=key, values=values, config=fields)
                 for key, value in fields.items()
                 if isinstance(value, str) and (key in _PATH_FIELDS or key == "wandb_group")
             }
@@ -130,7 +130,9 @@ def _config_objects(config: JsonValue) -> Iterator[dict[str, JsonValue]]:
         yield from _config_objects(child)
 
 
-def _normalize_field(value: str, *, key: str, values: list[ConfigSnapshotGeneratedValue]) -> str:
+def _normalize_field(
+    value: str, *, key: str, values: list[ConfigSnapshotGeneratedValue], config: dict[str, JsonValue]
+) -> str:
     for entry in values:
         token = f"${entry.kind.upper()}_{entry.name}"
         if key == "wandb_group":
@@ -139,6 +141,12 @@ def _normalize_field(value: str, *, key: str, values: list[ConfigSnapshotGenerat
             elif entry.kind == "run_id":
                 value = "_".join(token if part == entry.value else part for part in value.split("_"))
         elif entry.kind == "run_id":
+            if key == "critic_save" and value.rsplit("/", 1)[-1] == f"{entry.value}_critic":
+                save = config.get("save")
+                if not isinstance(save, str) and isinstance(backend := config.get("backend"), dict):
+                    save = backend.get("save")
+                if isinstance(save, str) and value == save.rstrip("/") + "_critic":
+                    value = value[: -len(entry.value + "_critic")] + token + "_critic"
             value = "/".join(token if part == entry.value else part for part in value.split("/"))
         elif entry.kind == "temporary_directory" and (value == entry.value or value.startswith(entry.value + "/")):
             value = str(Path(entry.value).parent / token) + value[len(entry.value) :]
