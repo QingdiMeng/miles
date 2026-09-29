@@ -23,9 +23,9 @@ _REDACTED_PREFIX = "redacted-sha256:"
 _REDACTED_HASH_CHARS = 16
 
 
-def redact_env_vars(env_vars: dict[str, str]) -> dict[str, str]:
+def redact_env_vars(env_vars: dict[str, Any]) -> dict[str, Any]:
     return {
-        name: _redact(value) if _SECRET_ENV_VAR_PATTERN.search(name) else value
+        name: _redact_secret_value(value) if _SECRET_ENV_VAR_PATTERN.search(name) else value
         for name, value in sorted(env_vars.items())
     }
 
