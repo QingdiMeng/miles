@@ -35,6 +35,42 @@ class TestGeneratedValueRegistration:
 
 
 class TestGeneratedPathNormalization:
+    def test_eval_directories_stabilize_without_merging_modes_or_path_semantics(self, make_record: Callable) -> None:
+        """Generated eval roots stabilize while mode, parent and descendant paths remain observable."""
+        results = {}
+        for mode, parent, suffix, child in [
+            ("fleet", "/dev/shm", "first", ""),
+            ("fleet", "/dev/shm", "second", ""),
+            ("external", "/dev/shm", "first", ""),
+            ("fleet", "/tmp", "first", ""),
+            ("fleet", "/dev/shm", "first", "/step_1"),
+            ("fleet", "/dev/shm", "first", "/step_2"),
+        ]:
+            root = f"{parent}/miles_eval_{mode}_{suffix}"
+            record = make_record(config={"eval_hf_dir": root + child}).model_copy(
+                update={"generated_values": [ConfigSnapshotGeneratedValue(
+                    kind="temporary_directory", name=f"fully_async_eval_{mode}", value=root
+                )]}
+            )
+            actual = normalize_record(record)["args"]["eval_hf_dir"]
+            assert actual == f"{parent}/$TEMPORARY_DIRECTORY_fully_async_eval_{mode}{child}"
+            results[(mode, parent, suffix, child)] = actual
+        assert results[("fleet", "/dev/shm", "first", "")] == results[("fleet", "/dev/shm", "second", "")]
+        assert len(set(results.values())) == 5
+
+    @pytest.mark.parametrize("registered", [False, True])
+    def test_eval_paths_without_matching_provenance_remain_literal(self, make_record: Callable, registered: bool) -> None:
+        """Similar prefixes and unrelated fields never borrow eval directory provenance."""
+        root = "/dev/shm/miles_eval_fleet_random"
+        record = make_record(config={
+            "eval_hf_dir": root + ("-sibling" if registered else ""),
+            "custom_path": root,
+            "custom_config": {"eval_hf_dir": root},
+        }).model_copy(update={"generated_values": [ConfigSnapshotGeneratedValue(
+            kind="temporary_directory", name="fully_async_eval_fleet", value=root
+        )] if registered else []})
+        assert normalize_record(record) == record.config
+
     def test_raw_megatron_precision_paths_use_registered_temporary_directories(self, make_record: Callable) -> None:
         """Raw Megatron precision paths stabilize across generated directories without dropping config fields."""
         snapshots = []
