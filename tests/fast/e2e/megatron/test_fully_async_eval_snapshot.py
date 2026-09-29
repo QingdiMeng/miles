@@ -26,12 +26,18 @@ def test_original_eval_modes_register_owned_directories_before_worker_launch(
     assert len(submissions) == 3
     for mode, command in zip(("shared", "fleet", "external"), submissions, strict=True):
         words = shlex.split(command)
-        environment = json.loads(next(word.split("=", 1)[1] for word in words if word.startswith("--runtime-env-json=")))["env_vars"]
+        environment = json.loads(
+            next(word.split("=", 1)[1] for word in words if word.startswith("--runtime-env-json="))
+        )["env_vars"]
         if not snapshot_enabled:
             assert GENERATED_VALUES_ENV_VAR not in environment
             continue
         values = json.loads(environment[GENERATED_VALUES_ENV_VAR])
-        [allocated] = [value for value in values if value["kind"] == "temporary_directory" and value["name"] == f"fully_async_eval_{mode}"]
+        [allocated] = [
+            value
+            for value in values
+            if value["kind"] == "temporary_directory" and value["name"] == f"fully_async_eval_{mode}"
+        ]
         assert allocated["value"].startswith(f"/dev/shm/miles_eval_{mode}_")
         if mode != "shared":
             assert words[words.index("--eval-hf-dir") + 1] == allocated["value"]
