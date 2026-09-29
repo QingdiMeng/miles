@@ -12,7 +12,15 @@ def eval_launch_commands(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> lis
     patch_helper(monkeypatch, "convert_checkpoint", lambda self, **kwargs: None)
     patch_helper(monkeypatch, "hf_download_dataset", lambda self, *args, **kwargs: None)
     patch_helper(monkeypatch, "_check_has_nvlink", lambda self: False, backend_class=RayCommandBackend)
-    for name in ("RAY_ADDRESS", "WANDB_API_KEY", "NCCL_NVLS_ENABLE"):
+    for name in (
+        "RAY_ADDRESS",
+        "WANDB_API_KEY",
+        "NCCL_NVLS_ENABLE",
+        "http_proxy",
+        "https_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+    ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("MILES_SCRIPT_CLUSTER_BACKEND", "ray")
     monkeypatch.setenv("MILES_SCRIPT_ENABLE_RAY_SUBMIT", "1")
