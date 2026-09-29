@@ -35,6 +35,61 @@ class TestGeneratedValueRegistration:
 
 
 class TestGeneratedPathNormalization:
+    @pytest.mark.parametrize("typed_backend", [False, True])
+    def test_derived_critic_save_preserves_parent_and_role_across_generated_runs(
+        self, make_record: Callable, typed_backend: bool
+    ) -> None:
+        """Flat and typed checkpoint payloads retain critic identity without generated run suffix drift."""
+        for parent in ["/personal/checkpoints", "/other/checkpoints"]:
+            results = []
+            for run_id in ["260928-221656-095", "260929-221656-095"]:
+                save = f"{parent}/{run_id}"
+                config = {"critic_save": save + "_critic"}
+                config.update({"backend": {"save": save + "/"}} if typed_backend else {"save": save + "/"})
+                record = make_record(config=config).model_copy(
+                    update={"generated_values": [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value=run_id)]}
+                )
+                normalized = normalize_record(record)["args"]
+                assert normalized["critic_save"] == f"{parent}/$RUN_ID_0000_critic"
+                assert record.config["args"]["critic_save"] == save + "_critic"
+                results.append(normalized)
+            assert results[0] == results[1]
+
+    @pytest.mark.parametrize(
+        "save,critic_save,registered",
+        [
+            ("/checkpoints/generated", "/checkpoints/generated_critic", False),
+            (None, "/checkpoints/generated_critic", True),
+            ("/other/generated", "/checkpoints/generated_critic", True),
+            ("/checkpoints/generated-other", "/checkpoints/generated-other_critic", True),
+            ("/checkpoints/generated", "/checkpoints/generated_critic_extra", True),
+        ],
+    )
+    def test_critic_suffix_requires_registered_identity_and_exact_save_derivation(
+        self, make_record: Callable, save: str | None, critic_save: str, registered: bool
+    ) -> None:
+        """Unregistered or independently configured critic paths do not borrow a generated identity."""
+        record = make_record(config={"save": save, "critic_save": critic_save}).model_copy(
+            update={
+                "generated_values": [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value="generated")]
+                if registered else []
+            }
+        )
+        assert normalize_record(record)["args"]["critic_save"] == critic_save
+
+    def test_critic_suffix_does_not_generalize_to_other_fields_or_nested_objects(self, make_record: Callable) -> None:
+        """The derived critic rule leaves unrelated suffix paths and custom configuration untouched."""
+        record = make_record(
+            config={
+                "save": "/checkpoints/generated_critic",
+                "load": "/checkpoints/generated_critic",
+                "custom": {"save": "/checkpoints/generated", "critic_save": "/checkpoints/generated_critic"},
+            }
+        ).model_copy(
+            update={"generated_values": [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value="generated")]}
+        )
+        assert normalize_record(record) == record.config
+
     def test_eval_directories_stabilize_without_merging_modes_or_path_semantics(self, make_record: Callable) -> None:
         """Generated eval roots stabilize while mode, parent and descendant paths remain observable."""
         results = {}

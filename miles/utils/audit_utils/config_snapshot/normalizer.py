@@ -83,6 +83,12 @@ def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapsho
                     elif entry.kind == "run_id":
                         value = "_".join(token if part == entry.value else part for part in value.split("_"))
                 elif entry.kind == "run_id":
+                    if key == "critic_save" and value.rsplit("/", 1)[-1] == f"{entry.value}_critic":
+                        save = config.get("save")
+                        if not isinstance(save, str) and isinstance(backend := config.get("backend"), dict):
+                            save = backend.get("save")
+                        if isinstance(save, str) and value == save.rstrip("/") + "_critic":
+                            value = value[: -len(entry.value + "_critic")] + token + "_critic"
                     value = "/".join(token if part == entry.value else part for part in value.split("/"))
                 elif entry.kind == "temporary_directory" and (
                     value == entry.value or value.startswith(entry.value + "/")
