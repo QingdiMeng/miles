@@ -2,6 +2,7 @@
 Utils to integrate SGLang's `/generate` endpoint with RL things like Sample.
 """
 
+import os
 from copy import deepcopy
 from typing import Any
 
@@ -77,6 +78,8 @@ def compute_request_payload(
     }
     if return_sampling_mask:
         payload["return_sampling_mask"] = True
+    if os.environ.get("MILES_EXP_TOP_LOGPROBS") == "1":
+        payload["top_logprobs_num"] = 5
     if lora_rollout_enabled(args):
         payload["lora_path"] = LORA_ADAPTER_NAME
     if image_data := (multimodal_inputs or {}).get("images"):
@@ -111,6 +114,9 @@ async def update_sample_from_response(
     if sample.rollout_log_probs is None:
         sample.rollout_log_probs = []
     sample.rollout_log_probs += new_response_log_probs
+
+    if (x := output["meta_info"].get("output_top_logprobs")) is not None:
+        sample.metadata["exp_top_logprobs"] = [[(item[0], item[1]) for item in pos] for pos in x[:40]]
 
     if update_loss_mask:
         if sample.loss_mask is None:

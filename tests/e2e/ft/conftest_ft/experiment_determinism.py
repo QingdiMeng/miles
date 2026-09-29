@@ -18,7 +18,7 @@ from miles.utils.audit_utils.event_logger.models import InferenceEngineWeightChe
 from miles.utils.external_utils import command_utils
 
 MODE: str = "kill_train__dp2_tp2"
-NUM_RUNS: int = 3
+NUM_RUNS: int = 5
 NUM_ROLLOUTS: int = 4
 
 
@@ -54,7 +54,7 @@ def run_experiment(variant: Variant) -> None:
             train_args=train_args,
             mode=mode,
             dump_dir=str(run_dir),
-            extra_env_vars=variant.extra_env_vars,
+            extra_env_vars={"MILES_EXP_TOP_LOGPROBS": "1", **variant.extra_env_vars},
             config=config,
         )
         run_dirs.append(run_dir)
@@ -84,6 +84,7 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
         sa, sb = _load(pa), _load(pb)
         by_key_b = {_key(s): s for s in sb}
         n_diff = prompt_diff = 0
+        top_same: Counter = Counter()
         offsets: Counter = Counter()
         groups: Counter = Counter()
         examples: list[str] = []
@@ -103,7 +104,8 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
                 prompt_diff += 1
                 continue
             offsets[d - prompt_len] += 1
-            if len(examples) < 6:
+            top_same.update(_classify_top_logprobs(s, t, d - prompt_len))
+            if len(examples) < 6 or (len(examples) < 10 and (s.get("metadata") or {}).get("exp_top_logprobs")):
                 lp_a, lp_b = s.get("rollout_log_probs") or [], t.get("rollout_log_probs") or []
                 before = d - prompt_len
                 max_delta = max((abs(x - y) for x, y in zip(lp_a[:before], lp_b[:before])), default=0.0)
@@ -111,12 +113,14 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
                     f"    sample {_key(s)}: first diff at response token {before}, max |dlogprob| before it = "
                     f"{max_delta:.3e}, weight_versions equal = {str(s.get('weight_versions')) == str(t.get('weight_versions'))}"
                 )
+                examples.extend(_describe_top_logprobs(s, t, before))
         summary = f"r{rollout_id}: {len(sa)} samples, {n_diff} differ"
         if n_diff:
             any_diff = True
             summary += (
                 f"; prompt-differs={prompt_diff}; first response offset histogram={sorted(offsets.items())[:12]}"
                 f"; groups affected={len(groups)} {sorted(groups.items())[:16]}"
+                f"; top-5 at pos 0 / at diff: {dict(top_same)}"
             )
         print(summary)
         for line in examples:
@@ -148,6 +152,40 @@ def _collect_weight_digests(run_dir: Path) -> dict[str, dict[str, str]]:
             digest = f"{hash(tuple(sorted(event.snapshot_cell_id_to_hashes.items()))) & 0xFFFFFF:06x}"
             out.setdefault(f"{event.published_version}", {})[f"trainer@r{event.rollout_id}"] = digest
     return out
+
+
+def _classify_top_logprobs(a: dict, b: dict, diff_at: int) -> list[str]:
+    ta, tb = (a.get("metadata") or {}).get("exp_top_logprobs"), (b.get("metadata") or {}).get("exp_top_logprobs")
+    if not ta or not tb:
+        return ["no_top"]
+    out = []
+    for name, pos in (("pos0", 0), ("diff", diff_at)):
+        if pos >= len(ta) or pos >= len(tb):
+            out.append(f"{name}_beyond")
+        elif ta[pos] == tb[pos]:
+            out.append(f"{name}_identical")
+        elif [x[1] for x in ta[pos]] == [x[1] for x in tb[pos]]:
+            out.append(f"{name}_same_ids_diff_lp")
+        else:
+            out.append(f"{name}_diff_ids")
+    return out
+
+
+def _describe_top_logprobs(a: dict, b: dict, diff_at: int) -> list[str]:
+    ta, tb = (a.get("metadata") or {}).get("exp_top_logprobs"), (b.get("metadata") or {}).get("exp_top_logprobs")
+    if not ta or not tb:
+        return ["      (no top logprobs recorded)"]
+    lines = []
+    for pos in sorted({0, 1, max(diff_at - 1, 0), diff_at}):
+        if pos >= len(ta) or pos >= len(tb):
+            continue
+        same_ids = [x[1] for x in ta[pos]] == [x[1] for x in tb[pos]]
+        max_lp = max((abs(x[0] - y[0]) for x, y in zip(ta[pos], tb[pos])), default=0.0)
+        lines.append(
+            f"      pos {pos}: same top-5 ids = {same_ids}, max |d top-5 logprob| = {max_lp:.3e}; "
+            f"a = {[(round(x[0], 4), x[1]) for x in ta[pos]]}; b = {[(round(y[0], 4), y[1]) for y in tb[pos]]}"
+        )
+    return lines
 
 
 def _load(path: Path) -> list[dict]:
