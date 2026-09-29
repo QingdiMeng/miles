@@ -35,12 +35,13 @@ class _LocalConversionActor:
 
 @pytest.fixture
 def local_ray_converter(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    node_id = "01" * 28
     monkeypatch.setattr(pickle, "Unpickler", pickle.Unpickler)
     converter = importlib.import_module("tools.convert_torch_dist_to_hf_ray")
     monkeypatch.setattr(converter, "make_conversion_actor", lambda: _LocalConversionActor(converter.ConversionWorker))
     monkeypatch.setattr(converter, "initialize_ray", lambda: None)
-    monkeypatch.setattr(converter.ray, "nodes", lambda: [{"NodeID": "local", "Alive": True}])
-    monkeypatch.setattr(converter.ray, "get_runtime_context", lambda: SimpleNamespace(get_node_id=lambda: "local"))
+    monkeypatch.setattr(converter.ray, "nodes", lambda: [{"NodeID": node_id, "Alive": True}])
+    monkeypatch.setattr(converter.ray, "get_runtime_context", lambda: SimpleNamespace(get_node_id=lambda: node_id))
     monkeypatch.setattr(converter.ray, "put", lambda value: value)
     monkeypatch.setattr(converter.ray, "get", lambda ref: ref.value)
     monkeypatch.setattr(converter.ray, "wait", lambda refs, **kwargs: ([refs[0]], refs[1:]))
