@@ -11,6 +11,8 @@
 """
 
 import logging
+import shlex
+import subprocess
 from pathlib import Path
 from typing import Annotated
 
@@ -20,9 +22,12 @@ from miles.utils.audit_utils.config_snapshot.converter import ConfigSnapshotConv
 from miles.utils.audit_utils.config_snapshot.models import ConfigSnapshotTestAttempt
 from miles.utils.audit_utils.config_snapshot.runner import ConfigSnapshotTestRunner
 from miles.utils.audit_utils.config_snapshot.storage import ConfigSnapshotStorage
-from miles.utils.external_utils.command_utils.common import repo_base_dir, run_process
 from miles.utils.file_utils import atomic_write_text
 from miles.utils.test_utils.snapshot import dump_snapshot
+
+logger = logging.getLogger(__name__)
+
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 app = typer.Typer(add_completion=False)
 
@@ -35,28 +40,26 @@ def download(
 ) -> None:
     if directory.exists() and any(directory.iterdir()):
         raise ValueError(f"Download directory must be empty: {directory}")
-    run_process(
-        argv=[
-            "gh",
-            "run",
-            "download",
-            run_id,
-            "--repo",
-            repo,
-            "--pattern",
-            "snapshot-records-*",
-            "--dir",
-            str(directory),
-        ],
-        capture_output=False,
-        check=True,
-    )
+    argv = [
+        "gh",
+        "run",
+        "download",
+        run_id,
+        "--repo",
+        repo,
+        "--pattern",
+        "snapshot-records-*",
+        "--dir",
+        str(directory),
+    ]
+    logger.info(f"EXEC: {shlex.join(argv)}")
+    subprocess.run(argv, check=True)
 
 
 @app.command(help="Convert raw dumps and update local golden snapshots")
 def sync(
     directory: Annotated[Path, typer.Option(help="Downloaded artifact directory")],
-    repo_root: Annotated[Path, typer.Option(help="Repository receiving the snapshots")] = repo_base_dir,
+    repo_root: Annotated[Path, typer.Option(help="Repository receiving the snapshots")] = _REPO_ROOT,
 ) -> None:
     snapshots = _collect_snapshots(directory=directory, repo_root=repo_root)
     for target, content in sorted(snapshots.items()):
