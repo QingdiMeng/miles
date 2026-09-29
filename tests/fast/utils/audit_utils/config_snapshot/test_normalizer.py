@@ -47,7 +47,9 @@ class TestGeneratedPathNormalization:
                 config = {"critic_save": save + "_critic"}
                 config.update({"backend": {"save": save + "/"}} if typed_backend else {"save": save + "/"})
                 record = make_record(config=config).model_copy(
-                    update={"generated_values": [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value=run_id)]}
+                    update={
+                        "generated_values": [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value=run_id)]
+                    }
                 )
                 normalized = normalize_record(record)["args"]
                 assert normalized["critic_save"] == f"{parent}/$RUN_ID_0000_critic"
@@ -71,8 +73,9 @@ class TestGeneratedPathNormalization:
         """Unregistered or independently configured critic paths do not borrow a generated identity."""
         record = make_record(config={"save": save, "critic_save": critic_save}).model_copy(
             update={
-                "generated_values": [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value="generated")]
-                if registered else []
+                "generated_values": (
+                    [ConfigSnapshotGeneratedValue(kind="run_id", name="0000", value="generated")] if registered else []
+                )
             }
         )
         assert normalize_record(record)["args"]["critic_save"] == critic_save
