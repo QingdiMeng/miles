@@ -41,10 +41,10 @@ index 3e2a61592b..da4b460c46 100644
                  with self.forward_stream_ctx:
                      self.forward_stream.wait_stream(self.schedule_stream)
 diff --git a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
-index f8a4cb845b..b54558f901 100644
+index f8a4cb845b..42a60cb65d 100644
 --- a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
 +++ b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
-@@ -81,6 +81,45 @@ if TYPE_CHECKING:
+@@ -81,6 +81,44 @@ if TYPE_CHECKING:
      from sglang.srt.observability.metrics_collector import SchedulerMetricsCollector
  
  logger = logging.getLogger(__name__)
@@ -55,10 +55,9 @@ index f8a4cb845b..b54558f901 100644
 +    global _debug_sampler_check_ct
 +    from sglang.srt.model_executor.model_runner import DEBUG_SAMPLER_INPUTS
 +
-+    if batch.sampling_info is None or batch.sampling_info.sampling_seed is None:
-+        return
 +    if not DEBUG_SAMPLER_INPUTS:
-+        logger.error(f"SAMPLERCHECK empty queue is_decode={is_decode} bs={len(batch.reqs)}")
++        if _debug_sampler_check_ct > 0:
++            logger.error(f"SAMPLERCHECK empty queue is_decode={is_decode} bs={len(batch.reqs)}")
 +        return
 +    rec_is_decode, seeds, positions = DEBUG_SAMPLER_INPUTS.popleft()
 +    seeds, positions = seeds.tolist(), positions.tolist()
@@ -90,7 +89,7 @@ index f8a4cb845b..b54558f901 100644
  
  
  def _get_speculative_output_stride(result: GenerationBatchResult) -> int:
-@@ -267,6 +306,7 @@ class SchedulerBatchResultProcessor:
+@@ -267,6 +305,7 @@ class SchedulerBatchResultProcessor:
          if self.is_generation:
              if result.copy_done is not None:
                  result.copy_done.synchronize()
@@ -98,7 +97,7 @@ index f8a4cb845b..b54558f901 100644
              auxiliary_output_starts = self.snapshot_auxiliary_output_starts(
                  batch, result
              )
-@@ -933,6 +973,7 @@ class SchedulerBatchResultProcessor:
+@@ -933,6 +972,7 @@ class SchedulerBatchResultProcessor:
      ):
          if result.copy_done is not None:
              result.copy_done.synchronize()
