@@ -34,12 +34,16 @@ def snapshot_file_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _Snap
     script = tmp_path / relative
     script.parent.mkdir(parents=True)
     script.write_text(
+        "import json\n"
         "import os\n"
         "import time\n"
         "from pathlib import Path\n"
         "records = Path(os.environ['MILES_SNAPSHOT_RECORD_DIR'])\n"
         "records.mkdir(parents=True, exist_ok=True)\n"
         "(records / 'record.json').write_text(Path(__file__).with_suffix('.json').read_text())\n"
+        "metric_dir = Path(os.environ['MILES_CI_GATE_RECORD_DIR'])\n"
+        "Path(__file__).with_suffix('.capture').write_text(str(metric_dir))\n"
+        "(metric_dir / 'probe.jsonl').write_text(json.dumps({'metric': 'train/grad_norm', 'series': [[0, 1.5]]}) + '\\n')\n"
         "time.sleep(float(os.environ.get('FILE_RUN_TEST_SLEEP', '0')))\n"
         "raise SystemExit(int(os.environ.get('FILE_RUN_TEST_EXIT', '0')))\n"
     )
@@ -61,6 +65,7 @@ def snapshot_file_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _Snap
     monkeypatch.setattr(ci_utils, "__file__", str(tmp_path / "tests/ci/ci_utils.py"))
     monkeypatch.setenv(SNAPSHOT_RECORD_DIR_ENV_VAR, str(record_root))
     monkeypatch.setenv("CI", "false")
+    monkeypatch.setenv(ci_utils.CI_GATE_RECORD_DIR_ENV, "")
     for name in (
         SNAPSHOT_UPDATE_ENV_VAR,
         "FILE_RUN_TEST_SLEEP",

@@ -1,13 +1,45 @@
 import json
 import logging
+import os
+from pathlib import Path
 
 import pytest
 from tests.ci.ci_register import register_cpu_ci
+from tests.ci.ci_utils import CI_GATE_RECORD_DIR_ENV
 from tests.ci.run_file import app
 from tests.ci.test.conftest import _SnapshotFileCase
 from typer.testing import CliRunner
 
 register_cpu_ci(est_time=10, suite="stage-a-cpu", labels=[])
+
+
+@pytest.mark.parametrize("existing_directory", [False, True])
+def test_child_captures_metrics_without_a_database_store(
+    snapshot_file_case: _SnapshotFileCase,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    existing_directory: bool,
+) -> None:
+    """Single-file runs retain suite-equivalent metric capture without database access."""
+    snapshot_file_case.write_golden(value="actual")
+    supplied_directory = tmp_path / "metrics"
+    if existing_directory:
+        monkeypatch.setenv(CI_GATE_RECORD_DIR_ENV, str(supplied_directory))
+    monkeypatch.setenv("NEON_DATABASE_URL", "postgresql://invalid.invalid/forbidden")
+
+    result = CliRunner().invoke(app, ["--test-file", str(snapshot_file_case.test_file), "--timeout-seconds", "10"])
+
+    assert result.exit_code == 0, result.output
+    record_directory = Path(snapshot_file_case.test_file.with_suffix(".capture").read_text())
+    base_directory = Path(os.environ[CI_GATE_RECORD_DIR_ENV])
+    assert record_directory.is_relative_to(base_directory)
+    if existing_directory:
+        assert base_directory == supplied_directory
+    assert json.loads((record_directory / "probe.jsonl").read_text()) == {
+        "metric": "train/grad_norm",
+        "series": [[0, 1.5]],
+    }
+    assert record_directory.with_suffix(".merged.jsonl").is_file()
 
 
 @pytest.mark.parametrize("golden_value", ["actual", "different"])
