@@ -41,10 +41,10 @@ index 3e2a61592b..da4b460c46 100644
                  with self.forward_stream_ctx:
                      self.forward_stream.wait_stream(self.schedule_stream)
 diff --git a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
-index f8a4cb845b..42a60cb65d 100644
+index f8a4cb845b..ef24bc6db7 100644
 --- a/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
 +++ b/python/sglang/srt/managers/scheduler_components/batch_result_processor.py
-@@ -81,6 +81,44 @@ if TYPE_CHECKING:
+@@ -81,6 +81,55 @@ if TYPE_CHECKING:
      from sglang.srt.observability.metrics_collector import SchedulerMetricsCollector
  
  logger = logging.getLogger(__name__)
@@ -59,8 +59,19 @@ index f8a4cb845b..42a60cb65d 100644
 +        if _debug_sampler_check_ct > 0:
 +            logger.error(f"SAMPLERCHECK empty queue is_decode={is_decode} bs={len(batch.reqs)}")
 +        return
-+    rec_is_decode, seeds, positions = DEBUG_SAMPLER_INPUTS.popleft()
++    rec_is_decode, seeds, positions, flags = DEBUG_SAMPLER_INPUTS.popleft()
 +    seeds, positions = seeds.tolist(), positions.tolist()
++    if any(flags):
++        params = sorted(
++            {
++                (r.sampling_params.top_k, r.sampling_params.top_p, r.sampling_params.min_p, r.sampling_params.temperature)
++                for r in batch.reqs
++            }
++        )
++        logger.error(
++            f"SAMPLERCHECK path is_decode={is_decode} bs={len(batch.reqs)} "
++            f"flags(all_greedy,top_p,top_k,min_p)={flags} req_params(top_k,top_p,min_p,temp)={params[:8]}"
++        )
 +    _debug_sampler_check_ct += 1
 +    if _debug_sampler_check_ct % 2000 == 1:
 +        logger.info(f"SAMPLERCHECK active ct={_debug_sampler_check_ct} queue_len={len(DEBUG_SAMPLER_INPUTS)}")
@@ -89,7 +100,7 @@ index f8a4cb845b..42a60cb65d 100644
  
  
  def _get_speculative_output_stride(result: GenerationBatchResult) -> int:
-@@ -267,6 +305,7 @@ class SchedulerBatchResultProcessor:
+@@ -267,6 +316,7 @@ class SchedulerBatchResultProcessor:
          if self.is_generation:
              if result.copy_done is not None:
                  result.copy_done.synchronize()
@@ -97,7 +108,7 @@ index f8a4cb845b..42a60cb65d 100644
              auxiliary_output_starts = self.snapshot_auxiliary_output_starts(
                  batch, result
              )
-@@ -933,6 +972,7 @@ class SchedulerBatchResultProcessor:
+@@ -933,6 +983,7 @@ class SchedulerBatchResultProcessor:
      ):
          if result.copy_done is not None:
              result.copy_done.synchronize()
@@ -106,7 +117,7 @@ index f8a4cb845b..42a60cb65d 100644
          auxiliary_output = result.auxiliary_host_output
          if result.routed_experts_output is not None:
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index ecf4901ef4..6b60bbea7d 100644
+index ecf4901ef4..506797bde4 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
 @@ -15,6 +15,7 @@
@@ -125,7 +136,7 @@ index ecf4901ef4..6b60bbea7d 100644
  
  
  @dataclass(frozen=True)
-@@ -1970,6 +1972,19 @@ class ModelRunner:
+@@ -1970,6 +1972,25 @@ class ModelRunner:
              )
  
          # Sample the next tokens
@@ -140,12 +151,18 @@ index ecf4901ef4..6b60bbea7d 100644
 +                    forward_batch.forward_mode.is_decode(),
 +                    forward_batch.sampling_info.sampling_seed.clone(),
 +                    _sample_positions.clone(),
++                    (
++                        forward_batch.sampling_info.is_all_greedy,
++                        forward_batch.sampling_info.need_top_p_sampling,
++                        forward_batch.sampling_info.need_top_k_sampling,
++                        forward_batch.sampling_info.need_min_p_sampling,
++                    ),
 +                )
 +            )
          next_token_ids = self.sampler(
              logits_output,
              forward_batch.sampling_info,
-@@ -1977,11 +1992,7 @@ class ModelRunner:
+@@ -1977,11 +1998,7 @@ class ModelRunner:
              forward_batch.top_logprobs_nums,
              forward_batch.token_ids_logprobs,
              # For prefill, we only use the position of the last token.
