@@ -25,6 +25,9 @@ def normalize_record(
     config = _normalize_generated_values(
         config, values=record.generated_values if generated_values is None else generated_values
     )
+    for fields in _config_objects(config):
+        if isinstance(fields.get("wandb_run_id"), str):
+            fields["wandb_run_id"] = "$WANDB_RUN_ID_0000"
     if isinstance(context.source, TrainProcessIdentity):
         if not isinstance(config, dict) or not isinstance(args := config.get("args"), dict):
             raise ValueError("Training snapshots require a config.args object")
