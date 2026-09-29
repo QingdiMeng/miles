@@ -13,6 +13,8 @@ from tests.e2e.ft.conftest_ft.modes import resolve_mode
 from tests.e2e.ft.conftest_ft.scenario_trainer_all_gather_fault import UPDATE_WEIGHTS_TIMEOUT_SECONDS
 from tests.utils.soak.core.utils import create_soak_config, resolve_dump_dir
 
+from miles.utils.audit_utils.event_logger.logger import EVENTS_DIRNAME, read_events
+from miles.utils.audit_utils.event_logger.models import InferenceEngineWeightChecksumEvent, WeightUpdateResultEvent
 from miles.utils.external_utils import command_utils
 
 MODE: str = "kill_train__dp2_tp2"
@@ -58,6 +60,7 @@ def run_experiment(variant: Variant) -> None:
         run_dirs.append(run_dir)
 
     try:
+        _report_weights(run_dirs)
         any_diff = False
         for i in range(1, NUM_RUNS):
             print(f"===== run0 vs run{i}")
@@ -119,6 +122,32 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
         for line in examples:
             print(line)
     return any_diff
+
+
+def _report_weights(run_dirs: list[Path]) -> None:
+    print("===== weights per version (engine digest per cell / trainer hashes digest)")
+    per_run = [_collect_weight_digests(d) for d in run_dirs]
+    for version in sorted(set().union(*[set(r) for r in per_run])):
+        cells = [r.get(version, {}) for r in per_run]
+        print(f"v{version}: " + " | ".join(f"run{i}={c}" for i, c in enumerate(cells)))
+    for i, d in enumerate(run_dirs):
+        for rollout_id in range(NUM_ROLLOUTS):
+            if (path := d / "rollout_data" / f"{rollout_id}.pt").exists():
+                versions = Counter(str(s.get("weight_versions")) for s in _load(path))
+                print(f"run{i} r{rollout_id} weight_versions: {versions.most_common(3)}")
+
+
+def _collect_weight_digests(run_dir: Path) -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    for event in read_events(run_dir / EVENTS_DIRNAME):
+        if isinstance(event, InferenceEngineWeightChecksumEvent):
+            for snap in event.engine_snapshots:
+                digest = f"{hash(tuple(sorted(snap.tensor_checksums.items()))) & 0xFFFFFF:06x}"
+                out.setdefault(f"{event.weight_version}", {})[f"eng:{snap.cell_id}"] = digest
+        if isinstance(event, WeightUpdateResultEvent):
+            digest = f"{hash(tuple(sorted(event.snapshot_cell_id_to_hashes.items()))) & 0xFFFFFF:06x}"
+            out.setdefault(f"{event.published_version}", {})[f"trainer@r{event.rollout_id}"] = digest
+    return out
 
 
 def _load(path: Path) -> list[dict]:
