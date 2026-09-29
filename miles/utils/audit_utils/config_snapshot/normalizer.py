@@ -65,7 +65,7 @@ _PATH_FIELDS = frozenset(
 )
 
 
-_CONFIG_PATHS = (("args",), ("backend",))
+_CONFIG_PATHS = (("args",), ("backend",), ("raw_megatron", "base_args"))
 
 
 def _normalize_generated_values(config: JsonValue, *, values: list[ConfigSnapshotGeneratedValue]) -> JsonValue:
