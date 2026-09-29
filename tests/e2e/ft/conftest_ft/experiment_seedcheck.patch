@@ -1,0 +1,42 @@
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+index 3e2a61592b..da4b460c46 100644
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -377,6 +377,29 @@ else:
+ logger = logging.getLogger(__name__)
+ 
+ 
++def _debug_check_sampling_seed(batch, *, forward_ct: int) -> None:
++    info = batch.sampling_info
++    if info is None or info.sampling_seed is None:
++        return
++    if forward_ct % 2000 == 1:
++        logger.info(f"SEEDCHECK active forward_ct={forward_ct} bs={len(batch.reqs)}")
++    got = info.sampling_seed.tolist()
++    expected = [
++        r.sampling_params.sampling_seed if r.sampling_params.sampling_seed is not None else 42
++        for r in batch.reqs
++    ]
++    temps = info.temperatures.view(-1).tolist()
++    expected_temps = [r.sampling_params.temperature for r in batch.reqs]
++    bad = [(i, batch.reqs[i].rid[:8], e, g) for i, (e, g) in enumerate(zip(expected, got)) if e != g]
++    bad_temps = [i for i, (e, g) in enumerate(zip(expected_temps, temps)) if abs(e - g) > 1e-6]
++    if bad or len(got) != len(expected) or bad_temps:
++        logger.error(
++            f"SEEDCHECK mismatch forward_ct={forward_ct} mode={batch.forward_mode} bs={len(batch.reqs)} "
++            f"len_seed={len(got)} n_bad={len(bad)} bad_temps={bad_temps[:8]} first_bad={bad[:16]} "
++            f"expected={expected[:64]} got={got[:64]}"
++        )
++
++
+ def _prewarm_hccl_group(device, group, device_module):
+     warmup_tensor = torch.zeros(1, dtype=torch.int32, device=device)
+     torch.distributed.all_reduce(warmup_tensor, group=group)
+@@ -4315,6 +4338,7 @@ class Scheduler(
+                 self.future_map.resolve_seq_lens_cpu(batch)
+                 if self._confidence_budget_prepare is not None:
+                     self._confidence_budget_prepare(batch, self.future_map)
++                _debug_check_sampling_seed(batch, forward_ct=self.forward_ct)
+ 
+                 with self.forward_stream_ctx:
+                     self.forward_stream.wait_stream(self.schedule_stream)

@@ -2,6 +2,7 @@
 # times with identical arguments and report, sample by sample, whether the generated tokens differ between runs.
 
 import math
+import os
 import shutil
 from collections import Counter
 from dataclasses import dataclass, field
@@ -17,6 +18,7 @@ from tests.utils.soak.core.utils import create_soak_config, resolve_dump_dir
 from miles.utils.audit_utils.event_logger.logger import EVENTS_DIRNAME, read_events
 from miles.utils.audit_utils.event_logger.models import InferenceEngineWeightChecksumEvent, WeightUpdateResultEvent
 from miles.utils.external_utils import command_utils
+from miles.utils.external_utils.command_utils.legacy import exec_command_cpu
 
 MODE: str = "kill_train__dp2_tp2"
 NUM_RUNS: int = 5
@@ -42,6 +44,7 @@ def run_experiment(variant: Variant) -> None:
         f"Experiment {variant.name}: dump_dir={dump_dir} env={variant.extra_env_vars} args={variant.extra_train_args!r}"
     )
     prepare(mode, config=config)
+    _apply_sglang_debug_patch()
 
     run_dirs: list[Path] = []
     for i in range(NUM_RUNS):
@@ -142,6 +145,13 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
         for line in examples:
             print(line)
     return any_diff
+
+
+def _apply_sglang_debug_patch() -> None:
+    root = Path(os.environ["SGLANG_SOURCE_ROOT"]).parent
+    patch = Path(__file__).parent / "experiment_seedcheck.patch"
+    exec_command_cpu(f"git -C {root} apply {patch} || git -C {root} apply --reverse --check {patch}")
+    exec_command_cpu(f"git -C {root} diff --stat")
 
 
 def _report_weights(run_dirs: list[Path]) -> None:
