@@ -1,7 +1,8 @@
 import json
+import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -20,6 +21,15 @@ def inkling_provider_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Ite
 
     from miles.backends.megatron_utils import model
     from miles.backends.training_utils import parallel
+
+    layers = ModuleType("miles_plugins.models.inkling.layers")
+    layers.__dict__.update(
+        {
+            name: type(name, (_UnusedInklingLayer,), {})
+            for name in ("InklingDenseMLP", "InklingSelfAttention", "InklingSharedExperts")
+        }
+    )
+    monkeypatch.setitem(sys.modules, layers.__name__, layers)
 
     provider_path = "miles_plugins.models.inkling.model.inkling_model_provider"
     args = make_trainer_config(
@@ -107,6 +117,11 @@ def inkling_reload_env(
         env.module, "load_checkpoint", lambda *args, **kwargs: (0, False, env.native_optimizer_restored)
     )
     return env
+
+
+class _UnusedInklingLayer(torch.nn.Module):
+    def __init__(self) -> None:
+        raise AssertionError("The tiny Inkling fixture has no decoder layers")
 
 
 class _TinyInklingModel(torch.nn.Module):
