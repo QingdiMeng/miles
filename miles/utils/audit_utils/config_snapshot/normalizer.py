@@ -61,6 +61,7 @@ _PATH_FIELDS = frozenset(
         "load_debug_rollout_data",
         "ci_save_grad_norm",
         "te_precision_config_file",
+        "eval_hf_dir",
     }
 )
 
