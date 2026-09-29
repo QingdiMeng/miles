@@ -681,7 +681,7 @@ class VerifiersRolloutFn(BaseRolloutFn):
         runtime = _import_verifiers()
         ctx = ctx or self.ctx
         episode = self.env.episode(task, ctx, n=n)
-        if getattr(self.args, "sglang_enable_deterministic_inference", False):
+        if self.args.sglang.common_value("enable_deterministic_inference"):
             for offset, rollout in enumerate(episode.rollouts):
                 sampling = ctx.sampling.model_copy(update={"sampling_seed": seed_base + offset})
                 rollout.ctx = runtime.ModelContext(client=ctx.client, model=self.model, sampling=sampling)
