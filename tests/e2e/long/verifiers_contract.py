@@ -41,6 +41,6 @@ def _assert_contract_report(report_path: Path) -> None:
     cases = ElementTree.parse(report_path).getroot().findall(".//testcase")
     assert len(cases) == 3, f"Expected three Verifiers SDK contract cases, found {len(cases)}"
     for case in cases:
-        assert all(case.find(status) is None for status in ("skipped", "failure", "error")), (
-            f"Verifiers SDK contract did not pass: {case.attrib}"
-        )
+        assert all(
+            case.find(status) is None for status in ("skipped", "failure", "error")
+        ), f"Verifiers SDK contract did not pass: {case.attrib}"
