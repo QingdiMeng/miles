@@ -448,7 +448,7 @@ def run_unittest_files(
                     attempt. Off by default because reaping is process-wide: it would
                     also reach the caller when this function runs inside a test.
     """
-    from miles.utils.audit_utils.config_snapshot.test_runner import ConfigSnapshotMismatch, ConfigSnapshotTestRunner
+    from miles.utils.audit_utils.config_snapshot.runner import ConfigSnapshotMismatch, ConfigSnapshotTestRunner
     from miles.utils.test_utils.snapshot import SNAPSHOT_RECORD_DIR_ENV_VAR
 
     tic = time.perf_counter()
