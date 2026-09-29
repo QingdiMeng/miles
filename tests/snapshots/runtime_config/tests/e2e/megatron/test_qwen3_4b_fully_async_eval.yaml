@@ -10590,7 +10590,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_fleet_fa2j81f0
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_fleet
 
       @@ -1004 +1004 @@
 
@@ -10752,7 +10752,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_fleet_fa2j81f0
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_fleet
 
       @@ -127 +127 @@
 
@@ -10858,7 +10858,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_fleet_fa2j81f0
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_fleet
 
       @@ -127 +127 @@
 
@@ -10981,7 +10981,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_fleet_fa2j81f0
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_fleet
 
       @@ -164 +164 @@
 
@@ -11087,7 +11087,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_fleet_fa2j81f0
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_fleet
 
       @@ -1004 +1004 @@
 
@@ -11156,7 +11156,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_fleet_fa2j81f0
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_fleet
 
       @@ -159 +159 @@
 
@@ -11251,7 +11251,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_external_0uv4524z
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_external
 
       @@ -1004 +1004 @@
 
@@ -11383,7 +11383,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_external_0uv4524z
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_external
 
       @@ -127 +127 @@
 
@@ -11451,7 +11451,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_external_0uv4524z
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_external
 
       @@ -127 +127 @@
 
@@ -11546,7 +11546,7 @@ processes:
 
       +    path: examples.infra_features.fully_async.external_eval_fn.ExternalSglangEvalFn
 
-      +  eval_hf_dir: /dev/shm/miles_eval_external_0uv4524z
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_external
 
       @@ -164 +163 @@
 
@@ -11614,7 +11614,7 @@ processes:
 
       -  eval_hf_dir: null
 
-      +  eval_hf_dir: /dev/shm/miles_eval_external_0uv4524z
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_external
 
       @@ -1004 +1004 @@
 
@@ -11663,7 +11663,7 @@ processes:
 
       +    path: examples.infra_features.fully_async.external_eval_fn.ExternalSglangEvalFn
 
-      +  eval_hf_dir: /dev/shm/miles_eval_external_0uv4524z
+      +  eval_hf_dir: /dev/shm/$TEMPORARY_DIRECTORY_fully_async_eval_external
 
       @@ -170 +169 @@
 
