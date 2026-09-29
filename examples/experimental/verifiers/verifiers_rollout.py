@@ -40,6 +40,7 @@ from miles.rollout.base_types import (
 from miles.rollout.filter_hub.base_types import MetricGatherer
 from miles.rollout.filter_hub.common_filters import apply_preput_filters
 from miles.rollout.generate_utils.prefill_logprobs import recompute_samples_rollout_logprobs_via_prefill
+from miles.utils.args.custom_view import ImmutableNamespace
 from miles.utils.lora.utils import LORA_ADAPTER_NAME, is_lora_enabled
 from miles.utils.types import Sample
 
@@ -537,8 +538,8 @@ def _flatten_samples(values: Iterable[Any]) -> list[Sample]:
     return flattened
 
 
-def _make_eval_args(args: Namespace) -> Namespace:
-    eval_args = Namespace(**vars(args))
+def _make_eval_args(args: ImmutableNamespace) -> Namespace:
+    eval_args = Namespace(**dict(args))
     for eval_name, rollout_name in (
         ("eval_temperature", "rollout_temperature"),
         ("eval_top_p", "rollout_top_p"),
