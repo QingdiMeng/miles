@@ -85,6 +85,7 @@ import socket
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 import ray
@@ -979,6 +980,7 @@ def prepare_whole_source_task_tensors(
     megatron_args: Any,
     model_name: str,
     metadata: dist_cp.metadata.Metadata,
+    origin_hf_dir: Path | None = None,
 ) -> PreparedTaskTensors:
     load_result = load_tensor_chunk(input_dir, set(task.keys), metadata)
     state_dict = load_result.state_dict
@@ -989,7 +991,7 @@ def prepare_whole_source_task_tensors(
             if getattr(megatron_args, "vocab_size", None) is not None:
                 param = m2hf.remove_padding(name, param, megatron_args.vocab_size)
             converted_named_tensors = m2hf._convert_to_hf_core(
-                argparse.Namespace(backend=megatron_args), model_name, name, param
+                argparse.Namespace(backend=megatron_args, hf_checkpoint=origin_hf_dir), model_name, name, param
             )
             groups.append(PreparedTensorGroup(name, tuple(converted_named_tensors)))
         return PreparedTaskTensors(
@@ -1077,6 +1079,7 @@ class ConversionWorker:
         quantization_config: dict[str, Any] | None,
         max_file_bytes: int,
         metadata_ref: Any,
+        origin_hf_dir: Path | None = None,
     ) -> None:
         self.actor_id = actor_id
         self.ray_node_id = ray.get_runtime_context().get_node_id()
@@ -1085,6 +1088,7 @@ class ConversionWorker:
         self.staging_dir = staging_dir
         self.megatron_args = megatron_args
         self.model_name = model_name
+        self.origin_hf_dir = origin_hf_dir
         self.quantization_config = quantization_config
         self.max_file_bytes = max_file_bytes
         self.metadata = metadata_ref if isinstance(metadata_ref, dist_cp.metadata.Metadata) else ray.get(metadata_ref)
@@ -1096,7 +1100,8 @@ class ConversionWorker:
             prepared = prepare_moe_block_task_tensors(task, self.input_dir, self.metadata)
         else:
             prepared = prepare_whole_source_task_tensors(
-                task, self.input_dir, self.megatron_args, self.model_name, self.metadata
+                task, self.input_dir, self.megatron_args, self.model_name, self.metadata,
+                origin_hf_dir=self.origin_hf_dir,
             )
         shards, total_size = write_prepared_tensor_groups(
             self.staging_dir,
@@ -1170,6 +1175,7 @@ def collect_ray_results(
     metadata_ref: Any,
     progress: bool,
     progress_interval_seconds: float,
+    origin_hf_dir: Path | None = None,
 ) -> list[TaskResult]:
     worker_count = min(concurrency, len(tasks))
     if worker_count < 1:
@@ -1191,6 +1197,7 @@ def collect_ray_results(
                 quantization_config,
                 max_file_bytes,
                 metadata_ref,
+                origin_hf_dir=origin_hf_dir,
             )
         )
 
@@ -1339,6 +1346,7 @@ def convert_torch_dist_to_hf_ray(args: Args) -> str:
         metadata_ref,
         args.progress,
         args.progress_interval_seconds,
+        origin_hf_dir=Path(args.origin_hf_dir) if args.origin_hf_dir is not None else None,
     )
     finalize_output(staging_dir, args.output_dir, args.origin_hf_dir, task_results)
     return args.output_dir
