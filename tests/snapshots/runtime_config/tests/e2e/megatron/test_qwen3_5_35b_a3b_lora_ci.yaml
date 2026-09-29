@@ -971,7 +971,7 @@ processes:
         critic_load: /root/models/Qwen3.5-35B-A3B
         critic_lr: 1.0e-05
         critic_lr_warmup_iters: 0
-        critic_save: /personal/checkpoints/260928-221656-095_critic
+        critic_save: /personal/checkpoints/$RUN_ID_0000_critic
         custom_agent_function_path: null
         custom_generate_function_path: null
         custom_inference_engine_provider_path:
@@ -2006,7 +2006,7 @@ processes:
         critic_load: /root/models/Qwen3.5-35B-A3B
         critic_lr: 1.0e-05
         critic_lr_warmup_iters: 0
-        critic_save: /personal/checkpoints/260928-221656-095_critic
+        critic_save: /personal/checkpoints/$RUN_ID_0000_critic
         custom_agent_function_path: null
         custom_generate_function_path: null
         custom_inference_engine_provider_path:
@@ -3029,7 +3029,7 @@ processes:
         critic_load: /root/models/Qwen3.5-35B-A3B
         critic_lr: 1.0e-05
         critic_lr_warmup_iters: 0
-        critic_save: /personal/checkpoints/260928-221656-095_critic
+        critic_save: /personal/checkpoints/$RUN_ID_0000_critic
         custom_agent_function_path: null
         custom_generate_function_path: null
         custom_inference_engine_provider_path:
@@ -4990,7 +4990,7 @@ processes:
         critic_load: /root/models/Qwen3.5-35B-A3B
         critic_lr: 1.0e-05
         critic_lr_warmup_iters: 0
-        critic_save: /personal/checkpoints/260928-221656-095_critic
+        critic_save: /personal/checkpoints/$RUN_ID_0000_critic
         custom_agent_function_path: null
         custom_async_data_buffer_path: null
         custom_convert_samples_to_train_data_path: null
@@ -7912,7 +7912,7 @@ processes:
         critic_load: /root/models/Qwen3.5-35B-A3B
         critic_lr: 1.0e-05
         critic_lr_warmup_iters: 0
-        critic_save: /personal/checkpoints/260928-221656-095_critic
+        critic_save: /personal/checkpoints/$RUN_ID_0000_critic
         custom_agent_function_path: null
         custom_generate_function_path: null
         custom_inference_engine_provider_path:
@@ -8906,7 +8906,7 @@ processes:
         critic_lr_warmup_iters: 0
         critic_num_gpus_per_node: null
         critic_num_nodes: null
-        critic_save: /personal/checkpoints/260928-221656-095_critic
+        critic_save: /personal/checkpoints/$RUN_ID_0000_critic
         custom_agent_function_path: null
         custom_async_data_buffer_path: null
         custom_convert_samples_to_train_data_path: null
