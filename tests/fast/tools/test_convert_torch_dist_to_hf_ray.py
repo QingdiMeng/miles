@@ -24,7 +24,8 @@ def test_ray_conversion_uses_explicit_hf_assets_with_real_model_dispatch(
         )
     tensor = torch.arange(12, dtype=torch.float32).reshape(4, 3)
     source_name = (
-        "decoder.layers.0.mlp.experts.linear_fc1.weight0" if model_name == "inkling"
+        "decoder.layers.0.mlp.experts.linear_fc1.weight0"
+        if model_name == "inkling"
         else "embedding.word_embeddings.weight"
     )
     dist_cp.save({source_name: tensor}, checkpoint_id=str(input_dir))
@@ -34,9 +35,18 @@ def test_ray_conversion_uses_explicit_hf_assets_with_real_model_dispatch(
     )
     output_dir = tmp_path / "output"
     args = local_ray_converter.Args(
-        input_dir=str(input_dir), output_dir=str(output_dir), origin_hf_dir=str(current_hf),
-        model_name=model_name, force=False, max_file_bytes=1024, concurrency=1, task_group_bytes=1024,
-        source_key_regex=None, dry_run_plan=False, progress=False, progress_interval_seconds=1,
+        input_dir=str(input_dir),
+        output_dir=str(output_dir),
+        origin_hf_dir=str(current_hf),
+        model_name=model_name,
+        force=False,
+        max_file_bytes=1024,
+        concurrency=1,
+        task_group_bytes=1024,
+        source_key_regex=None,
+        dry_run_plan=False,
+        progress=False,
+        progress_interval_seconds=1,
     )
 
     assert local_ray_converter.convert_torch_dist_to_hf_ray(args) == str(output_dir)
@@ -46,7 +56,10 @@ def test_ray_conversion_uses_explicit_hf_assets_with_real_model_dispatch(
     for shard in sorted(set(index["weight_map"].values())):
         tensors.update(safetensors.torch.load_file(output_dir / shard))
     if model_name == "inkling":
-        assert set(tensors) == {"model.llm.layers.0.mlp.experts.0.gate_proj.weight", "model.llm.layers.0.mlp.experts.0.up_proj.weight"}
+        assert set(tensors) == {
+            "model.llm.layers.0.mlp.experts.0.gate_proj.weight",
+            "model.llm.layers.0.mlp.experts.0.up_proj.weight",
+        }
         torch.testing.assert_close(tensors["model.llm.layers.0.mlp.experts.0.gate_proj.weight"], tensor[:2])
         torch.testing.assert_close(tensors["model.llm.layers.0.mlp.experts.0.up_proj.weight"], tensor[2:])
     else:
