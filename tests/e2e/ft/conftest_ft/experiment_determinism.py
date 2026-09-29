@@ -1,6 +1,7 @@
 # Temporary experiment (not part of the FT suite): run the baseline side of the all-gather comparison several
 # times with identical arguments and report, sample by sample, whether the generated tokens differ between runs.
 
+import math
 import shutil
 from collections import Counter
 from dataclasses import dataclass, field
@@ -20,6 +21,10 @@ from miles.utils.external_utils import command_utils
 MODE: str = "kill_train__dp2_tp2"
 NUM_RUNS: int = 5
 NUM_ROLLOUTS: int = 8
+ROLLOUT_SEED: int = 42
+SAMPLES_PER_PROMPT: int = 8
+SEED_OFFSETS: range = range(-8, 9)
+POSITION_OFFSETS: range = range(-4, 5)
 
 
 @dataclass(frozen=True)
@@ -85,6 +90,9 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
         by_key_b = {_key(s): s for s in sb}
         n_diff = prompt_diff = 0
         top_same: Counter = Counter()
+        fits_a: Counter = Counter()
+        fits_b: Counter = Counter()
+        n_fit = 0
         offsets: Counter = Counter()
         groups: Counter = Counter()
         examples: list[str] = []
@@ -105,6 +113,10 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
                 continue
             offsets[d - prompt_len] += 1
             top_same.update(_classify_top_logprobs(s, t, d - prompt_len))
+            if (fa := _fit_noise(s, d - prompt_len)) is not None and (fb := _fit_noise(t, d - prompt_len)) is not None:
+                n_fit += 1
+                fits_a.update(fa)
+                fits_b.update(fb)
             if len(examples) < 6 or (len(examples) < 10 and (s.get("metadata") or {}).get("exp_top_logprobs")):
                 lp_a, lp_b = s.get("rollout_log_probs") or [], t.get("rollout_log_probs") or []
                 before = d - prompt_len
@@ -123,6 +135,10 @@ def _report_diff(dir_a: Path, dir_b: Path) -> bool:
                 f"; top-5 at pos 0 / at diff: {dict(top_same)}"
             )
         print(summary)
+        if n_fit:
+            print(f"    noise fit over {n_fit} diverged samples (seed offset, position offset) -> count:")
+            print(f"      run a: {fits_a.most_common(8)}")
+            print(f"      run b: {fits_b.most_common(8)}")
         for line in examples:
             print(line)
     return any_diff
@@ -152,6 +168,53 @@ def _collect_weight_digests(run_dir: Path) -> dict[str, dict[str, str]]:
             digest = f"{hash(tuple(sorted(event.snapshot_cell_id_to_hashes.items()))) & 0xFFFFFF:06x}"
             out.setdefault(f"{event.published_version}", {})[f"trainer@r{event.rollout_id}"] = digest
     return out
+
+
+def _fit_noise(sample: dict, offset: int) -> list[tuple[int, int]] | None:
+    top = (sample.get("metadata") or {}).get("exp_top_logprobs")
+    if not top or offset >= len(top):
+        return None
+    prompt_len = len(sample["tokens"]) - sample["response_length"]
+    chosen = sample["tokens"][prompt_len + offset]
+    candidates = top[offset]
+    if chosen not in [token for _, token in candidates]:
+        return None
+    idx = sample["index"] - sample["group_index"] * SAMPLES_PER_PROMPT
+    position = prompt_len + offset - 1
+    fits = []
+    for ds in SEED_OFFSETS:
+        for dp in POSITION_OFFSETS:
+            seed, pos = ROLLOUT_SEED + idx + ds, position + dp
+            if seed < 0 or pos < 0:
+                continue
+            best = max(candidates, key=lambda c: c[0] + _gumbel(seed=seed, position=pos, col=c[1]))
+            if best[1] == chosen:
+                fits.append((ds, dp))
+    return fits
+
+
+def _gumbel(*, seed: int, position: int, col: int) -> float:
+    x = _murmur_hash32(seed=seed, position=position, col=col) / 0xFFFFFFFF
+    x = -min(max(math.log(x) if x > 0 else -math.inf, -1.7976931348623157e308), -(2.0**-32))
+    return -math.log(x)
+
+
+def _murmur_hash32(*, seed: int, position: int, col: int) -> int:
+    h = 0
+    for k in (seed & 0xFFFFFFFF, (seed >> 32) & 0xFFFFFFFF, position & 0xFFFFFFFF, col & 0xFFFFFFFF):
+        k = (k * 0xCC9E2D51) & 0xFFFFFFFF
+        k = ((k << 15) | (k >> 17)) & 0xFFFFFFFF
+        k = (k * 0x1B873593) & 0xFFFFFFFF
+        h ^= k
+        h = ((h << 13) | (h >> 19)) & 0xFFFFFFFF
+        h = (h * 5 + 0xE6546B64) & 0xFFFFFFFF
+    h ^= 16
+    h ^= h >> 16
+    h = (h * 0x85EBCA6B) & 0xFFFFFFFF
+    h ^= h >> 13
+    h = (h * 0xC2B2AE35) & 0xFFFFFFFF
+    h ^= h >> 16
+    return h
 
 
 def _classify_top_logprobs(a: dict, b: dict, diff_at: int) -> list[str]:
