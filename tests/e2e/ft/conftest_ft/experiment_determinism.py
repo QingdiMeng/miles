@@ -19,7 +19,7 @@ from miles.utils.external_utils import command_utils
 
 MODE: str = "kill_train__dp2_tp2"
 NUM_RUNS: int = 5
-NUM_ROLLOUTS: int = 4
+NUM_ROLLOUTS: int = 8
 
 
 @dataclass(frozen=True)
