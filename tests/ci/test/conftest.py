@@ -2,11 +2,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-
 from tests.ci import ci_utils
 
 from miles.utils.audit_utils.config_snapshot.converter import ConfigSnapshotConverter
-from miles.utils.audit_utils.config_snapshot.models import ConfigSnapshotContext, ConfigSnapshotPoint, ConfigSnapshotRecord
+from miles.utils.audit_utils.config_snapshot.models import (
+    ConfigSnapshotContext,
+    ConfigSnapshotPoint,
+    ConfigSnapshotRecord,
+)
 from miles.utils.audit_utils.config_snapshot.runner import ConfigSnapshotTestRunner
 from miles.utils.audit_utils.process_identity import SimpleProcessIdentity
 from miles.utils.test_utils.snapshot import SNAPSHOT_RECORD_DIR_ENV_VAR, SNAPSHOT_UPDATE_ENV_VAR, dump_snapshot
@@ -58,7 +61,12 @@ def snapshot_file_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _Snap
     monkeypatch.setattr(ci_utils, "__file__", str(tmp_path / "tests/ci/ci_utils.py"))
     monkeypatch.setenv(SNAPSHOT_RECORD_DIR_ENV_VAR, str(record_root))
     monkeypatch.setenv("CI", "false")
-    for name in (SNAPSHOT_UPDATE_ENV_VAR, "FILE_RUN_TEST_SLEEP", "FILE_RUN_TEST_EXIT", ci_utils.CI_GATE_RECORD_DIR_ENV):
+    for name in (
+        SNAPSHOT_UPDATE_ENV_VAR,
+        "FILE_RUN_TEST_SLEEP",
+        "FILE_RUN_TEST_EXIT",
+        ci_utils.CI_GATE_RECORD_DIR_ENV,
+    ):
         monkeypatch.delenv(name, raising=False)
     return _SnapshotFileCase(
         test_file=relative,
