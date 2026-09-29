@@ -16,6 +16,7 @@ from miles.backends.sglang_utils.arguments import (
     collect_eval_sglang_overrides,
 )
 from miles.backends.sglang_utils.sglang_api_client import WorkerType
+from miles.backends.sglang_utils.sglang_scaling_config import ServerGroupScalingConfig, SglangScalingConfig
 from miles.utils.args.configs.sglang_client import SglangClientConfig
 from miles.utils.file_arg_utils import resolve_file_arg
 from miles.utils.lora.utils import is_multi_lora_enabled
@@ -268,23 +269,10 @@ class ModelConfig(FrozenStrictBaseModel):
     def has_pd_disaggregation(self) -> bool:
         return any(g.worker_type in (WorkerType.PREFILL, WorkerType.DECODE) for g in self.server_groups)
 
-
-class ServerGroupScalingConfig(FrozenStrictBaseModel):
-    num_gpus: int = pydantic.Field(gt=0)
-    gpu_offset: int = pydantic.Field(ge=0)
-    engine_offset: int = pydantic.Field(ge=0)
-
-
-class SglangScalingConfig(FrozenStrictBaseModel):
-    groups: dict[str, list[ServerGroupScalingConfig]]
-
-    def group(self, *, model_name: str, group_index: int) -> ServerGroupScalingConfig:
-        return self.groups[model_name][group_index]
-
-    def num_server_cells(self, model: ModelConfig) -> int:
+    def num_server_cells(self, scaling: SglangScalingConfig) -> int:
         return sum(
-            scaling.num_gpus // group.num_gpus_per_engine
-            for group, scaling in zip(model.server_groups, self.groups[model.name], strict=True)
+            group_scaling.num_gpus // group.num_gpus_per_engine
+            for group, group_scaling in zip(self.server_groups, scaling.groups[self.name], strict=True)
             if group.worker_type != WorkerType.PLACEHOLDER
         )
 
