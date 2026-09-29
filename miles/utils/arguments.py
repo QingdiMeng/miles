@@ -222,6 +222,9 @@ def parse_args_and_get_parser(
         from miles.backends.megatron_utils.arguments import validate_args as megatron_validate_args
 
         args = megatron_parse_args(extra_args_provider=add_miles_arguments_and_capture_parser)
+        training_backend_arg_names.update(
+            vars(args).keys() - {action.dest for action in parser._actions} - parser._defaults.keys()
+        )
         previous_arg_names = set(vars(args))
         args.compress_ratios = None
         args.rollout_indexer_topk_num_streams = None
@@ -307,7 +310,15 @@ def parse_args_and_get_parser(
                 "calculate_per_token_loss",
                 "ckpt_step",
                 "clip_grad",
+                "disable_grad_buffers_cpu_backup",
+                "disable_param_buffers_cpu_backup",
+                "finetune",
                 "load",
+                "mtp_loss_scaling_factor",
+                "mtp_num_layers",
+                "no_load_optim",
+                "no_load_rng",
+                "no_save_optim",
                 "rank",
                 "world_size",
             }
