@@ -29,8 +29,10 @@ def snapshot_values(value: Any) -> Any:
         return value
     if isinstance(value, argparse.Namespace):
         return snapshot_values(vars(value))
-    if isinstance(value, (argparse._ActionsContainer, argparse.Action)):
-        return {"$class": _qualified_name(type(value)), "state": snapshot_values(vars(value))}
+    if isinstance(value, argparse._ActionsContainer):
+        return {"$class": _qualified_name(type(value)), "state": snapshot_values(_actions_container_state(value))}
+    if isinstance(value, argparse.Action):
+        return snapshot_values(_action_state(value))
     if isinstance(value, BaseModel):
         return snapshot_values(
             {
@@ -48,6 +50,8 @@ def snapshot_values(value: Any) -> Any:
         return [snapshot_values(item) for item in value]
     if isinstance(value, tuple):
         return {"$tuple": [snapshot_values(item) for item in value]}
+    if isinstance(value, (set, frozenset)):
+        return {"$set": sorted((snapshot_values(item) for item in value), key=repr)}
     if isinstance(value, Path):
         return {"$path": str(value)}
     if isinstance(value, (date, datetime)):
@@ -112,6 +116,57 @@ def assert_matches_snapshot(snapshot: Path, actual: str, subject: str, *, update
             + f"\n--- BEGIN ACTUAL {snapshot.name} ---\n{actual}--- END ACTUAL ---\n"
             + f"Copy the content above to {snapshot}, or regenerate with {SNAPSHOT_UPDATE_ENV_VAR}=1."
         )
+
+
+def _action_state(action: argparse.Action) -> dict[str, Any]:
+    state = {name: item for name, item in vars(action).items() if name != "container"}
+    if isinstance(choices := state["choices"], (list, tuple)):
+        state["choices"] = frozenset(choices)
+    if type(action) is not argparse._StoreAction:
+        state["action"] = type(action)
+    return {
+        name: item
+        for name, item in state.items()
+        if name in _ALWAYS_SNAPSHOTTED_ACTION_FIELDS or item != _ACTION_FIELD_DEFAULTS.get(name, _NO_DEFAULT)
+    }
+
+
+_ALWAYS_SNAPSHOTTED_ACTION_FIELDS = frozenset({"dest", "option_strings", "default", "type", "help"})
+_ACTION_FIELD_DEFAULTS = {
+    "nargs": None,
+    "const": None,
+    "choices": None,
+    "required": False,
+    "metavar": None,
+    "deprecated": False,
+}
+_NO_DEFAULT = object()
+
+
+def _actions_container_state(container: argparse._ActionsContainer) -> dict[str, Any]:
+    if isinstance(container, argparse._MutuallyExclusiveGroup):
+        return {"required": container.required, "dests": [action.dest for action in container._group_actions]}
+    if isinstance(container, argparse._ArgumentGroup):
+        return {
+            "title": container.title,
+            "description": container.description,
+            "dests": [action.dest for action in container._group_actions],
+        }
+    action_group_titles = {
+        id(action): group.title for group in container._action_groups for action in group._group_actions
+    }
+    return {
+        **{name: item for name, item in vars(container).items() if name not in _DERIVED_PARSER_STATE},
+        "_actions": [
+            {**_action_state(action), "group": action_group_titles[id(action)]} for action in container._actions
+        ],
+        "_action_groups": [
+            {"title": group.title, "description": group.description} for group in container._action_groups
+        ],
+    }
+
+
+_DERIVED_PARSER_STATE = frozenset({"_registries", "_option_string_actions", "_optionals", "_positionals"})
 
 
 def _qualified_name(value: Any) -> str:
