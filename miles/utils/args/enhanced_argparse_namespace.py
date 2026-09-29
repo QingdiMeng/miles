@@ -3,9 +3,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import Enum
 from importlib import import_module
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 import torch
+from pydantic import BeforeValidator, PlainSerializer
 from pydantic_core import core_schema
 
 
@@ -89,7 +90,7 @@ class _ConfigNamespaceValueCodec:
             return dtype
         if set(value) == {"__enum__"}:
             module_name, class_name, member_name = value["__enum__"].split(":")
-            if module_name not in {"megatron.core.transformer.enums", "megatron.core.enums"}:
+            if module_name not in {"megatron.core.transformer.enums", "megatron.core.enums", "signal"}:
                 raise ValueError(f"Unsupported backend enum module {module_name!r}")
             enum_class = vars(import_module(module_name))[class_name]
             if not isinstance(enum_class, type) or not issubclass(enum_class, Enum):
@@ -98,3 +99,10 @@ class _ConfigNamespaceValueCodec:
         if set(value) == {"__tuple__"}:
             return tuple(_ConfigNamespaceValueCodec.deserialize(item) for item in value["__tuple__"])
         return {name: _ConfigNamespaceValueCodec.deserialize(item) for name, item in value.items()}
+
+
+SerializableConfigDict = Annotated[
+    dict[str, Any],
+    BeforeValidator(_ConfigNamespaceValueCodec.deserialize),
+    PlainSerializer(_ConfigNamespaceValueCodec.serialize, when_used="json"),
+]
