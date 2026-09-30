@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -24,6 +25,15 @@ def cfg(field: str) -> DimFn:
         value = getattr(context.transformer_config, field)
         assert value, f"transformer config field {field!r} must be a positive dimension, got {value!r}"
         return int(value)
+
+    return resolve
+
+
+def host_in_local(attr: str) -> DimFn:
+    """This rank's input width of the host linear ``attr``, read from its weight."""
+
+    def resolve(module: nn.Module, _context: AttachContext) -> int:
+        return getattr(module, attr).weight.shape[1]
 
     return resolve
 
@@ -127,13 +137,18 @@ class FusedAttach:
 
 @dataclass(frozen=True)
 class ModuleLayout:
-    """The complete adapter table for one block kind of one architecture."""
+    """The complete adapter table for one block kind of one architecture.
+
+    ``full_sequence`` marks a block that gathers the sequence-parallel input itself and
+    runs its linears without SP, so its adapters follow the non-SP TP semantics.
+    """
 
     name: str
     fused: tuple[FusedAttach, ...] = ()
     singles: tuple[ProjectionBinding, ...] = ()
     present_when_attr: str | None = None
     hf_block_prefix: str | None = None
+    full_sequence: bool = False
 
     @property
     def targets(self) -> frozenset[str]:
@@ -152,6 +167,8 @@ def attach_layout(block: nn.Module, layout: ModuleLayout, hf_prefix: str, contex
     """Attach every targeted projection of ``layout`` to ``block``; return the adapter count."""
     if layout.present_when_attr is not None and not hasattr(block, layout.present_when_attr):
         return 0
+    if layout.full_sequence:
+        context = dataclasses.replace(context, full_sequence=True)
 
     count = 0
     for group in layout.fused:

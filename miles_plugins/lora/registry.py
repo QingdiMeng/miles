@@ -13,19 +13,14 @@ from miles_plugins.lora.spec.attention import (
     GQAAttentionSpec,
     HybridGQAGDNAttentionSpec,
     InklingAttentionSpec,
+    KimiK3AttentionSpec,
     MLAAttentionSpec,
 )
 from miles_plugins.lora.spec.base import FixedTargets, LoRAArchSpec
-from miles_plugins.lora.spec.kimi_k3 import (
-    KimiK3AttentionSpec,
-    KimiK3ExpertsSpec,
-    KimiK3MLPSpec,
-    shared_outer_serving_targets,
-)
 from miles_plugins.lora.spec.layout import AttentionSpecBase
 from miles_plugins.lora.spec.lm_head import InklingLMHeadSpec
 from miles_plugins.lora.spec.mlp import FusedGatedMLPSpec, InklingDenseMLPSpec
-from miles_plugins.lora.spec.moe import InklingExpertsSpec
+from miles_plugins.lora.spec.moe import GroupedExpertsSpec
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +42,7 @@ def _inkling_arch_spec() -> LoRAArchSpec:
         model_family=attention.family,
         attention=attention,
         mlp=InklingDenseMLPSpec(),
-        experts=InklingExpertsSpec(),
+        experts=GroupedExpertsSpec(block="mlp.experts."),
         lm_head=InklingLMHeadSpec(),
         # TML export names are not HF targets; SGLang auto-detects them.
         fixed_targets=FixedTargets(serving=lambda _targets: "all-linear", select_all=True),
@@ -60,13 +55,18 @@ def _kimi_k3_arch_spec() -> LoRAArchSpec:
         name=attention.name,
         model_family=attention.family,
         attention=attention,
-        mlp=KimiK3MLPSpec(),
-        experts=KimiK3ExpertsSpec(),
+        mlp=FusedGatedMLPSpec(),
+        experts=GroupedExpertsSpec(block="block_sparse_moe.experts."),
         # the routed-expert down-proj may be omitted: its EP-shared w2_lora_B dominates adapter growth (#1559)
         fixed_targets=FixedTargets(
-            serving=shared_outer_serving_targets, optional=frozenset({"block_sparse_moe.experts.*.w2"})
+            serving=_shared_outer_serving_targets, optional=frozenset({"block_sparse_moe.experts.*.w2"})
         ),
     )
+
+
+def _shared_outer_serving_targets(targets: list[str]) -> list[str]:
+    """Shared-outer export stores the expert dimension in each tensor, not in its name."""
+    return [target.replace(".experts.*.", ".experts.") for target in targets]
 
 
 def _build_model_specs() -> dict[str, LoRAArchSpec]:

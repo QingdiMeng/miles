@@ -35,7 +35,10 @@ def _ep_rank() -> int:
 
 
 class LoRAGroupedFC1(NativeLoRAAdapter):
-    """Routed-expert fused gate/up adapter: shared A per branch, per-expert B."""
+    """Routed-expert fused gate/up adapter: shared A per branch, per-expert B.
+
+    ``width`` is the experts' input width: the hidden size, or a latent MoE's latent size.
+    """
 
     def __init__(
         self,
@@ -45,6 +48,7 @@ class LoRAGroupedFC1(NativeLoRAAdapter):
         context: AttachContext,
         num_local_experts: int,
         moe_intermediate: int,
+        width: int,
         is_ep: bool,
     ):
         super().__init__(hf_prefix, (), context.tp_rank)
@@ -54,14 +58,14 @@ class LoRAGroupedFC1(NativeLoRAAdapter):
         self.register_parameter(
             "w1_A",
             _expert_param(
-                new_lora_parameter(reference, (rank, context.hidden), init=context.a_init, grad_sum_group=ep_group),
+                new_lora_parameter(reference, (rank, width), init=context.a_init, grad_sum_group=ep_group),
                 is_ep,
             ),
         )
         self.register_parameter(
             "w3_A",
             _expert_param(
-                new_lora_parameter(reference, (rank, context.hidden), init=context.a_init, grad_sum_group=ep_group),
+                new_lora_parameter(reference, (rank, width), init=context.a_init, grad_sum_group=ep_group),
                 is_ep,
             ),
         )
@@ -116,7 +120,7 @@ class LoRAGroupedFC1(NativeLoRAAdapter):
 
 
 class LoRAGroupedFC2(NativeLoRAAdapter):
-    """Routed-expert down adapter: per-expert A over the token buffer, shared B."""
+    """Routed-expert down adapter: per-expert A over the token buffer, shared B of the experts' output ``width``."""
 
     def __init__(
         self,
@@ -126,6 +130,7 @@ class LoRAGroupedFC2(NativeLoRAAdapter):
         context: AttachContext,
         num_local_experts: int,
         moe_intermediate: int,
+        width: int,
         is_ep: bool,
     ):
         super().__init__(hf_prefix, (), context.tp_rank)
@@ -141,9 +146,7 @@ class LoRAGroupedFC2(NativeLoRAAdapter):
         )
         self.register_parameter(
             "w2_B",
-            _expert_param(
-                new_lora_parameter(reference, (context.hidden, rank), init="zero", grad_sum_group=ep_group), is_ep
-            ),
+            _expert_param(new_lora_parameter(reference, (width, rank), init="zero", grad_sum_group=ep_group), is_ep),
         )
 
     def forward(self, x: torch.Tensor, base_module: nn.Module, *host_args) -> torch.Tensor:

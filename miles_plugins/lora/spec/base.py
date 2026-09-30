@@ -55,6 +55,7 @@ class AttachContext:
     tp_rank: int
     layer_prefix: str
     shared_expert: str
+    full_sequence: bool = False
 
     @property
     def rank(self) -> int:
@@ -82,7 +83,8 @@ class AttachContext:
 
     @property
     def sequence_parallel(self) -> bool:
-        return bool(self.transformer_config.sequence_parallel)
+        """Whether the adapted hosts see sequence-parallel shards; a full-sequence block gathers them first."""
+        return not self.full_sequence and bool(self.transformer_config.sequence_parallel)
 
     @property
     def zero_centered_gamma(self) -> bool:

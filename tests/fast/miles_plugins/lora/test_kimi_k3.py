@@ -1,4 +1,4 @@
-"""Kimi K3 native LoRA on the plugin: export/import, merge, checkpoint keys, targets — no GPU."""
+"""Kimi K3 through the generic native-LoRA tables: export/import, merge, SP semantics, targets — no GPU."""
 
 from types import SimpleNamespace
 
@@ -12,15 +12,14 @@ from miles.utils.lora.utils import get_adapter_target_modules, matches_lora_targ
 from miles_plugins.lora.config import LoRAConfig
 from miles_plugins.lora.hf_adapter import export_lora_hf_named, load_lora_adapter_hf
 from miles_plugins.lora.merge import merge_lora_into_weights
-from miles_plugins.lora.modules import kimi_k3 as k3_modules
 from miles_plugins.lora.modules.moe import _grouped_linear
-from miles_plugins.lora.registry import resolve_adapter_targets
+from miles_plugins.lora.registry import MODEL_SPECS, resolve_adapter_targets
 from miles_plugins.lora.sglang_adapter import export_lora_sglang_named
 from miles_plugins.lora.spec.base import AttachContext
-from miles_plugins.lora.spec.kimi_k3 import KimiK3AttentionSpec, KimiK3ExpertsSpec, KimiK3MLPSpec
 
 HIDDEN, LATENT, RANK = 8, 6, 2
 PREFIX = "language_model.model.layers."
+K3 = MODEL_SPECS["kimi_k3"]
 
 
 class _Linear(nn.Module):
@@ -45,12 +44,8 @@ class _GroupedLinear(nn.Module):
 
 def _attention(is_kda):
     attention = nn.Module()
-    attention.is_kda = is_kda
-    attention.tp_group = None
-    attention.config = SimpleNamespace(hidden_size=HIDDEN)
     attention.o_proj = _Linear(HIDDEN, 12)
     if not is_kda:
-        attention.q_lora_rank, attention.kv_lora_rank, attention.qk_extra_head_dim = 4, 5, 1
         attention.q_a_proj = _Linear(4, HIDDEN)
         attention.kv_a_proj_with_mqa = _Linear(6, HIDDEN)
     return attention
@@ -58,8 +53,6 @@ def _attention(is_kda):
 
 def _mlp(intermediate=5):
     mlp = nn.Module()
-    mlp.config = SimpleNamespace(sequence_parallel=False, hidden_size=HIDDEN)
-    mlp.tp_group = None
     mlp.linear_fc1 = _Linear(2 * intermediate, HIDDEN)
     mlp.linear_fc2 = _Linear(HIDDEN, intermediate)
     return mlp
@@ -78,10 +71,16 @@ def _moe(num_experts=3, intermediate=5):
     return moe
 
 
-def _context(targets=None):
+def _context(targets=None, *, sequence_parallel=False):
     return AttachContext(
         lora=LoRAConfig(rank=RANK, alpha=4, dropout=0.0, target_modules=targets),
-        transformer_config=SimpleNamespace(hidden_size=HIDDEN, sequence_parallel=False),
+        transformer_config=SimpleNamespace(
+            hidden_size=HIDDEN,
+            sequence_parallel=sequence_parallel,
+            q_lora_rank=4,
+            kv_lora_rank=5,
+            qk_pos_emb_head_dim=1,
+        ),
         tp_size=1,
         tp_rank=0,
         layer_prefix=PREFIX,
@@ -104,21 +103,31 @@ def _single_rank_comms(monkeypatch):
 
     monkeypatch.setattr(mappings, "reduce_from_tensor_model_parallel_region", lambda x, group=None: x)
     monkeypatch.setattr(parallel_state, "get_expert_model_parallel_rank", lambda: 0)
+    monkeypatch.setattr(parallel_state, "get_expert_model_parallel_world_size", lambda: 2)
 
 
-def _model(*, include_fc2=True):
+def _model(*, include_fc2=True, sequence_parallel=False):
     """Layer 3: MLA attention + dense MLP. Layer 4: KDA attention + routed and shared experts."""
-    targets = [f"{PREFIX}*.block_sparse_moe.experts.*.w2"] if include_fc2 else []
-    context = _context(tuple(targets) or ("unused",))
+    leaves = ("w1", "w3", "w2") if include_fc2 else ("w1", "w3")
+    targets = [f"{PREFIX}*.block_sparse_moe.experts.*.{leaf}" for leaf in leaves]
+    targets += [f"{PREFIX}*.{block}.{leaf}" for block, leaf in _NON_EXPERT_TARGETS]
+    context = _context(tuple(targets), sequence_parallel=sequence_parallel)
     model = nn.Module()
     model.mla, model.dense, model.kda, model.moe = _attention(False), _mlp(), _attention(True), _moe()
-    KimiK3AttentionSpec().attach(model.mla, f"{PREFIX}3.self_attn.", context)
-    KimiK3MLPSpec().attach(model.dense, f"{PREFIX}3.mlp.", context)
-    KimiK3AttentionSpec().attach(model.kda, f"{PREFIX}4.self_attn.", context)
-    KimiK3ExpertsSpec().attach(model.moe, f"{PREFIX}4.", context)
-    KimiK3MLPSpec().attach(model.moe.shared_experts, f"{PREFIX}4.block_sparse_moe.shared_experts.", context)
+    K3.attention.attach(model.mla, f"{PREFIX}3.self_attn.", context)
+    K3.mlp.attach(model.dense, f"{PREFIX}3.mlp.", context)
+    K3.attention.attach(model.kda, f"{PREFIX}4.self_attn.", context)
+    K3.experts.attach(model.moe, f"{PREFIX}4.", context)
+    K3.mlp.attach(model.moe.shared_experts, f"{PREFIX}4.block_sparse_moe.shared_experts.", context)
     _randomize(model)
     return model
+
+
+_NON_EXPERT_TARGETS = [("self_attn", leaf) for leaf in ("q_a_proj", "kv_a_proj_with_mqa", "o_proj")] + [
+    (block, leaf)
+    for block in ("mlp", "block_sparse_moe.shared_experts")
+    for leaf in ("gate_proj", "up_proj", "down_proj")
+]
 
 
 def _k3_hf_config():
@@ -135,19 +144,10 @@ def _resolve(targets, **overrides):
     return resolve_adapter_targets(_k3_hf_config(), targets, **kwargs)
 
 
-def test_parameter_names_match_the_original_integration():
-    """Native Kimi K3 checkpoints key adapters by these names."""
-    names = {name for name, _ in _model().named_parameters() if "lora" in name}
-    assert {name for name in names if name.startswith("mla.")} == {
-        f"mla.lora_adapter.{p}_lora_{f}" for p in ("o", "q_a", "kv_a") for f in "AB"
-    }
-    assert {name for name in names if name.startswith("dense.")} == {
-        f"dense.lora_adapter.fc{i}_lora_{f}" for i in (1, 2) for f in "AB"
-    }
-    assert {name for name in names if name.startswith("moe.experts.")} == {
-        f"moe.experts.lora_adapter.w{i}_lora_{f}" for i in (1, 2, 3) for f in "AB"
-    }
-    assert "moe.shared_experts.lora_adapter.fc1_lora_A" in names
+def test_k3_is_built_from_the_shared_tables():
+    """Kimi K3 adds no modules of its own: every adapter is one the other architectures use."""
+    adapters = {type(module).__name__ for module in _model().modules() if hasattr(module, "hf_prefix")}
+    assert adapters == {"LoRALinear", "LoRASplitFC1", "LoRAGroupedFC1", "LoRAGroupedFC2"}
 
 
 @pytest.mark.parametrize("include_fc2", [True, False])
@@ -165,7 +165,6 @@ def test_export_names_and_shapes_match_sglang(include_fc2):
     assert exported[f"{PREFIX}4.self_attn.o_proj.lora_A.weight"].shape == (RANK, 12)
     assert f"{PREFIX}4.self_attn.q_a_proj.lora_A.weight" not in exported
     shared = f"{PREFIX}4.block_sparse_moe.shared_experts."
-    assert torch.equal(exported[f"{shared}gate_proj.lora_A.weight"], exported[f"{shared}up_proj.lora_A.weight"])
     assert exported[f"{shared}gate_proj.lora_B.weight"].shape == (5, RANK)
     experts = f"{PREFIX}4.block_sparse_moe.experts."
     assert exported[f"{experts}w1.lora_A.weight"].shape == (1, RANK, LATENT)
@@ -254,10 +253,21 @@ def test_grouped_linear_uses_expert_token_boundaries():
     torch.testing.assert_close(_grouped_linear(inputs, weights, [1, 2]), torch.tensor([[1.0], [4.0], [6.0]]))
 
 
-def test_k3_module_keeps_megatron_grad_flags():
-    """TP-replicated partials are summed by Megatron; EP partials by reduce_marked_lora_grads."""
-    model = _model()
-    assert model.dense.lora_adapter.fc1_lora_A.sum_gradients_across_tp_domain
-    assert model.moe.experts.lora_adapter.w1_lora_A._lora_grad_sum_group == "ep"
-    assert model.moe.experts.lora_adapter.w1_lora_B.allreduce is False
-    assert k3_modules.KimiK3ExpertsAdapter is type(model.moe.experts.lora_adapter)
+def test_attention_runs_its_adapters_without_sequence_parallel():
+    """K3 attention gathers the SP sequence itself: its row adapter all-reduces and its duplicated
+    down projections see identical tokens on every rank, so neither reduce-scatters nor TP-sums grads."""
+    model = _model(sequence_parallel=True)
+    for adapter in (model.mla.lora_o_adapter, model.mla.lora_mla_q_a_adapter, model.mla.lora_mla_kv_a_adapter):
+        assert not adapter.context.sequence_parallel
+    assert not hasattr(model.mla.lora_mla_q_a_adapter.q_a_A, "_lora_grad_sum_group")
+    assert not hasattr(model.mla.lora_o_adapter.o_B, "_lora_grad_sum_group")
+    assert model.dense.lora_fc1_adapter.context.sequence_parallel
+    assert model.dense.lora_fc2_adapter.down_B._lora_grad_sum_group == "tp"
+
+
+def test_expert_grad_flags():
+    """EP-replicated partials are summed by reduce_marked_lora_grads; expert params skip the DP all-reduce."""
+    experts = _model().moe.experts
+    assert experts.lora_fc1_adapter.w1_A._lora_grad_sum_group == "ep"
+    assert experts.lora_fc2_adapter.w2_B._lora_grad_sum_group == "ep"
+    assert experts.lora_fc1_adapter.w1_B.allreduce is False

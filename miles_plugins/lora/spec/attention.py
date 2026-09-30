@@ -153,6 +153,46 @@ class MLAAttentionSpec(AttentionSpecBase):
         )
 
 
+class KimiK3AttentionSpec(AttentionSpecBase):
+    """Kimi K3's HF-named attention: ``o_proj`` on every layer, the duplicated MLA down projections on MLA layers.
+
+    The block gathers the sequence-parallel input once, so its linears run without SP. KDA
+    layers have no ``q_a_proj``/``kv_a_proj_with_mqa`` and keep only the ``o_proj`` adapter.
+    """
+
+    name = "kimi_k3"
+    family = AttentionFamily.MLA
+    layout = ModuleLayout(
+        name="kimi_k3_attention",
+        full_sequence=True,
+        singles=(
+            ProjectionBinding(
+                projection=ProjectionSpec("q_a_proj", "q_a", ShardLayout.REPLICATED),
+                module_attr="q_a_proj",
+                in_dim=L.hidden,
+                out_dim=L.cfg("q_lora_rank"),
+                adapter_attr="lora_mla_q_a_adapter",
+                guard=_replicated_guard,
+            ),
+            ProjectionBinding(
+                projection=ProjectionSpec("kv_a_proj_with_mqa", "kv_a", ShardLayout.REPLICATED),
+                module_attr="kv_a_proj_with_mqa",
+                in_dim=L.hidden,
+                out_dim=L.mla_kv_down_out,
+                adapter_attr="lora_mla_kv_a_adapter",
+                guard=_replicated_guard,
+            ),
+            ProjectionBinding(
+                projection=ProjectionSpec("o_proj", "o", ShardLayout.ROW),
+                module_attr="o_proj",
+                in_dim=L.host_in_local("o_proj"),
+                out_dim=L.hidden,
+                adapter_attr="lora_o_adapter",
+            ),
+        ),
+    )
+
+
 class HybridGQAGDNAttentionSpec(GQAAttentionSpec):
     """Qwen hybrids: GQA layers carry adapters; GDN mixer layers lack ``linear_qkv`` and are skipped."""
 

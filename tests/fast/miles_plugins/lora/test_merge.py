@@ -13,7 +13,7 @@ from miles_plugins.lora.modules.moe import LoRAGroupedFC1, LoRAGroupedFC2, LoRAO
 from miles_plugins.lora.spec.attention import GQAAttentionSpec, MLAAttentionSpec
 from miles_plugins.lora.spec.base import AttachContext
 from miles_plugins.lora.spec.mlp import FusedGatedMLPSpec, InklingDenseMLPSpec
-from miles_plugins.lora.spec.moe import InklingExpertsSpec
+from miles_plugins.lora.spec.moe import GroupedExpertsSpec
 
 HIDDEN = 8
 
@@ -144,8 +144,8 @@ def test_grouped_routed_experts():
     experts = nn.Module()
     experts.linear_fc1, experts.linear_fc2 = _GroupedLinear(3, 10, HIDDEN), _GroupedLinear(3, HIDDEN, 5)
     common = dict(reference=experts.linear_fc1.weight0, context=context, num_local_experts=3, moe_intermediate=5)
-    experts.lora_fc1_adapter = LoRAGroupedFC1(hf_prefix="e.", is_ep=False, **common)
-    experts.lora_fc2_adapter = LoRAGroupedFC2(hf_prefix="e.", is_ep=False, **common)
+    experts.lora_fc1_adapter = LoRAGroupedFC1(hf_prefix="e.", is_ep=False, width=HIDDEN, **common)
+    experts.lora_fc2_adapter = LoRAGroupedFC2(hf_prefix="e.", is_ep=False, width=HIDDEN, **common)
     attach_adapter_forward(experts.linear_fc1, experts.lora_fc1_adapter, context.scale)
     attach_adapter_forward(experts.linear_fc2, experts.lora_fc2_adapter, context.scale)
     module = nn.Module()
@@ -162,7 +162,7 @@ def test_inkling_shared_sub_experts():
         sub = nn.Module()
         sub.linear_fc1, sub.linear_fc2 = _Linear(10, HIDDEN), _Linear(HIDDEN, 5)
         shared.experts.append(sub)
-    InklingExpertsSpec._attach_shared(shared, "model.layers.1.", _context())
+    GroupedExpertsSpec._attach_shared(shared, "model.layers.1.", _context())
     module = nn.Module()
     module.shared = shared
     _assert_merge_matches_forward(
