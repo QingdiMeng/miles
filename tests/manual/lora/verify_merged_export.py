@@ -35,17 +35,6 @@ def _interleave(delta):
     return torch.stack((gate, up), dim=1).reshape(delta.shape)
 
 
-def _find_key(tree, key):
-    if isinstance(tree, dict):
-        if key in tree:
-            return tree[key]
-        for value in tree.values():
-            found = _find_key(value, key)
-            if found is not None:
-                return found
-    return None
-
-
 def _pair(adapter, module):
     return adapter.get(f"{module}.lora_A.weight"), adapter.get(f"{module}.lora_B.weight")
 
@@ -122,7 +111,6 @@ def main(export_dir: str, base_dir: str) -> int:
     export_dir, base_dir = Path(export_dir), Path(base_dir)
     config = json.loads((export_dir / "adapter" / "adapter_config.json").read_text())
     scale = config["lora_alpha"] / config["r"]
-    mup = _find_key(json.loads((export_dir / "config.json").read_text()), "logits_mup_width_multiplier")
     with safe_open(str(export_dir / "adapter" / "adapter_model.safetensors"), framework="pt") as handle:
         adapter = {name.removeprefix("base_model.model."): handle.get_tensor(name) for name in handle.keys()}
     base = dict(_tensors(base_dir))
@@ -145,7 +133,6 @@ def main(export_dir: str, base_dir: str) -> int:
             continue
         adapted += 1
         if name.endswith(("lm_head.weight", "unembed.weight")):
-            delta = delta / (mup or 1.0)
             delta = torch.nn.functional.pad(delta, (0, 0, 0, reference.shape[0] - delta.shape[0]))
         expected = (reference + delta).to(torch.bfloat16).float()
         changed += (merged != reference).sum().item()

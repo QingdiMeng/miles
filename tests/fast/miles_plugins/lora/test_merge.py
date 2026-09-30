@@ -175,10 +175,22 @@ def test_inkling_shared_sub_experts():
     )
 
 
+class _MupHead(_Linear):
+    """Inkling's output layer: its forward divides the input by the muP width multiplier."""
+
+    def __init__(self, out_features, in_features, mup):
+        super().__init__(out_features, in_features)
+        self.mup = mup
+
+    def forward(self, x):
+        return super().forward(x / self.mup)
+
+
 def test_output_head_with_mup_input_scaling():
+    """The host and the adapter both see x/m, so the merged head must carry the full s * B @ A."""
     context = _context()
     module = nn.Module()
-    module.output_layer = _Linear(12, HIDDEN)
+    module.output_layer = _MupHead(12, HIDDEN, mup=4.0)
     module.head = LoRAOutputHead(
         hf_prefix="lm_head.",
         reference=module.output_layer.weight,

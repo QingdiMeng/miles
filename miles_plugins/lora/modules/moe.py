@@ -306,9 +306,9 @@ class LoRAOutputHead(NativeLoRAAdapter):
         return F.linear(F.linear(scaled, self.head_A), self.head_B)
 
     def weight_deltas(self):
+        """The host divides its input by muP too, so the merged head carries the full delta."""
         (host,) = self._hosts
-        scale = self.context.scale / self.mup if self.mup else self.context.scale
-        yield host.weight, lambda: scale * (self.head_B.float() @ self.head_A.float())
+        yield host.weight, lambda: self.context.scale * (self.head_B.float() @ self.head_A.float())
 
     def export_plan(self, gather) -> list:
         head_b = gather.request(self.head_B, 0)
