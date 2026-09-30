@@ -309,3 +309,71 @@ class TestLoadLoraAdapterRefreshesMasters:
         lora_utils.load_lora_adapter([_AdapterModel()], str(tmp_path), optimizer=optimizer)
 
         assert calls == ["load_state_dict"]
+
+
+class TestDistributedOptimizerParameterState:
+    """DistributedOptimizer.state_dict() omits the fp32 masters and Adam moments; loading it alone
+    leaves uninitialized moments and the initial masters, which the first step() writes back."""
+
+    @staticmethod
+    def _distributed(calls):
+        bucket = [{"param": torch.ones(2), "exp_avg": torch.zeros(2), "gbuf_local_start": 0, "gbuf_local_end": 2}]
+        return SimpleNamespace(
+            get_parameter_state_dp_reshardable=lambda: {"per_bucket_numel": {}, 0: {torch.float32: [bucket]}},
+            load_parameter_state_from_dp_reshardable=lambda state: calls.append(("parameter_state", state)),
+        )
+
+    @staticmethod
+    def _optimizer(calls):
+        return SimpleNamespace(
+            state_dict=lambda: {"step": 7},
+            load_state_dict=lambda state: calls.append(("load_state_dict", state)),
+            reload_model_params=lambda: calls.append(("reload_model_params", None)),
+        )
+
+    def test_save_writes_each_distributed_optimizers_parameter_state(self, tmp_path, monkeypatch):
+        calls = []
+        monkeypatch.setattr(lora_utils, "_distributed_optimizers", lambda _optimizer: [self._distributed(calls)])
+        args = Namespace(no_save_optim=False, megatron_to_hf_mode="bridge")
+        publisher = SimpleNamespace(write_adapter=lambda *_args: None)
+
+        save_lora_checkpoint(
+            [_AdapterModel()], args, str(tmp_path / "ckpt"), publisher=publisher, optimizer=self._optimizer(calls)
+        )
+
+        state = torch.load(tmp_path / "ckpt" / "training_state_rank0.pt", weights_only=False)
+        (parameter_state,) = state["parameter_state"]
+        torch.testing.assert_close(parameter_state[0][torch.float32][0][0]["param"], torch.ones(2))
+
+    def test_a_checkpoint_without_parameter_state_is_not_restored(self, tmp_path, monkeypatch):
+        _single_rank(monkeypatch)
+        calls = []
+        monkeypatch.setattr(lora_utils, "_distributed_optimizers", lambda _optimizer: [self._distributed(calls)])
+        TestLoadLoraAdapterRefreshesMasters._write_checkpoint(tmp_path, {"step": 7})
+
+        _loaded, _iteration, restored = lora_utils.load_lora_adapter(
+            [_AdapterModel()], str(tmp_path), optimizer=self._optimizer(calls)
+        )
+
+        assert not restored
+        assert [name for name, _ in calls] == ["reload_model_params"]
+
+    def test_a_full_checkpoint_restores_the_parameter_state(self, tmp_path, monkeypatch):
+        _single_rank(monkeypatch)
+        calls = []
+        distributed = self._distributed(calls)
+        monkeypatch.setattr(lora_utils, "_distributed_optimizers", lambda _optimizer: [distributed])
+        TestLoadLoraAdapterRefreshesMasters._write_checkpoint(tmp_path, {"step": 7})
+        state_path = tmp_path / "training_state_rank0.pt"
+        training_state = torch.load(state_path, weights_only=False)
+        training_state["parameter_state"] = [distributed.get_parameter_state_dp_reshardable()]
+        torch.save(training_state, state_path)
+
+        _loaded, _iteration, restored = lora_utils.load_lora_adapter(
+            [_AdapterModel()], str(tmp_path), optimizer=self._optimizer(calls)
+        )
+
+        assert restored
+        assert [name for name, _ in calls] == ["load_state_dict", "parameter_state"]
+        (entry,) = calls[1][1][0][torch.float32][0]
+        assert entry["padding"] is False
