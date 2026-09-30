@@ -1,6 +1,7 @@
 import gc
 import os
 import shutil
+from argparse import Namespace
 
 import torch
 import torch.distributed as dist
@@ -17,6 +18,7 @@ from miles.backends.megatron_utils.initialize import init
 from miles.backends.megatron_utils.model_provider import get_model_provider_func
 from miles.backends.training_utils.model_companion import ModelCompanionInstallationUtils
 from miles.utils.args.configs.custom_megatron_plugins import Dsv4MegatronPluginsConfig
+from miles.utils.args.schema import reset_arg
 from miles.utils.logging_utils import configure_logger_raw
 from miles.utils.memory_utils import print_memory
 
@@ -43,10 +45,7 @@ def add_conversion_args(parser):
             "Signature: def provider(pre_process, post_process, vp_stage=None) -> GPTModel."
         ),
     )
-    try:
-        parser.add_argument("--padded-vocab-size", type=int, default=None)
-    except Exception:
-        pass
+    reset_arg(parser=parser, name="--padded-vocab-size", type=int, default=None)
     return parser
 
 
@@ -61,8 +60,15 @@ def get_args():
     args.save_interval = 1
     args.micro_batch_size = 1
     world_size = int(os.environ.get("WORLD_SIZE", "1"))
-    args.global_batch_size = int(os.environ.get("WORLD_SIZE", "1"))
+    args.global_batch_size = world_size
 
+    _configure_pipeline_parallel(args, world_size=world_size)
+
+    validate_args(args)
+    return args
+
+
+def _configure_pipeline_parallel(args: Namespace, *, world_size: int) -> None:
     assert args.pipeline_model_parallel_size <= args.num_layers, (
         f"Pipeline model parallel size {args.pipeline_model_parallel_size} must be less than or equal to "
         f"number of layers {args.num_layers}."
@@ -102,9 +108,6 @@ def get_args():
     print(
         f"Using pipeline model parallel size: {args.pipeline_model_parallel_size}, decoder last pipeline num layers: {args.decoder_last_pipeline_num_layers}"
     )
-
-    validate_args(args)
-    return args
 
 
 def main():
