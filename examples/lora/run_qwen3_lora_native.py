@@ -122,9 +122,9 @@ def _get_parallel_config(args: ScriptArgs) -> str:
 def _download_dataset(args: ScriptArgs):
     match args.task:
         case "gsm8k":
-            U.hf_download_dataset("zhuzilin/gsm8k", data_dir=args.data_dir)
+            args.create_backend().hf_download_dataset("zhuzilin/gsm8k", data_dir=args.data_dir)
         case "dapo-math":
-            U.hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
+            args.create_backend().hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
 
 
 def _prepare_download(args: ScriptArgs):
@@ -134,10 +134,10 @@ def _prepare_download(args: ScriptArgs):
     ``scripts/models/<megatron_model_type>.sh`` and passes ``MODEL_ARGS``, without which
     ``convert_hf_to_torch_dist.py`` has no ``--num-layers`` and cannot run.
     """
-    U.exec_command_cpu(f"mkdir -p {args.data_dir} {args.model_dir}")
-    U.exec_command_cpu(f"hf download Qwen/{args.model_name} --local-dir {args.hf_checkpoint}")
+    args.create_backend().exec_command_cpu(f"mkdir -p {args.data_dir} {args.model_dir}")
+    args.create_backend().exec_command_cpu(f"hf download Qwen/{args.model_name} --local-dir {args.hf_checkpoint}")
     _download_dataset(args)
-    U.convert_checkpoint(
+    args.create_backend().convert_checkpoint(
         model_name=args.model_name,
         megatron_model_type=args.megatron_model_type,
         num_gpus_per_node=1,
@@ -223,7 +223,7 @@ def _train(args: ScriptArgs):
         f"{wandb_args} {perf_args} {sglang_args} {save_args} {misc_args} {args.extra_args} "
     )
 
-    U.execute_train(
+    args.create_backend().execute_train(
         train_args=train_args,
         config=args,
         num_gpus_per_node=args.num_gpus_per_node,

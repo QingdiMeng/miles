@@ -174,22 +174,24 @@ class ScriptArgs(U.ExecuteTrainConfig):
 
 
 def _download(args: ScriptArgs):
-    U.exec_command_cpu(f"mkdir -p {args.data_dir} {args.model_dir}")
-    U.exec_command_cpu(f"hf download {args.registry.hf_repo} --local-dir {args.model_dir}/{args.model_name}")
+    args.create_backend().exec_command_cpu(f"mkdir -p {args.data_dir} {args.model_dir}")
+    args.create_backend().exec_command_cpu(
+        f"hf download {args.registry.hf_repo} --local-dir {args.model_dir}/{args.model_name}"
+    )
     match args.task:
         case "gsm8k":
-            U.hf_download_dataset("zhuzilin/gsm8k", data_dir=args.data_dir)
+            args.create_backend().hf_download_dataset("zhuzilin/gsm8k", data_dir=args.data_dir)
         case "dapo-math":
-            U.hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
+            args.create_backend().hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
 
 
 def _dequantize(args: ScriptArgs):
     src = f"{args.model_dir}/{args.model_name}"
     match args.registry.dequantize:
         case "fp8":
-            U.fp8_cast_bf16(path_src=src, path_dst=args.hf_checkpoint)
+            args.create_backend().fp8_cast_bf16(path_src=src, path_dst=args.hf_checkpoint)
         case "kimi-int4":
-            U.exec_command_gpu(
+            args.create_backend().exec_command_gpu(
                 f"python {U.repo_base_dir}/tools/convert_kimi_int4_to_bf16.py "
                 f"--model-dir {src} --output-dir {args.hf_checkpoint}"
             )
@@ -197,7 +199,7 @@ def _dequantize(args: ScriptArgs):
 
 def _convert(args: ScriptArgs):
     _preflight(args)
-    U.convert_checkpoint(
+    args.create_backend().convert_checkpoint(
         model_name=args.model_name,
         megatron_model_type=args.megatron_model_type,
         num_gpus_per_node=min(args.num_gpus_per_node, 4),
@@ -302,7 +304,7 @@ def _train(args: ScriptArgs):
         f"{perf_args} {sglang_args} {misc_args} {args.registry.extra_train_args} {args.extra_args} "
     )
 
-    U.execute_train(
+    args.create_backend().execute_train(
         train_args=train_args,
         config=args,
         num_gpus_per_node=args.num_gpus_per_node,

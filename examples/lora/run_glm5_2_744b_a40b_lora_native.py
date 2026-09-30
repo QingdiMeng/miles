@@ -114,13 +114,15 @@ def _get_parallel_config(args: ScriptArgs) -> str:
 
 
 def _download(args: ScriptArgs):
-    U.exec_command_cpu(f"mkdir -p {args.data_dir} {args.model_dir}")
-    U.exec_command_cpu(f"hf download {_HF_REPO[args.model_name]} --local-dir {args.model_dir}/{args.model_name}")
+    args.create_backend().exec_command_cpu(f"mkdir -p {args.data_dir} {args.model_dir}")
+    args.create_backend().exec_command_cpu(
+        f"hf download {_HF_REPO[args.model_name]} --local-dir {args.model_dir}/{args.model_name}"
+    )
     match args.task:
         case "gsm8k":
-            U.hf_download_dataset("zhuzilin/gsm8k", data_dir=args.data_dir)
+            args.create_backend().hf_download_dataset("zhuzilin/gsm8k", data_dir=args.data_dir)
         case "dapo-math":
-            U.hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
+            args.create_backend().hf_download_dataset("zhuzilin/dapo-math-17k", data_dir=args.data_dir)
 
 
 def _preflight(args: ScriptArgs) -> None:
@@ -139,7 +141,7 @@ def _convert(args: ScriptArgs):
     # and any PP split of the 5-layer toy starts a stage on a DSA skip layer
     # (cross-layer top-k sharing cannot cross PP boundaries -> provider assert).
     # The toy is ~50 GB of bf16 weights, well within one H200.
-    U.convert_checkpoint(
+    args.create_backend().convert_checkpoint(
         model_name=args.model_name,
         megatron_model_type=args.megatron_model_type,
         num_gpus_per_node=1,
@@ -237,7 +239,7 @@ def _train(args: ScriptArgs):
         f"{wandb_args} {perf_args} {sglang_args} {save_args} {misc_args} {args.extra_args} "
     )
 
-    U.execute_train(
+    args.create_backend().execute_train(
         train_args=train_args,
         config=args,
         num_gpus_per_node=args.num_gpus_per_node,
