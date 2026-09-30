@@ -150,7 +150,6 @@ def fill(args, model, data_iterator, num_microbatches, rollout_data) -> None:
         replay_list=routing_replay_manager.replays,
         register_replay_list_func=routing_replay_manager.register_replay_list_func,
         if_sp_region=routing_replay_manager.if_sp_region,
-        indices_are_token_positions=routing_replay_manager.replay_indices_are_token_positions,
     )
 
 

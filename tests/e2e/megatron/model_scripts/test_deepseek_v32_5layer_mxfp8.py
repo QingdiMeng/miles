@@ -220,7 +220,6 @@ def execute():
 
     misc_args = (
         "--use-rollout-routing-replay "
-        "--freeze-indexer "
         "--sglang-disable-shared-experts-fusion "
         "--attention-dropout 0.0 "
         "--hidden-dropout 0.0 "
@@ -228,7 +227,7 @@ def execute():
         "--attention-softmax-in-fp32 "
         "--attention-backend flash "
         "--allgather-cp "
-        "--miles-dsa-topk-backend flashinfer "
+        "--indexer-topk-backend flashinfer "
         f"--update-weight-buffer-size {2 * 1024 ** 3} "
         "--actor-num-nodes 1 "
         f"--actor-num-gpus-per-node {ACTOR_NUM_GPUS} "
