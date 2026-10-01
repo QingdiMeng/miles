@@ -1,15 +1,18 @@
 import logging
 from argparse import Namespace
 from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Any
 
 from miles.backends.sglang_utils.sglang_api_client import SGLangApiClient
 from miles.backends.training_utils.weight_update import checksum_utils
+from miles.backends.training_utils.weight_update.protocols.p2p_transfer_utils import RemoteWeightInfo
 from miles.backends.training_utils.weight_update.rollout_cell_updater import _RolloutCellUpdater
-from miles.utils.test_utils.fault_injector.controller import reach_fault_hook
+from miles.utils.audit_utils.event_logger.logger import get_event_logger, is_event_logger_initialized
+from miles.utils.audit_utils.event_logger.models import WeightTransferFailedEvent
+from miles.utils.test_utils.fault_injector.controller import fault_hook_controller, reach_fault_hook
 from miles.utils.test_utils.fault_injector.models import FaultHookName
 
-from .p2p_transfer_utils import RemoteWeightInfo
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +79,13 @@ class _P2PRolloutCellUpdater(_RolloutCellUpdater):
         if self.is_errored:
             logger.warning(f"[P2P-Shared] skipping a queued write to rollout cell {self.cell_id}")
             return
-        _do_p2p_write_one_session(transfer_engine, target, names, weight_memory_registry)
+        _do_p2p_write_one_session(
+            transfer_engine=transfer_engine,
+            remote_session=target,
+            names=names,
+            weight_memory_registry=weight_memory_registry,
+            cell_id=self.cell_id,
+        )
         if sent_checksums is not None:
             _verify_transfer_checksums(
                 self, rollout_engine_rank=rollout_engine_rank, names=names, sent_checksums=sent_checksums
@@ -88,6 +97,8 @@ def _do_p2p_write_one_session(
     remote_session: RemoteWeightInfo,
     names: list[str],
     weight_memory_registry: dict[str, tuple[int, int, int]],
+    *,
+    cell_id: str,
 ) -> None:
     """P2P write from shared CPU pinned buffers to a single remote session.
 
@@ -127,9 +138,30 @@ def _do_p2p_write_one_session(
     )
 
     reach_fault_hook(FaultHookName.TRAINER_WEIGHT_UPDATE_BEFORE_SEND)
-    ret = transfer_engine.batch_transfer_sync_write(session_id, source_ptrs, target_ptrs, source_lens)
-    if ret < 0:
-        raise RuntimeError(f"[P2P-Shared] Transfer failed for session {session_id}, error: {ret}")
+    context = fault_hook_controller.current_context()
+    started_at = datetime.now(timezone.utc)
+    try:
+        ret = transfer_engine.batch_transfer_sync_write(session_id, source_ptrs, target_ptrs, source_lens)
+        if ret < 0:
+            raise RuntimeError(f"[P2P-Shared] Transfer failed for session {session_id}, error: {ret}")
+    except Exception as error:
+        if is_event_logger_initialized() and context.debug_weight_update_id is not None:
+            try:
+                get_event_logger().log(
+                    WeightTransferFailedEvent,
+                    dict(
+                        debug_weight_update_id=context.debug_weight_update_id,
+                        cell_id=cell_id,
+                        workers_hash=context.snapshot_cell_id_to_hashes[cell_id],
+                        started_at=started_at,
+                        error=repr(error),
+                    ),
+                    include_context=False,
+                )
+            except Exception:
+                logger.exception("Could not record P2P transport failure for session %s", session_id)
+        logger.exception("P2P transport write failed for session %s", session_id)
+        raise
 
 
 def _verify_transfer_checksums(
