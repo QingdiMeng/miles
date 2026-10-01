@@ -145,6 +145,7 @@ def _train_args(args: ScriptArgs) -> str:
 def execute(args: ScriptArgs) -> None:
     backend = args.create_backend()
     backend.execute_train(
+        train_script="train_async.py",
         train_args=_train_args(args),
         num_gpus_per_node=args.num_gpus_per_node,
         megatron_model_type="qwen3.6-35B-A3B",

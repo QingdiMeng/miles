@@ -30,10 +30,14 @@ does not establish that GPQA was absent from the original model's pretraining.
 ## Objective and training hooks
 
 For candidate distribution `p` and target `t`, minimize `sum((p-t)**2)`.
-Sample action `a` from the rollout policy and freeze `r = 2*(t[a]-p[a])`.
+Sample action `a` from the rollout policy and recompute the detached reward
+`r = 2*(t[a]-p_current[a])` on the trainer.
 Then `E[r * grad(log(p[a]))]` is the negative Brier gradient at the rollout
-policy. A single fresh-batch update uses the unclipped importance-ratio surrogate
-`-r * p_current[a]/p_rollout[a]`. Do not differentiate through the reward.
+policy. Async training uses the unclipped importance-ratio surrogate
+`-r * p_current[a]/p_rollout[a]`. Its expected gradient under the recorded
+rollout policy equals the current Brier gradient, including for stale actions.
+Do not differentiate through the reward. The rollout reward is diagnostic;
+the trainer refreshes it for optimization.
 
 This is a REINFORCE-style calibration update, not an ordinary GRPO Brier reward.
 Group standard-deviation normalization and PPO clipping would change this
@@ -78,7 +82,7 @@ python scripts/run_qwen3_6_decision_calibration.py \
 After launch approval and source snapshots, use an externally joined Ray cluster
 with `MILES_SCRIPT_EXTERNAL_RAY=1` and add `--launch`. The recipe uses eight
 training GPUs with expert parallelism and eight single-GPU rollout engines,
-200 fresh-batch updates at learning rate 1e-6, 32 questions with eight actions
+200 async updates via `train_async.py` at learning rate 1e-6, 32 questions with eight actions
 each per update, validation every 25 updates, and checkpoints every 50. Thinking
 and MTP are disabled. Dashboard, traces, entropy observations, Prometheus and
 cache-aware SGLang routing are enabled. Keep authentication in the environment

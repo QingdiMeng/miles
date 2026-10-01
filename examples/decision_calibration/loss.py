@@ -11,7 +11,9 @@ from miles.backends.training_utils.parallel import get_parallel_state
 
 def action_surrogate(logits: torch.Tensor, old_probabilities: torch.Tensor, target: torch.Tensor, action: int) -> torch.Tensor:
     probabilities = logits.float().softmax(dim=-1)
-    reward = (2 * (target[action] - old_probabilities[action])).detach()
+    # Refresh the calibration reward at learner weights. Importance sampling
+    # then gives the current Brier gradient even for stale async actions.
+    reward = (2 * (target[action] - probabilities[action])).detach()
     ratio = probabilities[action] / old_probabilities[action].detach()
     return -ratio * reward
 

@@ -72,6 +72,15 @@ class CalibrationTests(unittest.TestCase):
             expected = torch.autograd.grad(direct, logits)[0]
             torch.testing.assert_close(actual, expected, rtol=1e-6, atol=1e-7)
 
+    def test_stale_actions_still_give_current_brier_gradient(self) -> None:
+        logits = torch.tensor([1.5, -0.8, 0.2, -1.5], requires_grad=True)
+        old = torch.tensor([0.1, 0.4, 0.3, 0.2])
+        target = torch.tensor([0.1, 0.2, 0.3, 0.4])
+        objective = sum(old[a] * action_surrogate(logits, old, target, a) for a in range(4))
+        actual = torch.autograd.grad(objective, logits)[0]
+        expected = torch.autograd.grad((logits.softmax(0) - target).square().sum(), logits)[0]
+        torch.testing.assert_close(actual, expected, rtol=1e-6, atol=1e-7)
+
     @unittest.skipUnless(torch.cuda.is_available(), "Real get_batch consumer requires CUDA")
     def test_metadata_survives_real_batch_and_loss(self) -> None:
         state = SimpleNamespace(tp=SimpleNamespace(size=1), cp=SimpleNamespace(size=1, rank=0))
