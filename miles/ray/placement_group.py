@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import socket
 from typing import NamedTuple
 
@@ -72,6 +73,15 @@ def sort_key(x):
     return (node_ip_parts, gpu_id)
 
 
+def _sort_bundle_infos(bundle_infos: list[tuple[int, str, int]], node_order: str) -> list[tuple[int, str, int]]:
+    nodes = [node.strip() for node in node_order.split(",") if node.strip()]
+    available_nodes = {info[1] for info in bundle_infos}
+    if len(nodes) != len(set(nodes)) or set(nodes) - available_nodes:
+        raise ValueError("MILES_RAY_NODE_ORDER must name distinct nodes in the placement group")
+    priority = {node: index for index, node in enumerate(nodes)}
+    return sorted(bundle_infos, key=lambda info: (priority.get(info[1], len(priority)), sort_key(info)))
+
+
 class PlacementGroupInfo(NamedTuple):
     pg: PlacementGroup
     pg_reordered_bundle_indices: list[int]
@@ -104,7 +114,9 @@ def _create_placement_group(num_gpus) -> PlacementGroupInfo:
         ray.kill(actor)
 
     bundle_infos = [(i, gpu_ids[i][0], gpu_ids[i][1]) for i in range(num_bundles)]
-    sorted_bundle_infos = sorted(bundle_infos, key=sort_key)
+    # Optional node ordering assigns the first nodes to training, preserving
+    # the existing IP order within nodes and when no override is supplied.
+    sorted_bundle_infos = _sort_bundle_infos(bundle_infos, os.environ.get("MILES_RAY_NODE_ORDER", ""))
     pg_reordered_bundle_indices = [info[0] for info in sorted_bundle_infos]
     # Map from logical index -> physical GPU ID
     pg_reordered_gpu_ids = [gpu_ids[info[0]][1] for info in sorted_bundle_infos]

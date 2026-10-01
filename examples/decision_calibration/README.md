@@ -63,7 +63,8 @@ with `enable_thinking=False`. It asks SGLang for all candidate log probabilities
 at one answer position and samples locally from the normalized distribution.
 The server's independently generated token is ignored. Training requires TP=1,
 CP=1 and one-token responses; EP is supported. Use one optimizer update per fresh
-rollout, no KL/entropy penalty, and no stale rollout reuse for this first pilot.
+rollout and no KL/entropy penalty. The importance-weighted reward refresh handles
+the one-batch policy lag of async training.
 Decision entropy and train/rollout probability differences are recorded by the
 custom loss. The protocol must be checked against the actual SGLang version before
 launching training.

@@ -16,8 +16,9 @@ Example:
         --output-dir /path/to/results --run-id YYMMDD-0123abcd
 """
 
+import os
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from tap import Tap
@@ -27,6 +28,7 @@ from miles.utils.external_utils import command_utils as U
 
 @dataclass
 class ScriptArgs(U.ExecuteTrainConfig):
+    run_id: str = field(default_factory=lambda: U.create_run_id())
     num_nodes: int = 2
     model_dir: str = "/root/models"
     data_dir: str = "/root/datasets/decision-calibration"
@@ -44,6 +46,8 @@ class ScriptArgs(U.ExecuteTrainConfig):
     wandb_project: str | None = None
     dump_details: str | None = None
     launch: bool = False
+    node_order: str | None = None
+    wandb_team: str | None = None
 
     @property
     def run_dir(self) -> Path:
@@ -68,6 +72,8 @@ class CLI(Tap):
     wandb_project: str | None = ScriptArgs.wandb_project
     dump_details: str | None = ScriptArgs.dump_details
     launch: bool = ScriptArgs.launch
+    node_order: str | None = ScriptArgs.node_order
+    wandb_team: str | None = ScriptArgs.wandb_team
 
 
 def _wandb_args(args: ScriptArgs) -> str:
@@ -81,6 +87,8 @@ def _wandb_args(args: ScriptArgs) -> str:
             defaults[defaults.index("--wandb-project") + 1] = args.wandb_project
         else:
             defaults = ["--use-wandb", "--wandb-project", args.wandb_project, "--wandb-group", args.run_id, "--disable-wandb-random-suffix"]
+    if args.wandb_team is not None:
+        defaults.extend(["--wandb-team", args.wandb_team])
     return shlex.join(defaults)
 
 
@@ -144,8 +152,12 @@ def _train_args(args: ScriptArgs) -> str:
 
 def execute(args: ScriptArgs) -> None:
     backend = args.create_backend()
+    extra_env_vars = {"PYTHONPATH": os.environ.get("PYTHONPATH", "")}
+    if args.node_order is not None:
+        extra_env_vars["MILES_RAY_NODE_ORDER"] = args.node_order
     backend.execute_train(
         train_script="train_async.py",
+        extra_env_vars=extra_env_vars,
         train_args=_train_args(args),
         num_gpus_per_node=args.num_gpus_per_node,
         megatron_model_type="qwen3.6-35B-A3B",
