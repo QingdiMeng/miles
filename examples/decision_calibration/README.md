@@ -64,6 +64,27 @@ Decision entropy and train/rollout probability differences are recorded by the
 custom loss. The protocol must be checked against the actual SGLang version before
 launching training.
 
+## Two-node recipe
+
+The recipe prints its configuration by default:
+
+```bash
+python scripts/run_qwen3_6_decision_calibration.py \
+    --model-dir /path/to/models --data-dir /path/to/data \
+    --output-dir /path/to/results --run-id YYMMDD-0123abcd \
+    --wandb-project decision-calibration
+```
+
+After launch approval and source snapshots, use an externally joined Ray cluster
+with `MILES_SCRIPT_EXTERNAL_RAY=1` and add `--launch`. The recipe uses eight
+training GPUs with expert parallelism and eight single-GPU rollout engines,
+200 fresh-batch updates at learning rate 1e-6, 32 questions with eight actions
+each per update, validation every 25 updates, and checkpoints every 50. Thinking
+and MTP are disabled. Dashboard, traces, entropy observations, Prometheus and
+cache-aware SGLang routing are enabled. Keep authentication in the environment
+or netrc. Set `--dump-details` to a durable trace location and retain checkpoint
+artifacts before releasing temporary hardware.
+
 ## Held-out comparison
 
 ```bash
