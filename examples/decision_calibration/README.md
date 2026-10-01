@@ -120,6 +120,20 @@ not evidence of broad generalization. An interval spanning zero is inconclusive;
 do not claim training improved calibration just because the training loss fell.
 # Larger GPQA/MMLU mixture
 
+## Generated probability reports
+
+Pass `--probability-report` to the launcher to use conventional sequence-level
+GRPO instead of the sampled decision-token Brier-gradient estimator. The model
+generates `{"A":0.1,"B":0.6,"C":0.2,"D":0.1}` with thinking disabled and a
+128-token response cap. Each valid report receives negative full-distribution
+Brier loss against the metadata target. Reports must contain exactly four
+unique keys and finite numeric probabilities in [0,1] summing to 1 within 1e-6;
+invalid reports receive -3, below the worst valid reward of -2. No probabilities
+are silently normalized. Eight sampled reports per question receive GRPO group
+advantages. This trains stated probabilities; answer-token logits require a
+separate evaluation and are not assumed to become calibrated.
+
+
 `python -m examples.decision_calibration.prepare_mixed --pilot-data-dir /path/to/pilot-data --mmlu-parquet /path/to/mmlu-test.parquet --output-dir /path/to/new-data`
 prepares 8,192 training questions: 256 GPQA, 7,117 MMLU, and 819 synthetic.
 It preserves the pilot GPQA holdouts and reserves subject-stratified MMLU
