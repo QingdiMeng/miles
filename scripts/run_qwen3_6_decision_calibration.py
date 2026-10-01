@@ -20,7 +20,7 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
-from tap import to_tap_class
+from tap import Tap
 
 from miles.utils.external_utils import command_utils as U
 
@@ -48,6 +48,26 @@ class ScriptArgs(U.ExecuteTrainConfig):
     @property
     def run_dir(self) -> Path:
         return Path(self.output_dir) / self.run_id
+
+
+class CLI(Tap):
+    run_id: str
+    model_dir: str = ScriptArgs.model_dir
+    data_dir: str = ScriptArgs.data_dir
+    output_dir: str = ScriptArgs.output_dir
+    megatron_path: str = ScriptArgs.megatron_path
+    num_rollout: int = ScriptArgs.num_rollout
+    rollout_batch_size: int = ScriptArgs.rollout_batch_size
+    n_samples_per_prompt: int = ScriptArgs.n_samples_per_prompt
+    learning_rate: float = ScriptArgs.learning_rate
+    context_length: int = ScriptArgs.context_length
+    max_tokens_per_gpu: int = ScriptArgs.max_tokens_per_gpu
+    eval_interval: int = ScriptArgs.eval_interval
+    save_interval: int = ScriptArgs.save_interval
+    seed: int = ScriptArgs.seed
+    wandb_project: str | None = ScriptArgs.wandb_project
+    dump_details: str | None = ScriptArgs.dump_details
+    launch: bool = ScriptArgs.launch
 
 
 def _wandb_args(args: ScriptArgs) -> str:
@@ -114,6 +134,7 @@ def _train_args(args: ScriptArgs) -> str:
     traces = args.dump_details or str(args.run_dir / "traces")
     misc = f"""
         --bf16 --attention-dropout 0 --hidden-dropout 0 --attention-backend flash
+        --seq-length {args.context_length}
         --accumulate-allreduce-grads-in-fp32 --attention-softmax-in-fp32
         --seed {args.seed} --dump-details {quote(traces)} --use-miles-dashboard
         --observe-training-entropy --use-rollout-entropy --use-prometheus
@@ -132,8 +153,7 @@ def execute(args: ScriptArgs) -> None:
 
 
 def main() -> None:
-    # to_tap_class produces a Tap subclass directly from all dataclass fields.
-    cli = to_tap_class(ScriptArgs)(underscores_to_dashes=True).parse_args()
+    cli = CLI(underscores_to_dashes=True).parse_args()
     args = ScriptArgs(**cli.as_dict())
     if args.launch:
         execute(args)
