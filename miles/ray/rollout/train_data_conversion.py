@@ -380,6 +380,7 @@ def _package_shards(args, data: dict[str, Any], partitions) -> list[dict[str, An
             "loss_masks",
             "round_number",
             "sample_indices",
+            "metadata",
             "rollout_ids",
             "rollout_mask_sums",
             "rollout_log_probs",

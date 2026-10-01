@@ -17,6 +17,7 @@ from examples.decision_calibration.loss import action_surrogate, policy_loss
 from examples.decision_calibration.prepare import build
 from examples.decision_calibration.probabilities import brier, extract_probabilities, score_metrics
 from miles.backends.training_utils.data import DataIterator, get_batch
+from miles.ray.rollout.train_data_conversion import _package_shards
 
 
 def _archive() -> bytes:
@@ -86,6 +87,9 @@ class CalibrationTests(unittest.TestCase):
         state = SimpleNamespace(tp=SimpleNamespace(size=1), cp=SimpleNamespace(size=1, rank=0))
         metadata = {"candidate_token_ids": [0, 1, 2, 3], "probabilities": [0.25] * 4, "target": [1, 0, 0, 0], "action": 2, "reward": -0.5}
         data = {"tokens": [torch.tensor([4, 5, 2], device="cuda")], "total_lengths": [3], "response_lengths": [1], "loss_masks": [torch.tensor([1], device="cuda")], "metadata": [metadata]}
+        # Exercise the actual rollout-to-trainer shard packaging, which must
+        # preserve custom metadata before get_batch can forward it to the loss.
+        data = _package_shards(Namespace(), data, [[0]])[0]
         with patch("miles.backends.training_utils.parallel._parallel_state", state):
             iterator = DataIterator(data, micro_batch_size=1)
             batch = get_batch(iterator, ["tokens", "total_lengths", "response_lengths", "loss_masks"], pad_multiplier=1)
@@ -97,6 +101,13 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(set(metrics), {"loss", "brier_excess", "decision_entropy", "decision_probability_abs_diff"})
             self.assertGreater(logits.grad[0, 1, 2].item(), 0)
             self.assertEqual(logits.grad[0, 0].abs().sum().item(), 0)
+
+    def test_metadata_tracks_reordered_trainer_shards(self) -> None:
+        data = {"sample_indices": [10, 11, 12, 13], "metadata": [{"action": i} for i in range(4)]}
+        shards = _package_shards(Namespace(), data, [[3, 1], [0, 2]])
+        self.assertEqual(shards[0]["sample_indices"], [13, 11])
+        self.assertEqual(shards[0]["metadata"], [{"action": 3}, {"action": 1}])
+        self.assertEqual(shards[1]["metadata"], [{"action": 0}, {"action": 2}])
 
 
 if __name__ == "__main__":
