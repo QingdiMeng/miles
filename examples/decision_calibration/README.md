@@ -118,3 +118,16 @@ Brier measures overall probability quality, including resolution, so report ECE
 and GPQA accuracy alongside it. Treat 128 held-out GPQA questions as a pilot,
 not evidence of broad generalization. An interval spanning zero is inconclusive;
 do not claim training improved calibration just because the training loss fell.
+# Larger GPQA/MMLU mixture
+
+`python -m examples.decision_calibration.prepare_mixed --pilot-data-dir /path/to/pilot-data --mmlu-parquet /path/to/mmlu-test.parquet --output-dir /path/to/new-data`
+prepares 8,192 training questions: 256 GPQA, 7,117 MMLU, and 819 synthetic.
+It preserves the pilot GPQA holdouts and reserves subject-stratified MMLU
+validation (1,024) and test (2,048) questions. Including GPQA and synthetic
+holdouts, validation has 1,184 questions and test has 2,368.
+Normalized duplicate question text and synthetic scenarios are excluded across
+splits. Synthetic prompts explicitly ask the model to take a guess and retain
+analytic soft probability targets. The output directory must not already exist.
+Once MMLU test questions enter training, use the reserved subset for evaluation;
+full-MMLU scores are no longer entirely held out. Prior benchmark exposure and
+pretraining contamination are distinct from this fine-tuning split.
