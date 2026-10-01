@@ -157,7 +157,7 @@ def build(output_dir: Path, archive: bytes, seed: int) -> dict:
 
 
 def main() -> None:
-    args = Args().parse_args()
+    args = Args(underscores_to_dashes=True).parse_args()
     if args.gpqa_zip is None:
         with urllib.request.urlopen(SOURCE, timeout=120) as response:
             archive = response.read()

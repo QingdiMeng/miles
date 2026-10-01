@@ -205,6 +205,9 @@ def get_batch(
     # fetch it here so callers don't have to know. None for non-multi-LoRA runs.
     if "adapter_slots" not in keys:
         keys = [*keys, "adapter_slots"]
+    # Custom losses consume Sample.train_metadata after rollout conversion.
+    if "metadata" in data_iterator.rollout_data and "metadata" not in keys:
+        keys = [*keys, "metadata"]
     batch = data_iterator.get_next(keys)
 
     if "dynamic_global_batch_size" in data_iterator.rollout_data:
