@@ -23,8 +23,12 @@ def policy_loss(args: Namespace, batch: dict, logits: torch.Tensor, sum_of_sampl
     if any(length != 1 for length in batch["response_lengths"]):
         raise ValueError("Calibration rollouts must contain exactly one action token")
     chunks = _iter_response_chunks(
-        logits, args=args, unconcat_tokens=batch["unconcat_tokens"], total_lengths=batch["total_lengths"],
-        response_lengths=batch["response_lengths"], max_seq_lens=batch.get("max_seq_lens"),
+        logits,
+        args=args,
+        unconcat_tokens=batch["unconcat_tokens"],
+        total_lengths=batch["total_lengths"],
+        response_lengths=batch["response_lengths"],
+        max_seq_lens=batch.get("max_seq_lens"),
         include_response_indices=False,
     )
     losses, briers, entropies, gaps = [], [], [], []

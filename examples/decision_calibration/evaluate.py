@@ -74,6 +74,7 @@ async def evaluate(args: Args) -> None:
     rows = pl.read_ndjson(args.data).to_dicts()
     semaphore = asyncio.Semaphore(args.concurrency)
     async with httpx.AsyncClient(timeout=10800) as client:
+
         async def score(row: dict) -> dict:
             async with semaphore:
                 prompt = decision_prompt_ids(tokenizer, row["prompt"])
@@ -81,9 +82,8 @@ async def evaluate(args: Args) -> None:
                 response.raise_for_status()
                 probabilities = extract_probabilities(response.json(), candidates)
                 metadata = row["metadata"]
-                return {"id": metadata["id"], "source": metadata["source"], "target": metadata["target"],
-                        "probabilities": probabilities, "prompt_tokens": len(prompt),
-                        "metrics": score_metrics(probabilities, metadata["target"])}
+                return {"id": metadata["id"], "source": metadata["source"], "target": metadata["target"], "probabilities": probabilities, "prompt_tokens": len(prompt), "metrics": score_metrics(probabilities, metadata["target"])}
+
         predictions = await asyncio.gather(*(score(row) for row in rows))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("".join(json.dumps(row) + "\n" for row in predictions))

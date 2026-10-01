@@ -16,9 +16,8 @@ def candidate_token_ids(tokenizer) -> list[int]:
 def decision_prompt_ids(tokenizer, messages: list[dict]) -> list[int]:
     if not isinstance(messages, list):
         raise ValueError("Supply unrendered messages; omit --apply-chat-template")
-    return tokenizer.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=True, enable_thinking=False
-    )
+    rendered = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+    return tokenizer.encode(rendered, add_special_tokens=False)
 
 
 def request_payload(prompt_ids: list[int], token_ids: list[int]) -> dict:

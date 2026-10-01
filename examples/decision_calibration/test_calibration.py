@@ -34,8 +34,9 @@ class CalibrationTests(unittest.TestCase):
     def test_disjoint_reproducible_splits(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             first, second = Path(directory) / "first", Path(directory) / "second"
-            manifest = build(first, _archive(), 261001)
-            self.assertEqual(manifest, build(second, _archive(), 261001))
+            archive = _archive()
+            manifest = build(first, archive, 261001)
+            self.assertEqual(manifest, build(second, archive, 261001))
             seen = set()
             for name, count in (("train", 1024), ("validation", 256), ("test", 512)):
                 rows = [json.loads(line) for line in (first / f"{name}.jsonl").read_text().splitlines()]
@@ -74,10 +75,8 @@ class CalibrationTests(unittest.TestCase):
     @unittest.skipUnless(torch.cuda.is_available(), "Real get_batch consumer requires CUDA")
     def test_metadata_survives_real_batch_and_loss(self) -> None:
         state = SimpleNamespace(tp=SimpleNamespace(size=1), cp=SimpleNamespace(size=1, rank=0))
-        metadata = {"candidate_token_ids": [0, 1, 2, 3], "probabilities": [0.25] * 4,
-                    "target": [1, 0, 0, 0], "action": 2, "reward": -0.5}
-        data = {"tokens": [torch.tensor([4, 5, 2], device="cuda")], "total_lengths": [3],
-                "response_lengths": [1], "loss_masks": [torch.tensor([1], device="cuda")], "metadata": [metadata]}
+        metadata = {"candidate_token_ids": [0, 1, 2, 3], "probabilities": [0.25] * 4, "target": [1, 0, 0, 0], "action": 2, "reward": -0.5}
+        data = {"tokens": [torch.tensor([4, 5, 2], device="cuda")], "total_lengths": [3], "response_lengths": [1], "loss_masks": [torch.tensor([1], device="cuda")], "metadata": [metadata]}
         with patch("miles.backends.training_utils.parallel._parallel_state", state):
             iterator = DataIterator(data, micro_batch_size=1)
             batch = get_batch(iterator, ["tokens", "total_lengths", "response_lengths", "loss_masks"], pad_multiplier=1)

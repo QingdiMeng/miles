@@ -84,13 +84,8 @@ def _synthetic(count: int, rng: random.Random) -> list[dict]:
     for numerator in coin_biases:
         p = numerator / 1000
         target = [math.comb(3, k) * p**k * (1 - p) ** (3 - k) for k in range(4)]
-        question = (
-            f"A coin lands heads with probability {numerator}/1000 on each independent flip. "
-            "It will be flipped three times in the future. Which number of heads will occur? "
-            "No flips have yet been observed."
-        )
-        result.append(_example("coin", f"three_flips:{numerator}/1000", question,
-                               ["Zero heads", "One head", "Two heads", "Three heads"], target, rng))
+        question = f"A coin lands heads with probability {numerator}/1000 on each independent flip. It will be flipped three times in the future. Which number of heads will occur? No flips have yet been observed."
+        result.append(_example("coin", f"three_flips:{numerator}/1000", question, ["Zero heads", "One head", "Two heads", "Three heads"], target, rng))
     for family, size in (("dice", 6), ("urn", 4)):
         while sum(row["metadata"]["source"] == family for row in result) < per_family:
             weights = _canonical([rng.randint(1, 200) for _ in range(size)])
@@ -100,20 +95,11 @@ def _synthetic(count: int, rng: random.Random) -> list[dict]:
             seen.add(key)
             total = sum(weights)
             if family == "dice":
-                question = (
-                    "A six-sided die has faces 1 through 6. Their probabilities are proportional to "
-                    f"the respective weights {list(weights)}. It will be rolled once in the future. "
-                    "Which outcome will occur? No roll has yet been observed."
-                )
+                question = f"A six-sided die has faces 1 through 6. Their probabilities are proportional to the respective weights {list(weights)}. It will be rolled once in the future. Which outcome will occur? No roll has yet been observed."
                 options = ["Face 1 or 2", "Face 3 or 4", "Face 5", "Face 6"]
-                target = [(weights[0] + weights[1]) / total, (weights[2] + weights[3]) / total,
-                          weights[4] / total, weights[5] / total]
+                target = [(weights[0] + weights[1]) / total, (weights[2] + weights[3]) / total, weights[4] / total, weights[5] / total]
             else:
-                question = (
-                    f"An urn contains {weights[0]} red, {weights[1]} blue, {weights[2]} green, "
-                    f"and {weights[3]} yellow balls. One ball will be drawn uniformly at random "
-                    "in the future. Which color will occur? No ball has yet been drawn."
-                )
+                question = f"An urn contains {weights[0]} red, {weights[1]} blue, {weights[2]} green, and {weights[3]} yellow balls. One ball will be drawn uniformly at random in the future. Which color will occur? No ball has yet been drawn."
                 options = ["Red", "Blue", "Green", "Yellow"]
                 target = [weight / total for weight in weights]
             result.append(_example(family, json.dumps(weights), question, options, target, rng))
@@ -126,11 +112,9 @@ def build(output_dir: Path, archive: bytes, seed: int) -> dict:
     gpqa = _gpqa(archive, rng)
     # Generate globally unique scenarios before splitting; no variants cross splits.
     synthetic = _synthetic(sum(count[1] for count in SPLITS.values()), rng)
-    pools = {source: [row for row in synthetic if row["metadata"]["source"] == source]
-             for source in ("coin", "dice", "urn")}
+    pools = {source: [row for row in synthetic if row["metadata"]["source"] == source] for source in ("coin", "dice", "urn")}
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest = {"seed": seed, "gpqa_source": SOURCE, "gpqa_archive_sha256": hashlib.sha256(archive).hexdigest(),
-                "thinking": False, "splits": {}}
+    manifest = {"seed": seed, "gpqa_source": SOURCE, "gpqa_archive_sha256": hashlib.sha256(archive).hexdigest(), "thinking": False, "splits": {}}
     used: set[str] = set()
     for split, (gpqa_count, synthetic_count) in SPLITS.items():
         rows, gpqa = gpqa[:gpqa_count], gpqa[gpqa_count:]
@@ -150,8 +134,7 @@ def build(output_dir: Path, archive: bytes, seed: int) -> dict:
         text = "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
         path = output_dir / f"{split}.jsonl"
         path.write_text(text)
-        manifest["splits"][split] = {"rows": len(rows), "gpqa": gpqa_count, "synthetic": synthetic_count,
-                                     "sha256": _digest(text)}
+        manifest["splits"][split] = {"rows": len(rows), "gpqa": gpqa_count, "synthetic": synthetic_count, "sha256": _digest(text)}
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest
 
