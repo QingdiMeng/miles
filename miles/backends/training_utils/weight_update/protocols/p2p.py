@@ -161,7 +161,7 @@ class UpdateWeightP2P(WeightTransferProtocol):
         self.disconnect()
         self.rollout_engines = rollout_engines
         self.cell_updaters_of_cell_id = {
-            cell_id: _P2PRolloutCellUpdater(args=self.args, cell_id=cell_id, api_client=api_client)
+            cell_id: _P2PRolloutCellUpdater(args=self.args, cell_id=cell_id, api_client=api_client, selector=selector)
             for api_client, cell_id in zip(rollout_engines, engine_cell_ids, strict=True)
         }
 
