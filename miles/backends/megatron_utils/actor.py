@@ -1,7 +1,6 @@
 import atexit
 import logging
 import os
-import random
 import shutil
 from contextlib import ExitStack, nullcontext
 from dataclasses import replace
@@ -28,7 +27,7 @@ from miles.dashboard import hooks as dashboard_hooks
 from miles.ray.rollout.inference_controller import UpdatableEngines
 from miles.ray.specs.train import compute_trainer_pool_id
 from miles.ray.train_actor import TrainRayActor, WeightUpdateOutput
-from miles.utils import async_utils, object_store, train_dump_utils
+from miles.utils import object_store, train_dump_utils
 from miles.utils.argparse_utils import inplace_modify_args
 from miles.utils.audit_utils.event_logger.logger import event_logger_context
 from miles.utils.audit_utils.sample_ownership.recorder import SampleOwnershipRecorder
@@ -985,19 +984,12 @@ class MegatronTrainRayActor(TrainRayActor):
                 self.weight_updater.update_weights(weight_version=weight_version)
             print_memory("after update_weights")
 
-            cell_updaters = self.weight_updater.protocol.cell_updaters_of_cell_id
-            failed_cells, updated_cells = partition(cell_updaters.items(), lambda kv: not kv[1].is_errored)
-            updated_cell_ids = tuple(cell_id for cell_id, _ in updated_cells)
-            failed_cell_ids = tuple(cell_id for cell_id, _ in failed_cells)
+            if self.args.ci_test and not is_lora_enabled(self.args):
+                self.weight_updater.check_weight_version(weight_version=weight_version)
 
-            updated_engines = [
-                e for e, c in zip(rollout_engines, engine_cell_ids, strict=True) if c in updated_cell_ids
-            ]
-            if self.args.ci_test and len(updated_engines) > 0 and not is_lora_enabled(self.args):
-                engine = random.choice(updated_engines)
-                engine_version = async_utils.run(engine.get_weight_version())
-                if str(engine_version) != str(weight_version):
-                    raise RuntimeError(f"Weight version mismatch! Engine: {engine_version}, Updater: {weight_version}")
+            cell_updaters = self.weight_updater.protocol.cell_updaters_of_cell_id
+            failed_cells, _ = partition(cell_updaters.items(), lambda kv: not kv[1].is_errored)
+            failed_cell_ids = tuple(cell_id for cell_id, _ in failed_cells)
 
             if getattr(self.args, "keep_old_actor", False):
                 if self.args.update_weights_interval == 1:
