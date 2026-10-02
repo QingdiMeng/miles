@@ -11,10 +11,7 @@ from collections.abc import Callable
 import torch
 import torch.distributed as dist
 
-from miles.backends.training_utils.data.context_parallel import (
-    get_local_response_loss_masks,
-    slice_log_prob_with_cp,
-)
+from miles.backends.training_utils.data.context_parallel import get_local_response_loss_masks, slice_log_prob_with_cp
 from miles.backends.training_utils.loss.hub.logit_processors import get_log_probs_and_entropy
 from miles.backends.training_utils.parallel import get_parallel_state
 from miles.utils.types import RolloutBatch
