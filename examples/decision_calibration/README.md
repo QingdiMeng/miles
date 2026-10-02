@@ -201,3 +201,7 @@ accuracy uses native argmax correctness while ordinal MAE uses expected level.
 SHA-256 against its manifest, and evaluates the baseline and four checkpoints
 on five separate GPUs. Run it only after verifying these GPUs are idle. It
 terminates its own servers after evaluation and preserves per-question results.
+
+`compare_jevbench.py` checks identical question IDs across models and reports
+paired bootstrap intervals for Brier changes. It also measures squared error
+against exact `gold_probs` on the ten public questions that provide them.
