@@ -51,7 +51,7 @@ async def evaluate(args: Args) -> None:
     rows = pl.read_ndjson(args.data).to_dicts()
     semaphore = asyncio.Semaphore(args.concurrency)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    async with httpx.AsyncClient(timeout=600) as client:
+    async with httpx.AsyncClient(timeout=10800) as client:
         async def score(row: dict) -> dict:
             async with semaphore:
                 prompt = decision_prompt_ids(tokenizer, report_messages(row["prompt"], len(row["metadata"]["target"])))

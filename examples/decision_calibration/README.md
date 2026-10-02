@@ -162,3 +162,22 @@ Train: 8,192 questions (7,117 MMLU-Pro, 256 GPQA, 819 synthetic). Validation: 1,
 JSON reports support each question's actual option count, up to ten, with keys A through the final option. Use probability-report mode; the original four-option decision-token rollout is incompatible. Prepared prompts contain the scoring instruction, and prompt conversion is idempotent.
 
 For ten-option MMLU-Pro reports, pass --report-max-response-len 512 to avoid truncating formatted JSON. This sets both training and validation response budgets.
+
+### Automatic evaluation after termination
+
+Run `python -m examples.decision_calibration.eval_after_training` in a persistent
+tmux session on the trainer host. Supply `--run-id`, `--ray-job-id`,
+`--checkpoint-dir`, `--model`, `--data`, `--result-dir`, and `--export-dir`.
+The watcher starts evaluations after success, failure, or stop, with a driver
+process fallback if Ray becomes unavailable. It checks distributed checkpoint
+metadata and referenced file extents before exporting. Saves before 128 completed
+updates are excluded; zero-based `iter_0000127` is labelled `step128`.
+
+The original model and every complete saved checkpoint are evaluated sequentially
+on the specified held-out split, with thinking disabled and 512 output tokens.
+Each export/evaluation is retried once; a failed checkpoint does not prevent later
+evaluations. JSON predictions, calibration summaries, logs, and `status.json`
+are retained in the result directory. Exports go to the separately specified
+scratch directory. A lock prevents duplicate watchers. `--no-wait --dry-run`
+tests discovery without launching models. The running training source need not
+be changed: use a separate checkout for the watcher.
