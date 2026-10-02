@@ -49,6 +49,7 @@ class ScriptArgs(U.ExecuteTrainConfig):
     node_order: str | None = None
     wandb_team: str | None = None
     probability_report: bool = False
+    routing_replay: bool = False
 
     @property
     def run_dir(self) -> Path:
@@ -76,6 +77,7 @@ class CLI(Tap):
     node_order: str | None = ScriptArgs.node_order
     wandb_team: str | None = ScriptArgs.wandb_team
     probability_report: bool = ScriptArgs.probability_report
+    routing_replay: bool = ScriptArgs.routing_replay
 
 
 def _wandb_args(args: ScriptArgs) -> str:
@@ -154,6 +156,8 @@ def _train_args(args: ScriptArgs) -> str:
         rollout = rollout.replace("examples.decision_calibration.rollout.", "examples.decision_calibration.report_rollout.")
         algorithm = "--loss-type policy_loss --advantage-estimator grpo --entropy-coef 0 --kl-coef 0 --mtp-num-layers 0"
         evaluation = evaluation.replace("--eval-max-response-len 1", "--eval-max-response-len 128")
+    if args.routing_replay:
+        algorithm += " --use-rollout-routing-replay"
     return " ".join(shlex.join(shlex.split(block)) for block in (checkpoint, rollout, algorithm, optimizer, performance, sglang, evaluation, misc, _wandb_args(args)))
 
 

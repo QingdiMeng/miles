@@ -15,6 +15,8 @@ async def generate(input: GenerateFnInput) -> GenerateFnOutput:
     if len(prompt) + cap > args.rollout_max_context_len:
         raise ValueError("Question exceeds context budget")
     payload = {"input_ids": prompt, "sampling_params": {"temperature": 1.0, "top_p": 1.0, "top_k": -1, "max_new_tokens": cap}, "return_logprob": True, "logprob_start_len": -1}
+    if args.use_rollout_routing_replay:
+        payload["return_routed_experts"] = True
     output = await post(f"http://{args.sglang_router_ip}:{args.sglang_router_port}/generate", payload, headers=compute_routing_headers(args, sample))
     await update_sample_from_response(args, sample, payload, output, update_loss_mask=True)
     if not sample.response_length or len(sample.rollout_log_probs) != sample.response_length:

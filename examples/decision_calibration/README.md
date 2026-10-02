@@ -147,3 +147,5 @@ full-MMLU scores are no longer entirely held out. Prior benchmark exposure and
 pretraining contamination are distinct from this fine-tuning split.
 
 Evaluate JSON reports with `python -m examples.decision_calibration.evaluate_reports --data <test.jsonl> --model <model-path> --endpoint <url> --output <predictions.jsonl>`. The evaluator uses greedy decoding with thinking disabled and reports format validity, penalized reward, and calibration metrics on valid reports separately. Run both original and final models on the same held-out split.
+
+The next calibration recipe uses an explicit Brier-scoring instruction, 32 samples per prompt and LR 3e-7. Pass --routing-replay for MoE rollout routing replay; generated reports request expert routes and use the standard Miles response transport. Save only the final checkpoint with --save-interval 512 when disk space is limited.

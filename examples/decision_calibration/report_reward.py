@@ -5,7 +5,7 @@ import math
 from collections.abc import Sequence
 
 LETTERS = ("A", "B", "C", "D")
-REPORT_INSTRUCTION = 'Report your probability for each option as a JSON object with exactly the keys "A", "B", "C", "D". Use numbers between 0 and 1 that sum to 1. Output only JSON, without explanation or Markdown.'
+REPORT_INSTRUCTION = 'Your final answer will be assessed by how close your reported probabilities are to the actual ground-truth answer distribution, using negative Brier loss: -sum_i (p_i - t_i)^2. Higher scores are better. For single-correct-answer questions, the target assigns probability 1 to the correct option and 0 to the others. For random-outcome questions, the target is the true outcome distribution. Report your uncertainty honestly: putting probability 1 on an incorrect option is penalized more than spreading probability across plausible options. Report your probability for each option as a JSON object with exactly the keys "A", "B", "C", "D". Use numbers between 0 and 1 that sum to 1. Output only JSON, without explanation or Markdown.'
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict:
