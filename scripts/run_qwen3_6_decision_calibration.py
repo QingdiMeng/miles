@@ -155,6 +155,7 @@ def _train_args(args: ScriptArgs) -> str:
         rollout = rollout.replace("--rollout-max-response-len 1", "--rollout-max-response-len 128")
         rollout = rollout.replace("examples.decision_calibration.rollout.", "examples.decision_calibration.report_rollout.")
         algorithm = "--loss-type policy_loss --advantage-estimator grpo --entropy-coef 0 --kl-coef 0 --mtp-num-layers 0"
+        misc += " --custom-rollout-log-function-path examples.decision_calibration.report_logging.log_rollouts --custom-eval-rollout-log-function-path examples.decision_calibration.report_logging.log_evaluation"
         evaluation = evaluation.replace("--eval-max-response-len 1", "--eval-max-response-len 128")
     if args.routing_replay:
         algorithm += " --use-rollout-routing-replay"
