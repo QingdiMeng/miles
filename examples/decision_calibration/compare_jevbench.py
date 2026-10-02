@@ -23,8 +23,10 @@ def compare(args: Args) -> dict:
     for rows in predictions.values():
         assert set(rows) == set(tasks)
     common = sorted(i for i in tasks if all(predictions[label][i]["valid"] for label in labels))
+    known_common = [i for i in common if tasks[i]["provenance"].get("gold_probs") is not None]
     rng = random.Random(261002)
-    result = {"total_questions": len(tasks), "common_valid_questions": len(common), "models": {}, "paired": {}}
+    result = {"total_questions": len(tasks), "common_valid_questions": len(common),
+              "known_distribution_common_valid_questions": len(known_common), "models": {}, "paired": {}}
     for label, rows in predictions.items():
         common_brier = sum(rows[i]["brier"] for i in common) / len(common) if common else None
         known = []
@@ -35,6 +37,10 @@ def compare(args: Args) -> dict:
                 loss = sum((probs[k] - gold[k]) ** 2 for k in task["labels"])
                 known.append({"id": i, "distribution_squared_error": loss})
         result["models"][label] = {"brier_common_valid": common_brier, "known_distribution_questions": len(known),
+                                    "known_distribution_squared_error_common_valid": sum(
+                                        sum((rows[i]["probs"][k] - tasks[i]["provenance"]["gold_probs"][k]) ** 2
+                                            for k in tasks[i]["labels"]) for i in known_common
+                                    ) / len(known_common) if known_common else None,
                                     "known_distribution_mean_squared_error": sum(r["distribution_squared_error"] for r in known) / len(known) if known else None,
                                     "known_distribution_per_question": known}
         if label == "baseline":
