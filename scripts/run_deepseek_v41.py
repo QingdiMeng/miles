@@ -7,14 +7,15 @@ import miles.utils.external_utils.command_utils as U
 
 app = typer.Typer()
 
-_MEGATRON_MODEL_TYPE = {"DeepSeek-V4.1": "deepseek-v4.1"}
+_MEGATRON_MODEL_TYPE = {"DeepSeek-V4.1": "deepseek-v4.1", "DeepSeek-V4.1-4layer": "deepseek-v4.1-4layer"}
+_MODEL_ORG = {"DeepSeek-V4.1-4layer": "CharyZeng"}
 
 
 @dataclass
 class ScriptArgs(U.ExecuteTrainConfig):
     mode: Literal["normal", "debug_minimal"] = "debug_minimal"
     run_id: str = U.create_run_id()
-    model_name: Literal["DeepSeek-V4.1"] = "DeepSeek-V4.1"
+    model_name: Literal["DeepSeek-V4.1", "DeepSeek-V4.1-4layer"] = "DeepSeek-V4.1"
     task: Literal["dapo_aime", "gsm8k"] = "gsm8k"
     enable_eval: bool = False
 
@@ -97,6 +98,15 @@ class ScriptArgs(U.ExecuteTrainConfig):
         return f"{self.model_name}_torch_dist"
 
 
+def _prepare_download(args: ScriptArgs):
+    U_backend = args.create_backend()
+    U_backend.exec_command_cpu(f"mkdir -p {args.model_dir} {args.data_dir}")
+    if args.hf_checkpoint is None and args.model_name in _MODEL_ORG:
+        dest = f"{args.model_dir}/{args.model_name}"
+        U_backend.exec_command_cpu(f"hf download {_MODEL_ORG[args.model_name]}/{args.model_name} --local-dir {dest}")
+    _download_dataset(args)
+
+
 def _download_dataset(args: ScriptArgs):
     match args.task:
         case "dapo_aime":
@@ -150,6 +160,12 @@ def prepare_spmd(args: ScriptArgs):
 @U.dataclass_cli
 def prepare_data(args: ScriptArgs):
     _download_dataset(args)
+
+
+@app.command()
+@U.dataclass_cli
+def prepare_download(args: ScriptArgs):
+    _prepare_download(args)
 
 
 def _train(args: ScriptArgs):
