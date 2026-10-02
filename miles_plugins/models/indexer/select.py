@@ -18,7 +18,8 @@ _FLASHINFER_TIE_BREAK_VALUES = {
 }
 
 
-def _flashinfer_tie_break_value() -> int:
+def flashinfer_tie_break_value() -> int:
+    """SGLang's flashinfer tie-break policy, so the trainer breaks ties as the rollout does."""
     from sglang.srt.environ import envs
 
     mode = envs.SGLANG_DSA_TOPK_FLASHINFER_TIE_BREAK.get()
@@ -52,7 +53,7 @@ def _flashinfer_topk(logits: torch.Tensor, topk: int) -> tuple[torch.Tensor, tor
         topk,
         sorted=False,
         deterministic=envs.SGLANG_DSA_TOPK_FLASHINFER_DETERMINISTIC.get(),
-        tie_break=_flashinfer_tie_break_value(),
+        tie_break=flashinfer_tie_break_value(),
         dsa_graph_safe=True,
     )
     indices = indices.to(torch.int32)
