@@ -68,6 +68,7 @@ _NOT_ACTUALLY_SECRET_ARG_NAMES = frozenset(
         "metadata_key",
         "opd_teacher_key",
         "reward_key",
+        "router_allow_requests_without_routing_key",
         "tool_key",
     }
 )
