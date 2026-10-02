@@ -27,12 +27,16 @@ class Args(Tap):
 
 def read_rows(path: Path) -> list[dict]:
     # Preserve heterogeneous metadata without DataFrame schema coercion.
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    # Unicode line separators can occur inside questions; only LF separates JSONL records.
+    return [json.loads(line) for line in path.read_text().split("\n") if line.strip()]
 
 
 def digest(path: Path) -> str:
+    checksum = hashlib.sha256()
     with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        while chunk := stream.read(1 << 20):
+            checksum.update(chunk)
+    return checksum.hexdigest()
 
 
 def question_text(row: dict) -> str:
