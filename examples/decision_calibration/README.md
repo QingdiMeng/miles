@@ -181,3 +181,23 @@ are retained in the result directory. Exports go to the separately specified
 scratch directory. A lock prevents duplicate watchers. `--no-wait --dry-run`
 tests discovery without launching models. The running training source need not
 be changed: use a separate checkout for the watcher.
+# Public JevBench evaluation
+
+`evaluate_jevbench.py` evaluates the 231 published easy, original, and hard
+items from a pinned checkout of `fstandhartinger/jevbench`. Add that checkout
+to `PYTHONPATH` to use its native scoring and metrics. The model generates
+letter-keyed JSON probabilities; letters map to the original ordered labels.
+Only the state, instructions, and option criteria enter the prompt. Gold labels
+and provenance rationales never enter it. Reasoning is disabled. This is a
+public-subset diagnostic, not an official score including sealed items.
+
+The evaluator reports validity, full multiclass Brier, ten-bin top-label ECE,
+accuracy, ordinal MAE, exact probability-one collapse, and request latency.
+Requests are serial after an excluded warm-up. JSON parsing retains the training
+sum tolerance of `1e-6`; probabilities are never inferred or repaired. Ordinal
+accuracy uses native argmax correctness while ordinal MAE uses expected level.
+
+`run_jevbench.py` copies four HF exports from an archive, verifies every file's
+SHA-256 against its manifest, and evaluates the baseline and four checkpoints
+on five separate GPUs. Run it only after verifying these GPUs are idle. It
+terminates its own servers after evaluation and preserves per-question results.
