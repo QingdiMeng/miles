@@ -17,11 +17,12 @@ def unique_object(pairs: list[tuple[str, object]]) -> dict:
     return result
 
 
-def parse_report(text: str) -> list[float]:
+def parse_report(text: str, option_count: int = 4) -> list[float]:
+    letters = tuple(chr(65 + i) for i in range(option_count))
     obj = json.loads(text, object_pairs_hook=unique_object)
-    if not isinstance(obj, dict) or set(obj) != set(LETTERS):
-        raise ValueError("Expected exactly A, B, C, D")
-    values = [obj[key] for key in LETTERS]
+    if not isinstance(obj, dict) or set(obj) != set(letters):
+        raise ValueError(f"Expected exactly {letters}")
+    values = [obj[key] for key in letters]
     if any(type(x) not in (int, float) or not math.isfinite(x) or not 0 <= x <= 1 for x in values):
         raise ValueError("Probabilities must be finite numbers in [0,1]")
     if not math.isclose(sum(values), 1, rel_tol=0, abs_tol=1e-6):
@@ -30,21 +31,25 @@ def parse_report(text: str) -> list[float]:
 
 
 def score_report(text: str, target: Sequence[float]) -> dict:
-    if len(target) != 4 or any(not math.isfinite(x) or x < 0 for x in target) or not math.isclose(sum(target), 1):
+    if not 2 <= len(target) <= 10 or any(not math.isfinite(x) or x < 0 for x in target) or not math.isclose(sum(target), 1):
         raise ValueError("Invalid target distribution")
     try:
-        probabilities = parse_report(text)
+        probabilities = parse_report(text, len(target))
     except (ValueError, TypeError):
-        # Valid four-choice Brier loss is at most 2; malformed reports are worse.
+        # Valid Brier loss is at most 2 for any option count.
         return {"reward": -3.0, "valid": False, "probabilities": None, "brier": None}
     loss = sum((p - t) ** 2 for p, t in zip(probabilities, target, strict=True))
     return {"reward": -loss, "valid": True, "probabilities": probabilities, "brier": loss}
 
 
-def report_messages(messages: list[dict]) -> list[dict]:
+def report_messages(messages: list[dict], option_count: int = 4) -> list[dict]:
+    if not 2 <= option_count <= 10:
+        raise ValueError("Expected 2 to 10 options")
     result = [dict(m) for m in messages]
     text = result[-1]["content"]
     for suffix in ("Choose one option. Output only its letter (A, B, C, or D).", "Choose one option as your guess. Output only its letter (A, B, C, or D)."):
         text = text.removesuffix(suffix).rstrip()
-    result[-1]["content"] = text + "\n\n" + REPORT_INSTRUCTION
+    keys = ", ".join(json.dumps(chr(65 + i)) for i in range(option_count))
+    instruction = REPORT_INSTRUCTION.replace('"A", "B", "C", "D"', keys)
+    result[-1]["content"] = text if text.endswith(instruction) else text + "\n\n" + instruction
     return result

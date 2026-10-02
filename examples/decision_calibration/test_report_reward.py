@@ -1,11 +1,23 @@
 """Boundary checks for probability-report scoring and prompt conversion."""
 
+import json
 import unittest
 
 from examples.decision_calibration.report_reward import parse_report, report_messages, score_report
 
 
 class ReportTests(unittest.TestCase):
+    def test_variable_options(self) -> None:
+        for count in range(2, 11):
+            target = [0.0] * (count - 1) + [1.0]
+            report = json.dumps({chr(65 + i): p for i, p in enumerate(target)})
+            self.assertEqual(score_report(report, target)["reward"], 0)
+            if count < 10:
+                self.assertFalse(score_report(report, target + [0.0])["valid"])
+            messages = report_messages([{"role": "user", "content": "Question"}], count)
+            self.assertEqual(report_messages(messages, count), messages)
+            self.assertIn(json.dumps(chr(64 + count)), messages[0]["content"])
+
     def test_scores(self) -> None:
         target = [1.0, 0.0, 0.0, 0.0]
         self.assertEqual(score_report('{"A":1,"B":0,"C":0,"D":0}', target)["reward"], 0)

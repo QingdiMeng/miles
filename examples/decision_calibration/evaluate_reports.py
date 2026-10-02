@@ -40,7 +40,7 @@ def summarize(rows: list[dict]) -> dict:
             metrics["onehot_fraction_valid_only"] = sum(max(r["probabilities"]) == 1 for r in valid) / len(valid)
             hard = [r for r in valid if max(r["target"]) == 1]
             if hard:
-                metrics["accuracy_valid_only"] = sum(max(range(4), key=r["probabilities"].__getitem__) == r["target"].index(1) for r in hard) / len(hard)
+                metrics["accuracy_valid_only"] = sum(max(range(len(r["target"])), key=r["probabilities"].__getitem__) == r["target"].index(1) for r in hard) / len(hard)
                 metrics["log_loss_clipped_valid_only"] = sum(-math.log(max(r["probabilities"][r["target"].index(1)], 1e-12)) for r in hard) / len(hard)
         result[name] = metrics
     return result
@@ -54,7 +54,7 @@ async def evaluate(args: Args) -> None:
     async with httpx.AsyncClient(timeout=600) as client:
         async def score(row: dict) -> dict:
             async with semaphore:
-                prompt = decision_prompt_ids(tokenizer, report_messages(row["prompt"]))
+                prompt = decision_prompt_ids(tokenizer, report_messages(row["prompt"], len(row["metadata"]["target"])))
                 response = await client.post(args.endpoint.rstrip("/") + "/generate", json={"input_ids": prompt, "sampling_params": {"temperature": 0, "max_new_tokens": args.max_tokens}})
                 response.raise_for_status()
                 output = response.json()

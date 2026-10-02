@@ -10,7 +10,7 @@ from miles.utils.types import Sample
 
 async def generate(input: GenerateFnInput) -> GenerateFnOutput:
     sample, args = input.sample, input.args
-    prompt = decision_prompt_ids(input.state.tokenizer, report_messages(sample.prompt))
+    prompt = decision_prompt_ids(input.state.tokenizer, report_messages(sample.prompt, len(sample.metadata["target"])))
     cap = args.eval_max_response_len if input.evaluation else args.rollout_max_response_len
     if len(prompt) + cap > args.rollout_max_context_len:
         raise ValueError("Question exceeds context budget")
