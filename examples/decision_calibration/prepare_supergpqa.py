@@ -6,6 +6,7 @@ import math
 import random
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 from pathlib import Path
 
 from tap import Tap
@@ -51,6 +52,17 @@ def benchmark_key(text: str) -> str:
     return " ".join(re.findall(r"\w+", question_key(text)))
 
 
+def text_values(value: object) -> Iterator[str]:
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from text_values(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from text_values(item)
+
+
 def blocked_by_benchmark(text: str, benchmark_texts: set[str]) -> bool:
     key = benchmark_key(text)
     return key in benchmark_texts or any(
@@ -69,9 +81,10 @@ def build(args: Args) -> dict:
         raise ValueError("Expected the pinned 231-question public JevBench")
     benchmark_texts = set()
     for row in benchmark:
-        state = row["state"]
+        state = row["state"] if isinstance(row["state"], str) else json.dumps(row["state"], ensure_ascii=False, sort_keys=True)
         instructions = row["question"]["instructions"]
         benchmark_texts.update(benchmark_key(text) for text in (state, instructions, state + "\n\n" + instructions))
+        benchmark_texts.update(benchmark_key(text) for text in text_values(row["state"]) if text.strip())
     blocked_questions = {question_key(question_text(row)) for rows in previous.values() for row in rows}
     blocked_scenarios = {(row["metadata"]["source"], question_key(row["metadata"]["scenario"]))
                          for rows in previous.values() for row in rows}
