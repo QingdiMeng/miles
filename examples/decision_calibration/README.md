@@ -1,4 +1,33 @@
-# Objective and training hooks
+# Decision calibration pilot
+
+This example trains a one-token, thinking-disabled decision policy. GPQA has
+one-hot targets; coin, weighted-die and urn questions have analytically known
+four-option target probabilities. Candidate probabilities are normalized over
+the four letter tokens, rather than the complete vocabulary.
+
+Install the lightweight dataset dependencies with `uv pip install
+./examples/decision_calibration`. Run modules from the repository root so their
+absolute imports resolve. Model-facing scripts also require the existing Miles
+PyTorch/Transformers environment.
+
+```bash
+python -m examples.decision_calibration.prepare --output-dir /path/to/data
+```
+
+The builder fetches the original public GPQA archive, records its SHA256, shuffles
+answer positions, and checks scenario IDs are disjoint across splits:
+
+| Split | GPQA | Synthetic | Total |
+| --- | ---: | ---: | ---: |
+| Train | 256 | 768 | 1024 |
+| Validation | 64 | 192 | 256 |
+| Test | 128 | 384 | 512 |
+
+Each synthetic split has equal numbers of coin, die and urn scenarios. Questions
+are split before any variants. This prevents experiment-induced overlap, but
+does not establish that GPQA was absent from the original model's pretraining.
+
+## Objective and training hooks
 
 For candidate distribution `p` and target `t`, minimize `sum((p-t)**2)`.
 Sample action `a` from the rollout policy and recompute the detached reward
@@ -122,48 +151,12 @@ Evaluate JSON reports with `python -m examples.decision_calibration.evaluate_rep
 The next calibration recipe uses an explicit Brier-scoring instruction, 32 samples per prompt and LR 3e-7. Pass --routing-replay for MoE rollout routing replay; generated reports request expert routes and use the standard Miles response transport. Save only the final checkpoint with --save-interval 512 when disk space is limited.
 
 Future JSON-report runs log rollout/probability_collapse_pct (0-100): valid reports with any probability exactly 1, divided by all rollouts. Invalid JSON remains in the denominator but is not counted as collapsed. Also log report_valid_pct, probability_collapse_valid_pct, counts and source-specific metrics, including validation. These hooks preserve the default Miles logs.
+
+
 ### MMLU-Pro mixture
 
-`examples.decision_calibration.prepare_mmlu_pro` replaces MMLU while retaining
-the previous GPQA and synthetic partitions. Its Tap arguments are
-`--previous-data-dir`, `--mmlu-pro-parquet`, `--source-revision`, and `--output-dir`.
-Train contains 8,192 questions: 7,117 MMLU-Pro, 256 GPQA, and 819 synthetic.
-Validation contains 1,024 MMLU-Pro, 64 GPQA, and 96 synthetic; test contains
-2,048 MMLU-Pro, 128 GPQA, and 192 synthetic. MMLU-Pro is subject-stratified
-across all 14 categories and deduplicated by normalized question text before
-splitting. The source revision and file hashes are recorded in the manifest.
-JSON reports support the actual option count (up to ten), with keys A through
-the final option. This mixture requires probability-report mode; the original
-four-option decision-token rollout is not compatible. The prepared prompts
-already contain the scoring instruction, and prompt conversion is idempotent.
+`examples.decision_calibration.prepare_mmlu_pro` replaces MMLU and preserves the GPQA and synthetic partitions. Supply `--previous-data-dir`, `--mmlu-pro-parquet`, `--source-revision`, and `--output-dir`.
 
-# Decision calibration pilot
+Train: 8,192 questions (7,117 MMLU-Pro, 256 GPQA, 819 synthetic). Validation: 1,184 (1,024 MMLU-Pro, 64 GPQA, 96 synthetic). Test: 2,368 (2,048 MMLU-Pro, 128 GPQA, 192 synthetic). MMLU-Pro is subject-stratified across all 14 categories and deduplicated by normalized question text before splitting. Source revision and file hashes are saved in the manifest.
 
-This example trains a one-token, thinking-disabled decision policy. GPQA has
-one-hot targets; coin, weighted-die and urn questions have analytically known
-four-option target probabilities. Candidate probabilities are normalized over
-the four letter tokens, rather than the complete vocabulary.
-
-Install the lightweight dataset dependencies with `uv pip install
-./examples/decision_calibration`. Run modules from the repository root so their
-absolute imports resolve. Model-facing scripts also require the existing Miles
-PyTorch/Transformers environment.
-
-```bash
-python -m examples.decision_calibration.prepare --output-dir /path/to/data
-```
-
-The builder fetches the original public GPQA archive, records its SHA256, shuffles
-answer positions, and checks scenario IDs are disjoint across splits:
-
-| Split | GPQA | Synthetic | Total |
-| --- | ---: | ---: | ---: |
-| Train | 256 | 768 | 1024 |
-| Validation | 64 | 192 | 256 |
-| Test | 128 | 384 | 512 |
-
-Each synthetic split has equal numbers of coin, die and urn scenarios. Questions
-are split before any variants. This prevents experiment-induced overlap, but
-does not establish that GPQA was absent from the original model's pretraining.
-
-#
+JSON reports support each question's actual option count, up to ten, with keys A through the final option. Use probability-report mode; the original four-option decision-token rollout is incompatible. Prepared prompts contain the scoring instruction, and prompt conversion is idempotent.
