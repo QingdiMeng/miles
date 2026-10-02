@@ -24,14 +24,15 @@ class Args(Tap):
 def stage(source: Path, destination: Path) -> Path:
     manifest = json.loads((source / "UPLOAD_MANIFEST.json").read_text())
     destination.mkdir(parents=True, exist_ok=True)
-    for item in manifest["files"]:
+    def copy_file(item: dict) -> None:
         relative = item.get("path", item.get("name", item.get("relative_path")))
         expected = item["sha256"]
         target = destination / relative
         if target.exists():
-            digest = hashlib.file_digest(target.open("rb"), "sha256").hexdigest()
+            with target.open("rb") as existing:
+                digest = hashlib.file_digest(existing, "sha256").hexdigest()
             if digest == expected:
-                continue
+                return
             raise ValueError(f"Existing file checksum mismatch: {target}")
         temporary = target.with_suffix(target.suffix + ".partial")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -43,6 +44,8 @@ def stage(source: Path, destination: Path) -> Path:
         if digest.hexdigest() != expected:
             raise ValueError(f"Archive checksum mismatch: {source / relative}")
         temporary.replace(target)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(copy_file, manifest["files"]))
     (destination / "staging-complete.json").write_text(json.dumps(manifest))
     return destination
 
@@ -92,15 +95,15 @@ def run_model(args: Args, label: str, gpu: int, model: Path) -> dict:
 
 def main(args: Args) -> None:
     args.output.mkdir(parents=True, exist_ok=True)
-    models = [("baseline", 0, args.model)]
-    for gpu, step in enumerate((128, 256, 384, 512), 1):
+    def checkpoint(gpu: int, step: int) -> dict:
         name = f"iter_{step - 1:07d}-hf"
         print(f"STAGING step{step}", flush=True)
         model = stage(args.archive / name, args.output / "models" / name)
         print(f"STAGED step{step}", flush=True)
-        models.append((f"step{step}", gpu, model))
+        return run_model(args, f"step{step}", gpu, model)
     with ThreadPoolExecutor(max_workers=5) as pool:
-        futures = [pool.submit(run_model, args, *model) for model in models]
+        futures = [pool.submit(run_model, args, "baseline", 0, args.model)]
+        futures += [pool.submit(checkpoint, gpu, step) for gpu, step in enumerate((128, 256, 384, 512), 1)]
         results = []
         errors = []
         for future in futures:
