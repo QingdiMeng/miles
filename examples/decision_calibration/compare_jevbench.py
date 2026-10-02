@@ -4,7 +4,6 @@ import json
 import random
 from pathlib import Path
 
-import polars as pl
 from tap import Tap
 
 
@@ -16,9 +15,10 @@ class Args(Tap):
 
 def compare(args: Args) -> dict:
     tasks = {r["id"]: r for path in (args.benchmark / "datasets/public").glob("*.jsonl")
-             for r in pl.read_ndjson(path, infer_schema_length=None).to_dicts()}
+             for line in path.read_text().splitlines() for r in [json.loads(line)]}
     labels = ("baseline", "step128", "step256", "step384", "step512")
-    predictions = {label: {r["id"]: r for r in pl.read_ndjson(args.results / f"{label}.jsonl", infer_schema_length=None).to_dicts()}
+    predictions = {label: {r["id"]: r for line in (args.results / f"{label}.jsonl").read_text().splitlines()
+                          for r in [json.loads(line)]}
                    for label in labels}
     for rows in predictions.values():
         assert set(rows) == set(tasks)
