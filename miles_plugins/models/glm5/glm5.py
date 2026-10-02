@@ -24,8 +24,8 @@ from megatron.core.transformer.moe.moe_utils import RouterGatingLinearFunction a
 from megatron.core.transformer.spec_utils import ModuleSpec, build_module
 from megatron.core.transformer.transformer_block import get_num_layers_to_build
 from megatron.core.transformer.transformer_config import MLATransformerConfig
-from miles.utils.hf_utils.config import load_hf_config
 
+from miles.utils.hf_utils.config import load_hf_config
 from miles_plugins.models.indexer import freeze_indexer_parameters
 from miles_plugins.models.normalization import rms_norm
 
