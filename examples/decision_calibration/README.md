@@ -207,3 +207,23 @@ paired bootstrap intervals for Brier changes. It also measures squared error
 against exact `gold_probs` on the ten public questions that provide them.
 
 To compare a subset of checkpoints, pass `--labels baseline step128 step256 step384` to `compare_jevbench.py`. The baseline must be included.
+
+`prepare_supergpqa.py` expands the 8,192-question mixture to 16,384 training
+questions by adding 7,373 medium/hard SuperGPQA items and 819 new analytical
+random-outcome scenarios. Validation stays at 1,184 questions: 512 MMLU-Pro,
+512 SuperGPQA, 64 GPQA, and 96 synthetic questions. All previous validation
+and test questions remain excluded from the additional training pool.
+The three pinned public JevBench files are used only for overlap exclusion;
+the builder writes no test split. It validates answer mappings and target
+distributions, checks cross-split duplicates, shuffles both output splits,
+and records source revisions, checksums, counts, and exclusion checks.
+
+```sh
+python -m examples.decision_calibration.prepare_supergpqa \
+    --previous-data-dir /path/to/previous-mixture \
+    --supergpqa-jsonl /path/to/SuperGPQA-all.jsonl \
+    --source-revision SUPERGPQA_COMMIT \
+    --jevbench-dir /path/to/jevbench/datasets/public \
+    --jevbench-revision JEVBENCH_COMMIT \
+    --output-dir /path/to/new-mixture
+```
