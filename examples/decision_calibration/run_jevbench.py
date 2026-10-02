@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -19,9 +20,10 @@ class Args(Tap):
     benchmark: Path
     model: Path
     output: Path
+    source_endpoint: str = ""
 
 
-def stage(source: Path, destination: Path) -> Path:
+def stage(source: Path, destination: Path, source_endpoint: str = "") -> Path:
     manifest = json.loads((source / "UPLOAD_MANIFEST.json").read_text())
     destination.mkdir(parents=True, exist_ok=True)
     def copy_file(item: dict) -> None:
@@ -37,7 +39,9 @@ def stage(source: Path, destination: Path) -> Path:
         temporary = target.with_suffix(target.suffix + ".partial")
         target.parent.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256()
-        with (source / relative).open("rb") as reader, temporary.open("wb") as writer:
+        url = source_endpoint.rstrip("/") + "/" + source.name.removesuffix("-hf") + "/" + relative
+        reader_context = urllib.request.urlopen(url, timeout=600) if source_endpoint else (source / relative).open("rb")
+        with reader_context as reader, temporary.open("wb") as writer:
             while chunk := reader.read(16 << 20):
                 writer.write(chunk)
                 digest.update(chunk)
@@ -52,6 +56,9 @@ def stage(source: Path, destination: Path) -> Path:
 
 def run_model(args: Args, label: str, gpu: int, model: Path) -> dict:
     result = args.output / f"{label}.jsonl"
+    if result.is_file() and result.with_suffix(".summary.json").is_file():
+        if len(result.read_text().splitlines()) == 231:
+            return {"label": label, "summary": json.loads(result.with_suffix(".summary.json").read_text())}
     environment = os.environ.copy()
     environment["CUDA_VISIBLE_DEVICES"] = str(gpu)
     port = 32100 + gpu
@@ -98,7 +105,7 @@ def main(args: Args) -> None:
     def checkpoint(gpu: int, step: int) -> dict:
         name = f"iter_{step - 1:07d}-hf"
         print(f"STAGING step{step}", flush=True)
-        model = stage(args.archive / name, args.output / "models" / name)
+        model = stage(args.archive / name, args.output / "models" / name, args.source_endpoint)
         print(f"STAGED step{step}", flush=True)
         return run_model(args, f"step{step}", gpu, model)
     with ThreadPoolExecutor(max_workers=5) as pool:
