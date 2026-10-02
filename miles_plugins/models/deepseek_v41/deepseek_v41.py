@@ -25,7 +25,7 @@ from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.transformer.transformer_layer import HyperConnectionTransformerLayer, get_transformer_layer_offset
 from megatron.core.transformer.utils import make_sharded_tensors_for_checkpoint
 
-from miles.utils.hf_config import load_hf_config
+from miles.utils.hf_utils.config import load_hf_config
 from miles_plugins.models.deepseek_v41.engram import DeepSeekV41Engram
 from miles_plugins.models.deepseek_v41.ops import hc_mix
 from miles_plugins.models.deepseek_v41.ops.compressor import DeepSeekV41Compressor
