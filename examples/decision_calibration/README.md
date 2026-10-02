@@ -160,3 +160,5 @@ Future JSON-report runs log rollout/probability_collapse_pct (0-100): valid repo
 Train: 8,192 questions (7,117 MMLU-Pro, 256 GPQA, 819 synthetic). Validation: 1,184 (1,024 MMLU-Pro, 64 GPQA, 96 synthetic). Test: 2,368 (2,048 MMLU-Pro, 128 GPQA, 192 synthetic). MMLU-Pro is subject-stratified across all 14 categories and deduplicated by normalized question text before splitting. Source revision and file hashes are saved in the manifest.
 
 JSON reports support each question's actual option count, up to ten, with keys A through the final option. Use probability-report mode; the original four-option decision-token rollout is incompatible. Prepared prompts contain the scoring instruction, and prompt conversion is idempotent.
+
+For ten-option MMLU-Pro reports, pass --report-max-response-len 512 to avoid truncating formatted JSON. This sets both training and validation response budgets.

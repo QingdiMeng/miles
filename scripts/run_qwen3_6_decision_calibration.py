@@ -49,6 +49,7 @@ class ScriptArgs(U.ExecuteTrainConfig):
     node_order: str | None = None
     wandb_team: str | None = None
     probability_report: bool = False
+    report_max_response_len: int = 128
     routing_replay: bool = False
 
     @property
@@ -77,6 +78,7 @@ class CLI(Tap):
     node_order: str | None = ScriptArgs.node_order
     wandb_team: str | None = ScriptArgs.wandb_team
     probability_report: bool = ScriptArgs.probability_report
+    report_max_response_len: int = ScriptArgs.report_max_response_len
     routing_replay: bool = ScriptArgs.routing_replay
 
 
@@ -152,11 +154,11 @@ def _train_args(args: ScriptArgs) -> str:
         --observe-training-entropy --use-rollout-entropy --use-prometheus
     """
     if args.probability_report:
-        rollout = rollout.replace("--rollout-max-response-len 1", "--rollout-max-response-len 128")
+        rollout = rollout.replace("--rollout-max-response-len 1", f"--rollout-max-response-len {args.report_max_response_len}")
         rollout = rollout.replace("examples.decision_calibration.rollout.", "examples.decision_calibration.report_rollout.")
         algorithm = "--loss-type policy_loss --advantage-estimator grpo --entropy-coef 0 --kl-coef 0 --mtp-num-layers 0"
         misc += " --custom-rollout-log-function-path examples.decision_calibration.report_logging.log_rollouts --custom-eval-rollout-log-function-path examples.decision_calibration.report_logging.log_evaluation"
-        evaluation = evaluation.replace("--eval-max-response-len 1", "--eval-max-response-len 128")
+        evaluation = evaluation.replace("--eval-max-response-len 1", f"--eval-max-response-len {args.report_max_response_len}")
     if args.routing_replay:
         algorithm += " --use-rollout-routing-replay"
     return " ".join(shlex.join(shlex.split(block)) for block in (checkpoint, rollout, algorithm, optimizer, performance, sglang, evaluation, misc, _wandb_args(args)))
