@@ -11,12 +11,15 @@ class Args(Tap):
     benchmark: Path
     results: Path
     bootstrap: int = 10000
+    labels: list[str] = ["baseline", "step128", "step256", "step384", "step512"]
 
 
 def compare(args: Args) -> dict:
     tasks = {r["id"]: r for path in (args.benchmark / "datasets/public").glob("*.jsonl")
              for line in path.read_text().splitlines() for r in [json.loads(line)]}
-    labels = ("baseline", "step128", "step256", "step384", "step512")
+    labels = args.labels
+    if "baseline" not in labels or len(labels) != len(set(labels)):
+        raise ValueError("Labels must be unique and include baseline")
     predictions = {label: {r["id"]: r for line in (args.results / f"{label}.jsonl").read_text().splitlines()
                           for r in [json.loads(line)]}
                    for label in labels}

@@ -205,3 +205,5 @@ terminates its own servers after evaluation and preserves per-question results.
 `compare_jevbench.py` checks identical question IDs across models and reports
 paired bootstrap intervals for Brier changes. It also measures squared error
 against exact `gold_probs` on the ten public questions that provide them.
+
+To compare a subset of checkpoints, pass `--labels baseline step128 step256 step384` to `compare_jevbench.py`. The baseline must be included.
