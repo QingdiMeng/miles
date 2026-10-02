@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from miles.backends.fsdp_utils.adaptations import routing_replay
 from miles.backends.fsdp_utils.config import FsdpArgsNamespace
+from miles.backends.megatron_utils.checkpoint_request import MegatronCheckpointLoad
 from miles.backends.megatron_utils.ft.types import TrainStepOutcome, TrainStepOutput
 from miles.backends.training_utils.ci_utils import check_grad_norm
 from miles.backends.training_utils.data import DataIterator, get_batch, get_data_iterator, get_rollout_data
@@ -65,12 +66,14 @@ class FSDPTrainRayActor(TrainRayActor):
         args: Pickled,
         role: str,
         *,
+        checkpoint_load: MegatronCheckpointLoad | None = None,
         with_ref: bool = False,
         with_opd_teacher: bool = False,
         recv_ckpt_src_rank: int | None = None,
         indep_dp_info: IndepDPInfo,
         indep_dp_store_addr: str | None,
     ) -> int | None:  # type: ignore[override]
+        assert checkpoint_load is None
         assert isinstance(args.backend, FsdpArgsNamespace)
         super()._init_common(args, role, with_ref, with_opd_teacher=with_opd_teacher)
 
