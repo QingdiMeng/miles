@@ -447,13 +447,6 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
                 ),
             )
             parser.add_argument(
-                "--indexer-topk-backend",
-                type=str,
-                choices=["torch", "flashinfer"],
-                default="torch",
-                help="Top-k backend for every sparse-attention indexer (GLM-5/V3.2, GLM-5.3, DeepSeek-V4, Qwen3.8 QSA).",
-            )
-            parser.add_argument(
                 "--true-on-policy-mode",
                 action="store_true",
                 default=False,
@@ -2477,8 +2470,10 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
             This is a placeholder for any additional arguments that might be needed.
             """
             from miles_plugins.models.deepseek_v4.arguments import add_dsv4_arguments
+            from miles_plugins.models.glm5.arguments import add_dsa_arguments
 
             add_dsv4_arguments(parser)
+            add_dsa_arguments(parser)
             parser.add_argument(
                 "--custom-megatron-init-path",
                 type=str,
