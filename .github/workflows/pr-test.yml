@@ -1,13 +1,18 @@
 name: Checkpoint Cache CPU Validation
 on:
   workflow_dispatch:
+    inputs:
+      source_ref:
+        type: string
+        required: true
+        default: yueming/checkpoint-cache-guard
 permissions:
   contents: read
 jobs:
   checkpoint-cache:
     uses: ./.github/workflows/_run-cpu-ci.yml
     with:
-      ref: yueming/checkpoint-cache-guard
+      ref: ${{ inputs.source_ref }}
       plan_already_resolved: true
       execute_command: >-
         pytest tests/fast/utils/external_utils/command_utils
