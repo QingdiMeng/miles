@@ -122,3 +122,5 @@ For an infrastructure-provided object-store mount, pass its filesystem path to
 credentials and sequential writes without relying on unsupported filesystem
 renames. Native metadata is copied into place and COMPLETE.json remains the
 publication boundary; exports are staged locally, verified, then removed.
+The distributed timeout defaults to one hour to accommodate checkpoint upload
+barriers; use --distributed-timeout-seconds to change it.

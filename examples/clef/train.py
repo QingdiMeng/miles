@@ -15,6 +15,7 @@ import os
 import random
 import time
 from collections import defaultdict
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,7 @@ class Args(Tap):
     wandb_project: str = ""
     wandb_entity: str = ""
     prometheus_port: int = 9090
+    distributed_timeout_seconds: int = 3600
 
     def process_args(self) -> None:
         if not 0 <= self.multi_field_fraction <= 1:
@@ -64,6 +66,8 @@ class Args(Tap):
             raise ValueError("batch, length, epoch, and interval values must be positive")
         if self.head_warmup_steps < 0 or min(self.backbone_lr, self.head_lr, self.max_grad_norm) <= 0 or self.weight_decay < 0:
             raise ValueError("invalid optimizer or warmup configuration")
+        if self.distributed_timeout_seconds <= 0:
+            raise ValueError("distributed timeout must be positive")
 
 
 def _gather_rows(rows: list[dict]) -> list[dict]:
@@ -218,7 +222,7 @@ def _prepare(args: Args) -> tuple[list[DecisionExample], list[DecisionExample], 
 def main() -> None:
     args = Args(underscores_to_dashes=True).parse_args()
     torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
-    dist.init_process_group("nccl")
+    dist.init_process_group("nccl", timeout=timedelta(seconds=args.distributed_timeout_seconds))
     device = torch.device("cuda", torch.cuda.current_device())
     torch.manual_seed(args.seed)
     train, validation, config = _prepare(args)

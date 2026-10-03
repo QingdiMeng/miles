@@ -58,6 +58,7 @@ def save_s3_checkpoint(
             relative = path.relative_to(staging).as_posix()
             with path.open("rb") as reader:
                 digest = hashlib.file_digest(reader, "sha256").hexdigest()
+            fs.makedirs((key + "/" + relative).rsplit("/", 1)[0], exist_ok=True)
             fs.put_file(str(path), key + "/" + relative)
             size = path.stat().st_size
             if fs.info(key + "/" + relative)["size"] != size:
