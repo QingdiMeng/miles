@@ -1,9 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
-import typer
-
 import miles.utils.external_utils.command_utils as U
+import typer
 
 app = typer.Typer()
 
@@ -280,9 +279,7 @@ def _train(args: ScriptArgs):
         "SGLANG_ENABLE_DSV41_ENGRAM_HOST_TABLE": "1" if args.sglang_engram_host_table else "0",
         # the shared layout passes a memfd through /proc, which cannot cross a
         # node boundary; engines wider than a node need the per-rank slices
-        "SGLANG_DSV41_ENGRAM_HOST_TABLE_LAYOUT": (
-            "per_rank" if engine_gpus > args.num_gpus_per_node else "shared"
-        ),
+        "SGLANG_DSV41_ENGRAM_HOST_TABLE_LAYOUT": ("per_rank" if engine_gpus > args.num_gpus_per_node else "shared"),
         "TORCHINDUCTOR_COMPILE_THREADS": "1",
         "PYTHONFAULTHANDLER": "1",
         "CUDA_DEVICE_MAX_CONNECTIONS": "1",

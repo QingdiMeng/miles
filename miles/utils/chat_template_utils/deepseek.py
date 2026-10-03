@@ -16,10 +16,9 @@ import json
 import os
 from typing import Any, Callable
 
+from miles.utils.chat_template_utils.templates import encoding_dsv32
 from sglang.srt.entrypoints.openai import chat_encoding, encoding_dsv4, encoding_dsv41
 from sglang.srt.entrypoints.openai.protocol import Tool
-
-from miles.utils.chat_template_utils.templates import encoding_dsv32
 
 _ASSISTANT_SP_TOKEN = "<｜Assistant｜>"
 

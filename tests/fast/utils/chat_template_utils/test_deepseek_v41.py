@@ -13,15 +13,14 @@ register_cpu_ci(est_time=25, suite="stage-a-cpu", labels=[])
 import json
 
 import pytest
-from sglang.srt.entrypoints.openai import chat_encoding, encoding_dsv4, encoding_dsv41
-from sglang.srt.entrypoints.openai.protocol import Tool
-
 from miles.utils.chat_template_utils import apply_chat_template, deepseek
 from miles.utils.chat_template_utils.tito_tokenizer import (
     DeepSeekV4TITOTokenizer,
     DeepSeekV41TITOTokenizer,
     TITOTokenizerType,
 )
+from sglang.srt.entrypoints.openai import chat_encoding, encoding_dsv4, encoding_dsv41
+from sglang.srt.entrypoints.openai.protocol import Tool
 
 _MSGS = {
     "no_system": [{"role": "user", "content": "Hello"}],
@@ -36,9 +35,7 @@ _MSGS = {
         {
             "role": "assistant",
             "content": "",
-            "tool_calls": [
-                {"type": "function", "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'}}
-            ],
+            "tool_calls": [{"type": "function", "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'}}],
         },
         {"role": "tool", "content": "sunny", "tool_call_id": "call_0"},
     ],
