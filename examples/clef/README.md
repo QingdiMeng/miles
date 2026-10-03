@@ -1,0 +1,109 @@
+# Clef-style calibration training
+
+This experimental Miles example attaches a freshly initialized Cloudflare Clef
+joint schema head to original Qwen3.8-27B weights. It first trains the head with
+the text backbone frozen, then fine-tunes the full text backbone and head. It
+does not use LoRA, autoregressive probability reports, or generated reasoning.
+The vision encoder is preserved but frozen and unused by this text-only pilot.
+
+The head and record encoder are adapted from
+[Cloudflare/clef](https://huggingface.co/Cloudflare/clef), revision
+`2f3de3dd85f379784083b0814d997ab627200f0c`, under Apache-2.0. The architecture
+and input encoding are unchanged. Its three scalar parameters are represented
+as length-one parameters for FSDP2 and restored to scalars in serving exports.
+The original head uses a 1024-wide representation, two evidence-routing layers,
+four joint decoder layers, 16 heads, and a 4096-wide feedforward block.
+
+## Data and objective
+
+The data directory must contain `train.jsonl` and `validation.jsonl` in the
+calibration format: `prompt` and `metadata` with `id`, `source`, `choices`, and
+`target`. The adapter removes the old JSON-report instruction and turns each
+question into a state plus a typed choice schema. It validates finite,
+nonnegative normalized targets, unique IDs, and disjoint train/validation IDs.
+Oversized records are rejected; no prompt is silently truncated.
+
+The loss is differentiable Brier loss on the softmax of the head's option
+logits. Synthetic examples retain their exact outcome distributions. Choices
+are shuffled and relabeled together with their target probabilities at every
+training visit. By default, 25% of records add a yes/no field asking whether a
+random candidate is the answer/outcome. Its target is the corresponding
+marginal probability, so this supplies consistent multi-field supervision
+without leaking labels into the prompt. Fields are averaged within a record;
+records receive equal weight.
+
+Keep final benchmark questions out of both training and validation. This
+example never loads benchmark data during training. Validation is deterministic;
+there are no sampling-temperature or GRPO-group parameters for this supervised
+phase. Interaction RL, if needed later, requires a separate action reward.
+
+## Distributed execution
+
+Use a uv environment with CUDA PyTorch and install the dependencies in
+`examples/clef/requirements.txt`. The entrypoint is launched directly with
+`torchrun`; it reuses Miles FSDP precision and checkpoint utilities and native
+dashboard telemetry, rather than its token-level RL actor. Both nodes are
+trainers. Output storage must be visible to every distributed rank.
+
+Example, issued on each of two nodes with its corresponding node rank:
+
+```text
+torchrun --nnodes=2 --nproc-per-node=8 --node-rank=<0-or-1> \
+  --master-addr=<rank-zero-address> --master-port=29550 \
+  -m examples.clef.train \
+  --model-dir /models/Qwen3.8-27B \
+  --data-dir /data/calibration \
+  --output-dir /scratch/shared/clef/run \
+  --run-name <dated-run-name> \
+  --global-batch-size 64 --micro-batch-size 1 \
+  --head-warmup-steps 128 --epochs 2 \
+  --backbone-lr 3e-7 --head-lr 1e-5 \
+  --save-interval 128 --eval-interval 32 \
+  --wandb-project <project> --wandb-entity <entity>
+```
+
+With 16,384 examples, the joint phase has 256 updates per epoch, hence 512
+updates for two epochs plus 128 head-warmup updates, for 640 updates total.
+Warmup visits 8,192 shuffled examples before the two complete joint epochs.
+Each of 16 ranks handles one record per microbatch and accumulates four
+microbatches. Learning rates are constant within each phase, gradient norm is
+clipped at 1, weight decay is zero, and FP32 master weights/Adam states preserve
+small updates while FSDP2 computes in BF16 with FP32 gradient reduction.
+
+The default maximum input length is 65,536 tokens; actual memory limits must
+be established by preflight before a full run. Every process temporarily
+loads the full model before sharding, so host/GPU initialization memory must
+also be checked. There is no separate rollout context or generation budget.
+
+## Artifacts and monitoring
+
+Every 128 updates and at the final update, `checkpoints/step_<number>` contains
+a native sharded model/optimizer checkpoint and `hf/` containing backbone
+safetensors, the processor, `joint_head.safetensors`, configuration and loader.
+Only checkpoints containing `COMPLETE.json` are eligible for evaluation or
+resumption. `latest.json` is published atomically after all ranks finish saving.
+Resume with `--resume <complete-checkpoint-directory>` and the original
+configuration; incompatible data/optimizer/training settings are rejected.
+
+Validation saves every probability vector and logs overall/per-source Brier,
+single-answer accuracy, ECE, confidently wrong answers, exact probability-1
+collapse and near-collapse. ECE and accuracy only use one-hot targets; soft
+synthetic targets use Brier. These metrics are also logged on each training
+batch, alongside loss, gradient norm, learning rates and step time.
+
+W&B is enabled by passing its project. A Prometheus endpoint exposes
+`miles_metric_*` gauges on port 9090; use `--prometheus-port` if needed. Native
+Miles dashboard streams are written under the output directory. Serve them with:
+
+```text
+python -m miles.dashboard.serve --dump-details <output-directory> --follow --port 7788
+```
+
+Per-rank JSONL traces preserve exact input token IDs, targets, predicted
+distributions and option mappings. Unlike a generative rollout, these contain
+no response tokens or reasoning. The dashboard metrics work with these native
+streams; its token-generation rollout viewer is not applicable to this example.
+
+For text serving, `load_release_model` and `systemone` in the exported
+`joint_schema_model.py` produce probabilities directly in one prefill pass.
+Standard SGLang chat serving does not execute this custom schema head.

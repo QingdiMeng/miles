@@ -1,0 +1,64 @@
+"""Resumable FSDP2 checkpoints and release-compatible backbone/head exports."""
+
+import json
+import shutil
+from pathlib import Path
+from typing import Any
+
+import torch
+import torch.distributed as dist
+import torch.distributed.checkpoint as dcp
+from safetensors.torch import save_file
+from torch.distributed.checkpoint.state_dict import StateDictOptions, get_model_state_dict
+
+from examples.clef.model import TrainableClefModel
+from miles.backends.fsdp_utils.checkpoint import ModelState, OptimizerState
+
+
+def save_checkpoint(
+    model: TrainableClefModel,
+    optimizer: torch.optim.Optimizer,
+    output_dir: Path,
+    step: int,
+    metadata: dict[str, Any],
+    processor: Any,
+    head_config: dict[str, int],
+) -> None:
+    root = output_dir / "checkpoints" / f"step_{step:07d}"
+    if dist.get_rank() == 0:
+        root.mkdir(parents=True, exist_ok=False)
+    dist.barrier()
+    dcp.save({"model": ModelState(model), "optimizer": OptimizerState(model, optimizer)}, checkpoint_id=root / "native")
+    # Gather onto rank-zero CPU; no rank gathers a full FP32 model onto its GPU.
+    state = get_model_state_dict(model, options=StateDictOptions(full_state_dict=True, cpu_offload=True))
+    if dist.get_rank() == 0:
+        export = root / "hf"
+        backbone = {
+            key.removeprefix("language_model."): value.to(torch.bfloat16)
+            for key, value in state.items() if key.startswith("language_model.")
+        }
+        model.language_model.save_pretrained(export, state_dict=backbone, max_shard_size="5GB")
+        processor.save_pretrained(export)
+        head = {key.removeprefix("head."): value.to(torch.bfloat16).contiguous() for key, value in state.items() if key.startswith("head.")}
+        for name in ("prior_logit_scale", "joint_logit_scale", "residual_gate"):
+            head[name] = head[name].reshape(())
+        save_file(head, export / "joint_head.safetensors")
+        (export / "joint_head_config.json").write_text(json.dumps(head_config, indent=2))
+        shutil.copyfile(Path(__file__).with_name("joint_schema_model.py"), export / "joint_schema_model.py")
+        (root / "metadata.json").write_text(json.dumps({"step": step, **metadata}, indent=2))
+    del state
+    dist.barrier()
+    if dist.get_rank() == 0:
+        (root / "COMPLETE.json").write_text(json.dumps({"step": step, "world_size": dist.get_world_size()}))
+        tracker = output_dir / "checkpoints" / "latest.json"
+        temporary = tracker.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"step": step, "path": str(root)}))
+        temporary.replace(tracker)
+    dist.barrier()
+
+
+def load_checkpoint(model: TrainableClefModel, optimizer: torch.optim.Optimizer, path: Path) -> dict[str, Any]:
+    if not (path / "COMPLETE.json").is_file():
+        raise ValueError(f"checkpoint is incomplete: {path}")
+    dcp.load({"model": ModelState(model), "optimizer": OptimizerState(model, optimizer)}, checkpoint_id=path / "native")
+    return json.loads((path / "metadata.json").read_text())
