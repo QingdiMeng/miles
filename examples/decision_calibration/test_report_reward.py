@@ -3,7 +3,7 @@
 import json
 import unittest
 
-from examples.decision_calibration.report_reward import LEGACY_REPORT_INSTRUCTION, parse_report, report_messages, score_report
+from examples.decision_calibration.report_reward import LEGACY_REPORT_INSTRUCTION, PREVIOUS_REPORT_INSTRUCTION, parse_report, report_messages, score_report
 
 
 class ReportTests(unittest.TestCase):
@@ -55,6 +55,11 @@ class ReportTests(unittest.TestCase):
             upgraded = report_messages(messages, count)
             self.assertNotIn("exactly the keys", upgraded[0]["content"])
             self.assertIn("Omitted options have probability zero", upgraded[0]["content"])
+            self.assertNotIn("Brier", upgraded[0]["content"])
+            self.assertNotIn("-sum_i", upgraded[0]["content"])
+            self.assertIn("If there is only one correct answer,", upgraded[0]["content"])
+            sparse = PREVIOUS_REPORT_INSTRUCTION.replace('"A", "B", "C", "D"', keys)
+            self.assertEqual(report_messages([{"role": "user", "content": "Question\n\n" + sparse}], count), upgraded)
             self.assertEqual(report_messages(upgraded, count), upgraded)
             self.assertEqual(messages[0]["content"], "Question\n\n" + old)
 

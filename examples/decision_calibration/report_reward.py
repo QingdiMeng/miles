@@ -6,10 +6,13 @@ from collections.abc import Sequence
 
 LETTERS = ("A", "B", "C", "D")
 LEGACY_REPORT_INSTRUCTION = 'Your final answer will be assessed by how close your reported probabilities are to the actual ground-truth answer distribution, using negative Brier loss: -sum_i (p_i - t_i)^2. Higher scores are better. For single-correct-answer questions, the target assigns probability 1 to the correct option and 0 to the others. For random-outcome questions, the target is the true outcome distribution. Report your uncertainty honestly: putting probability 1 on an incorrect option is penalized more than spreading probability across plausible options. Report your probability for each option as a JSON object with exactly the keys "A", "B", "C", "D". Use numbers between 0 and 1 that sum to 1. Output only JSON, without explanation or Markdown.'
-REPORT_INSTRUCTION = LEGACY_REPORT_INSTRUCTION.replace(
+PREVIOUS_REPORT_INSTRUCTION = LEGACY_REPORT_INSTRUCTION.replace(
     'Report your probability for each option as a JSON object with exactly the keys "A", "B", "C", "D". Use numbers between 0 and 1 that sum to 1.',
     'Report your probabilities as a JSON object using only option keys "A", "B", "C", "D". Omitted options have probability zero. Use finite nonnegative numbers with a positive total; we normalize them to sum to 1 before scoring. Negative values are invalid.',
 )
+REPORT_INSTRUCTION = PREVIOUS_REPORT_INSTRUCTION.replace(
+    ', using negative Brier loss: -sum_i (p_i - t_i)^2', '',
+).replace('For single-correct-answer questions,', 'If there is only one correct answer,')
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict:
@@ -70,8 +73,8 @@ def report_messages(messages: list[dict], option_count: int = 4) -> list[dict]:
     for suffix in ("Choose one option. Output only its letter (A, B, C, or D).", "Choose one option as your guess. Output only its letter (A, B, C, or D)."):
         text = text.removesuffix(suffix).rstrip()
     keys = ", ".join(json.dumps(chr(65 + i)) for i in range(option_count))
-    legacy = LEGACY_REPORT_INSTRUCTION.replace('"A", "B", "C", "D"', keys)
-    text = text.removesuffix(legacy).rstrip()
+    for previous in (LEGACY_REPORT_INSTRUCTION, PREVIOUS_REPORT_INSTRUCTION):
+        text = text.removesuffix(previous.replace('"A", "B", "C", "D"', keys)).rstrip()
     instruction = REPORT_INSTRUCTION.replace('"A", "B", "C", "D"', keys)
     result[-1]["content"] = text if text.endswith(instruction) else text + "\n\n" + instruction
     return result
