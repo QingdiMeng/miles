@@ -628,7 +628,9 @@ async def test_checkpoint_meta_stores_a_digest_not_the_credential(service):
     assert (info["train_attn"], info["train_mlp"], info["train_unembed"]) == (True, True, False)
 
 
-@pytest.mark.parametrize("field,value", [("lora_alpha", 99), ("lora_type", "canonical_lora"), ("experts_shared_outer_loras", True)])
+@pytest.mark.parametrize(
+    "field,value", [("lora_alpha", 99), ("lora_type", "canonical_lora"), ("experts_shared_outer_loras", True)]
+)
 async def test_a_checkpoint_saved_under_other_settings_does_not_load(service, field, value):
     import json
     import os
