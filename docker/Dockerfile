@@ -111,8 +111,10 @@ RUN pip install -v --no-deps --no-build-isolation "git+https://github.com/QwenLM
 # the V4.1 plugin falls back to torch.topk on anything older. Its setup.py probes for a GPU with
 # lspci, which a build host does not have, hence pciutils and the explicit target.
 RUN apt-get update && apt-get install -y --no-install-recommends pciutils && rm -rf /var/lib/apt/lists/* && \
-    git clone --recursive --depth 1 https://github.com/deepseek-ai/DeepSelect.git /tmp/DeepSelect && \
-    cd /tmp/DeepSelect && git checkout 0f03b68748b304863fdf0181a11458d04ae533a9 && \
+    git init -q /tmp/DeepSelect && cd /tmp/DeepSelect && \
+    git remote add origin https://github.com/deepseek-ai/DeepSelect.git && \
+    git fetch --depth 1 origin 0f03b68748b304863fdf0181a11458d04ae533a9 && \
+    git checkout -q 0f03b68748b304863fdf0181a11458d04ae533a9 && \
     git submodule update --init --depth 1 csrc/3rdparty/cutlass && \
     DEEP_SELECT_BUILD_TARGET_PLATFORM=CUDA MAX_JOBS=${MAX_JOBS:-32} pip install --no-build-isolation . && \
     rm -rf /tmp/DeepSelect
