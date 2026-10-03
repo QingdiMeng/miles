@@ -109,3 +109,10 @@ streams; its token-generation rollout viewer is not applicable to this example.
 For text serving, `load_release_model` and `systemone` in the exported
 `joint_schema_model.py` produce probabilities directly in one prefill pass.
 Standard SGLang chat serving does not execute this custom schema head.
+
+S3 checkpoint storage is selected with --checkpoint-dir s3://bucket/prefix.
+Native distributed shards are streamed to S3; the serving export is staged on
+rank zero locally, uploaded with a SHA-256 manifest and size checks, and removed
+only after publication of COMPLETE.json. Object-store latest.json is published
+as a complete replacement object. Resumption accepts a complete S3 checkpoint
+URI. This requires s3fs and uses the devbox credential chain.

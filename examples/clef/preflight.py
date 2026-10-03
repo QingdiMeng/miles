@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+import fsspec
 import torch
 import torch.distributed as dist
 from tap import Tap
@@ -23,6 +24,7 @@ class Args(Tap):
     model_dir: str
     output_dir: str
     real_model: bool = False
+    checkpoint_dir: str = ""
 
 
 def _tiny_model(device: torch.device) -> tuple[TrainableClefModel, dict[str, int], LabeledRecord]:
@@ -88,7 +90,7 @@ def _check_gradients(model: TrainableClefModel, label: LabeledRecord, device: to
 
 
 def _checkpoint_probe(
-    model: TrainableClefModel, head_config: dict[str, int], label: LabeledRecord, processor: Any, output: Path, device: torch.device,
+    model: TrainableClefModel, head_config: dict[str, int], label: LabeledRecord, processor: Any, output: Path, device: torch.device, checkpoint_dir: str,
 ) -> dict[str, float]:
     # A tiny randomly initialized model is a unit-test fixture, not a training run.
     optimizer = _build_optimizer(model, TrainArgs().from_dict({"model_dir": "fixture", "data_dir": "fixture", "output_dir": "fixture", "run_name": "fixture"}))
@@ -96,8 +98,8 @@ def _checkpoint_probe(
     batch = collate_records([label.encoded], pad_token_id=0, device=device)
     with torch.no_grad():
         expected = model(batch)[0][0].float().softmax(-1)
-    save_checkpoint(model, optimizer, output, 0, {"config": {}}, processor, head_config)
-    root = output / "checkpoints" / "step_0000000"
+    save_checkpoint(model, optimizer, output, 0, {"config": {}}, processor, head_config, checkpoint_root=checkpoint_dir or None)
+    root = checkpoint_dir.rstrip("/") + "/step_0000000" if checkpoint_dir else output / "checkpoints" / "step_0000000"
     # Changing the head tests actual DCP restoration rather than loading untouched weights.
     with torch.no_grad():
         for parameter in model.head.parameters():
@@ -113,7 +115,11 @@ def _checkpoint_probe(
         raise AssertionError("checkpoint did not restore optimizer moments")
     result = {"native_restore_max_error": (expected - restored).abs().max().item()}
     if dist.get_rank() == 0:
-        serving, _ = load_release_model(root / "hf", device=device)
+        export = output / "downloaded-hf" if checkpoint_dir.startswith("s3://") else Path(root) / "hf"
+        if checkpoint_dir.startswith("s3://"):
+            fs, key = fsspec.core.url_to_fs(str(root) + "/hf")
+            fs.get(key, str(export), recursive=True)
+        serving, _ = load_release_model(export, device=device)
         with torch.no_grad():
             exported = serving(batch)[0][0].float().softmax(-1)
         torch.testing.assert_close(expected, exported, atol=0.005, rtol=0.005)
@@ -134,7 +140,7 @@ def main() -> None:
     result = {"real_backbone": args.real_model, "world_size": dist.get_world_size(), "gradients": _check_gradients(model, label, device)}
     output = Path(args.output_dir)
     if not args.real_model:
-        result.update(_checkpoint_probe(model, head_config, label, processor, output, device))
+        result.update(_checkpoint_probe(model, head_config, label, processor, output, device, args.checkpoint_dir))
     result["peak_memory_bytes"] = torch.cuda.max_memory_allocated(device)
     if dist.get_rank() == 0:
         output.mkdir(parents=True, exist_ok=True)

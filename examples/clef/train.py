@@ -227,7 +227,7 @@ def main() -> None:
     optimizer = _build_optimizer(model, args)
     start = 0
     if args.resume:
-        saved = load_checkpoint(model, optimizer, Path(args.resume))
+        saved = load_checkpoint(model, optimizer, args.resume)
         for key, value in saved["config"].items():
             if key not in {"resume", "output_dir", "run_name", "wandb_project", "wandb_entity", "prometheus_port"} and config[key] != value:
                 raise ValueError(f"resume configuration mismatch: {key}")
@@ -264,7 +264,7 @@ def _run(
                 telemetry.log(metrics, completed)
             if completed % args.save_interval == 0 or completed == config["total_steps"]:
                 save_checkpoint(model, optimizer, output, completed, {"config": config}, processor, head_config,
-                                checkpoint_root=Path(args.checkpoint_dir) if args.checkpoint_dir else None)
+                                checkpoint_root=args.checkpoint_dir or None)
 
 
 if __name__ == "__main__":
