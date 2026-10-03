@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
-import miles.utils.external_utils.command_utils as U
 import typer
+
+import miles.utils.external_utils.command_utils as U
 
 app = typer.Typer()
 

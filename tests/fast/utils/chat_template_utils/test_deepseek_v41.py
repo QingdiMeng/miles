@@ -13,14 +13,15 @@ register_cpu_ci(est_time=25, suite="stage-a-cpu", labels=[])
 import json
 
 import pytest
+from sglang.srt.entrypoints.openai import chat_encoding, encoding_dsv4, encoding_dsv41
+from sglang.srt.entrypoints.openai.protocol import Tool
+
 from miles.utils.chat_template_utils import apply_chat_template, deepseek
 from miles.utils.chat_template_utils.tito_tokenizer import (
     DeepSeekV4TITOTokenizer,
     DeepSeekV41TITOTokenizer,
     TITOTokenizerType,
 )
-from sglang.srt.entrypoints.openai import chat_encoding, encoding_dsv4, encoding_dsv41
-from sglang.srt.entrypoints.openai.protocol import Tool
 
 _MSGS = {
     "no_system": [{"role": "user", "content": "Hello"}],
@@ -35,7 +36,9 @@ _MSGS = {
         {
             "role": "assistant",
             "content": "",
-            "tool_calls": [{"type": "function", "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'}}],
+            "tool_calls": [
+                {"type": "function", "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'}}
+            ],
         },
         {"role": "tool", "content": "sunny", "tool_call_id": "call_0"},
     ],
@@ -111,9 +114,9 @@ def test_generation_prompt_strip_is_exact_prefix(scenario):
 
 def test_reasoning_effort_env_default_and_request_override(monkeypatch):
     monkeypatch.setenv("SGLANG_DSV41_REASONING_EFFORT", "max")
-    assert deepseek.V41.render_messages(_MSGS["no_system"], thinking_mode="thinking") == encoding_dsv41.encode_messages(
-        _MSGS["no_system"], thinking_mode="thinking", reasoning_effort="max"
-    )
+    assert deepseek.V41.render_messages(
+        _MSGS["no_system"], thinking_mode="thinking"
+    ) == encoding_dsv41.encode_messages(_MSGS["no_system"], thinking_mode="thinking", reasoning_effort="max")
     assert deepseek.V41.render_messages(
         _MSGS["no_system"], thinking_mode="thinking", reasoning_effort=0.3
     ) == encoding_dsv41.encode_messages(_MSGS["no_system"], thinking_mode="thinking", reasoning_effort=30)

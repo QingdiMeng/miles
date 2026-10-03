@@ -135,7 +135,9 @@ class TITOTokenizer:
             self.apply_fixed_template_kwargs,
         ]
 
-    def resolve_request_args(self, request_args: dict[str, Any], *, turn_args: dict[str, Any] | None) -> dict[str, Any]:
+    def resolve_request_args(
+        self, request_args: dict[str, Any], *, turn_args: dict[str, Any] | None
+    ) -> dict[str, Any]:
         """Apply model rules in place and return the same full request.
 
         Rules read request_source, turn_args and launch kwargs without modifying
@@ -295,7 +297,9 @@ class TITOTokenizer:
         When *add_generation_prompt* is True and *appended_messages* is empty,
         this computes the generation-prompt suffix (the assistant opener tokens).
         """
-        text_without = self.apply_chat_template(base_messages, add_generation_prompt=False, template_args=template_args)
+        text_without = self.apply_chat_template(
+            base_messages, add_generation_prompt=False, template_args=template_args
+        )
         text_with = self.apply_chat_template(
             base_messages + appended_messages,
             add_generation_prompt=add_generation_prompt,
@@ -1051,7 +1055,9 @@ class InklingTITOTokenizer(TITOTokenizer):
             if index >= len(stored_messages):
                 break
             stored_message = stored_messages[index]
-            if stored_message.get("role") != "assistant" or not strict_message_matches(stored_message, request_message):
+            if stored_message.get("role") != "assistant" or not strict_message_matches(
+                stored_message, request_message
+            ):
                 continue
             if "content_blocks" in stored_message:
                 preserved[index] = {**request_message, "content_blocks": stored_message["content_blocks"]}
