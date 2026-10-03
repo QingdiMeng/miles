@@ -191,9 +191,14 @@ def _conversion_code(tool, options, source, environment):
     if "text_config" in config:
         model_types.add(config["text_config"]["model_type"])
     for file in (root / "miles_plugins/mbridge").glob("*.py"):
-        if any(f'@register_model("{kind}")' in file.read_text() for kind in model_types):
-            paths.append(file)
-            model_types.add(file.stem)
+        for node in ast.walk(ast.parse(file.read_text())):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "register_model":
+                registered = ast.literal_eval(node.args[0])
+                registered = {registered} if isinstance(registered, str) else set(registered)
+                if model_types & registered:
+                    paths.append(file)
+                    model_types.add(file.stem)
+                    break
     for flag in ("--spec", "--custom-model-provider-path"):
         for value in options.get(flag, []):
             if value.startswith("miles_plugins.models."):

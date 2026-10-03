@@ -222,7 +222,8 @@ def test_hf_legacy_download_is_adopted_without_redownloading_weights(tmp_path, m
         cache.download_hf_checkpoint("org/model", local_dir=path)
 
 
-def test_kimi_layout_change_invalidates_only_relevant_model_code(tmp_path, monkeypatch):
+@pytest.mark.parametrize("registration", ['"kimi_k3"', '["kimi_k3", "kimi_alias"]'], ids=["single", "aliases"])
+def test_kimi_layout_change_invalidates_only_relevant_model_code(tmp_path, monkeypatch, registration):
     from types import SimpleNamespace
 
     root = tmp_path / "repo"
@@ -234,7 +235,7 @@ def test_kimi_layout_change_invalidates_only_relevant_model_code(tmp_path, monke
         "miles/backends/megatron_utils/model_provider.py": "",
         "miles/backends/megatron_utils/initialize.py": "",
         "miles/backends/megatron_utils/fp32_param_utils.py": "",
-        "miles_plugins/mbridge/kimi_k3.py": '@register_model("kimi_k3")\nclass Kimi: pass\n',
+        "miles_plugins/mbridge/kimi_k3.py": f"@register_model({registration})\nclass Kimi: pass\n",
         "miles_plugins/models/kimi_k3/model.py": 'state_key = "self_attention.q_proj.weight"\n',
     }
     for name, content in files.items():
