@@ -3,7 +3,7 @@ import os
 
 import pytest
 import requests
-from huggingface_hub import snapshot_download
+from miles.utils.external_utils.command_utils.checkpoint_cache import download_hf_checkpoint
 from tests.ci.ci_register import register_cuda_ci, register_rocm_ci
 from tests.e2e.sglang.utils.sglang_server import start_sglang_server
 from transformers import AutoTokenizer
@@ -22,7 +22,7 @@ LOGPROB_TOL = 1e-6
 
 def _prepare_model() -> None:
     if MODEL_PATH_OVERRIDE is None:
-        snapshot_download(DEFAULT_MODEL_ID, local_dir=DEFAULT_MODEL_PATH)
+        download_hf_checkpoint(DEFAULT_MODEL_ID, local_dir=DEFAULT_MODEL_PATH)
 
 
 @pytest.fixture(scope="module")

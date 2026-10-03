@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import requests
 import torch
-from huggingface_hub import snapshot_download
+from miles.utils.external_utils.command_utils.checkpoint_cache import download_hf_checkpoint
 from tests.ci.ci_register import register_cuda_ci
 from tests.e2e.sglang.utils.sglang_server import start_sglang_server
 
@@ -46,7 +46,7 @@ def sglang_server():
     assert torch.cuda.device_count() >= 2
     assert "H200" in torch.cuda.get_device_name(0)
     if _MODEL_PATH_OVERRIDE is None:
-        snapshot_download(_MODEL_ID, revision=_MODEL_REVISION, local_dir=_DEFAULT_MODEL_PATH)
+        download_hf_checkpoint(_MODEL_ID, revision=_MODEL_REVISION, local_dir=_DEFAULT_MODEL_PATH)
 
     server = start_sglang_server(
         model_path=_MODEL_PATH,

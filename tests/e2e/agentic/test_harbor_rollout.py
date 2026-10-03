@@ -46,6 +46,8 @@ import shutil
 import sys
 import urllib.request
 from pathlib import Path
+
+from miles.utils.external_utils.command_utils import checkpoint_cache
 from types import SimpleNamespace
 
 from tests.ci.ci_register import register_cuda_ci
@@ -125,7 +127,7 @@ def prepare():
     # a stale trial dir from a prior manual run must not vouch for this one
     shutil.rmtree(TRIALS_DIR, ignore_errors=True)
     U.exec_command_cpu("mkdir -p /root/models /root/datasets")
-    if not (Path(MODEL_DIR) / "config.json").is_file():
+    if checkpoint_cache.enabled() or not (Path(MODEL_DIR) / "config.json").is_file():
         U.exec_command_cpu(f"hf download {MODEL_REPO} --local-dir {MODEL_DIR}")
     if not (Path(TASKS_DIR) / SMOKE_TASK).is_dir():
         # clear any partial clone (an interrupted one leaves a non-empty dir git refuses)
