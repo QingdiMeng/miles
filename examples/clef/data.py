@@ -43,7 +43,7 @@ def convert_row(row: Mapping[str, Any]) -> DecisionExample:
         raise ValueError("choice/target length mismatch or unsupported option count")
     options = {chr(65 + index): choice for index, choice in enumerate(choices)}
     # Remove the old JSON-report instruction without guessing where a question ends.
-    option_block = "\n\n" + "\n".join(f"{key}. {text}" for key, text in options.items())
+    option_block = "\n\n" + "\n".join(f"{key}. {text}" for key, text in options.items()).rstrip()
     content = row["prompt"][0]["content"]
     if content.count(option_block) != 1:
         raise ValueError(f"cannot unambiguously extract question {metadata['id']}")

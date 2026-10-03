@@ -103,3 +103,12 @@ def test_head_option_permutation_and_normalization() -> None:
     torch.testing.assert_close(probabilities.sum(), torch.ones(()))
     decision_loss([[original]], [replace(label, targets=((0.7, 0.3),))]).backward()
     assert all(parameter.grad is not None and torch.isfinite(parameter.grad).all() for parameter in head.parameters())
+
+
+def test_conversion_preserves_trailing_choice_whitespace() -> None:
+    example = convert_row({
+        'prompt': [{'role': 'user', 'content': 'Question?\n\nA. First  \nB. Last\n\nOld reporting instructions.'}],
+        'metadata': {'id': 'trailing-space', 'source': 'gpqa', 'choices': ['First  ', 'Last  '], 'target': [1.0, 0.0]},
+    })
+    assert example.record['state'] == 'Question?'
+    assert example.record['questions']['answer']['criteria'] == {'A': 'First  ', 'B': 'Last  '}

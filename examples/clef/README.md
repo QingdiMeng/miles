@@ -43,7 +43,8 @@ Use a uv environment with CUDA PyTorch and install the dependencies in
 `examples/clef/requirements.txt`. The entrypoint is launched directly with
 `torchrun`; it reuses Miles FSDP precision and checkpoint utilities and native
 dashboard telemetry, rather than its token-level RL actor. Both nodes are
-trainers. Output storage must be visible to every distributed rank.
+trainers. Logs and traces may use node-local output storage. Checkpoint storage
+must be shared by every rank; set --checkpoint-dir for multi-node runs.
 
 Example, issued on each of two nodes with its corresponding node rank:
 
@@ -53,7 +54,8 @@ torchrun --nnodes=2 --nproc-per-node=8 --node-rank=<0-or-1> \
   -m examples.clef.train \
   --model-dir /models/Qwen3.8-27B \
   --data-dir /data/calibration \
-  --output-dir /scratch/shared/clef/run \
+  --output-dir /scratch/clef/run \
+  --checkpoint-dir /shared/checkpoints/clef/run \
   --run-name <dated-run-name> \
   --global-batch-size 64 --micro-batch-size 1 \
   --head-warmup-steps 128 --epochs 2 \

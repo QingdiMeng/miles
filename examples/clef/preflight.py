@@ -102,10 +102,15 @@ def _checkpoint_probe(
     with torch.no_grad():
         for parameter in model.head.parameters():
             parameter.add_(0.1)
+        for state in optimizer.state.values():
+            state["exp_avg"].fill_(0.2)
+            state["exp_avg_sq"].fill_(0.3)
     load_checkpoint(model, optimizer, root)
     with torch.no_grad():
         restored = model(batch)[0][0].float().softmax(-1)
     torch.testing.assert_close(expected, restored, atol=1e-6, rtol=1e-5)
+    if any(torch.count_nonzero(state["exp_avg"].to_local()) or torch.count_nonzero(state["exp_avg_sq"].to_local()) for state in optimizer.state.values()):
+        raise AssertionError("checkpoint did not restore optimizer moments")
     result = {"native_restore_max_error": (expected - restored).abs().max().item()}
     if dist.get_rank() == 0:
         serving, _ = load_release_model(root / "hf", device=device)

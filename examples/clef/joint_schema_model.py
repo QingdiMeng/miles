@@ -1,3 +1,5 @@
+# ruff: noqa: B007, B905
+# Preserve the published implementation's iteration style.
 # Adapted from Cloudflare/clef, Apache-2.0.
 # Upstream revision: 2f3de3dd85f379784083b0814d997ab627200f0c.
 # https://huggingface.co/Cloudflare/clef/blob/2f3de3dd85f379784083b0814d997ab627200f0c/joint_schema_model.py
