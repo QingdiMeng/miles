@@ -1028,10 +1028,15 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
             )
             parser.add_argument(
                 "--update-weight-transfer-mode",
-                choices=["broadcast", "p2p", "disk-delta"],
+                choices=["broadcast", "broadcast_packed", "p2p", "disk-delta"],
                 default="broadcast",
                 help=(
                     "The method to transfer weights to remote rollout engines during update weight. "
+                    "'broadcast' (default) broadcasts each tensor separately; 'broadcast_packed' "
+                    "packs each bucket into one byte broadcast. The packed mode requires Megatron "
+                    "non-colocated transfer and SGLang's mixed-dtype flattened-bucket API. It adds a "
+                    "contiguous bucket allocation on sender and receivers; atomic update units may "
+                    "exceed --update-weight-buffer-size. "
                     "'disk-delta' diffs each sync against a CPU snapshot of the previous one and publishes "
                     "only the changed bytes to --update-weight-disk-dir; each engine's /pull_weights applies "
                     "them into a host-local checkpoint that the engine reloads from."
@@ -3191,6 +3196,11 @@ def miles_validate_args(args):
                 logger.info(f"Warning: Argument {k} is already set to {getattr(args, k)}, will override with {v}.")
             setattr(args, k, v)
 
+    mode = args.update_weight_transfer_mode
+    if mode not in ("broadcast", "broadcast_packed", "p2p", "disk-delta"):
+        raise ValueError(f"Unknown --update-weight-transfer-mode {mode!r}")
+    if mode == "broadcast_packed" and (args.train_backend != "megatron" or args.colocate):
+        raise ValueError("broadcast_packed requires Megatron non-colocated weight transfer")
     validate_dashboard_args(args)
 
     args.ft_components = _resolve_ft_components(args)
