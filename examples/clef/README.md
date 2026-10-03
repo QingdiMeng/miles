@@ -116,3 +116,9 @@ rank zero locally, uploaded with a SHA-256 manifest and size checks, and removed
 only after publication of COMPLETE.json. Object-store latest.json is published
 as a complete replacement object. Resumption accepts a complete S3 checkpoint
 URI. This requires s3fs and uses the devbox credential chain.
+
+For an infrastructure-provided object-store mount, pass its filesystem path to
+--checkpoint-dir and add --checkpoint-object-store. This uses the mount's
+credentials and sequential writes without relying on unsupported filesystem
+renames. Native metadata is copied into place and COMPLETE.json remains the
+publication boundary; exports are staged locally, verified, then removed.

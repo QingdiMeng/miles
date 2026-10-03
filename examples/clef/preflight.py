@@ -25,6 +25,7 @@ class Args(Tap):
     output_dir: str
     real_model: bool = False
     checkpoint_dir: str = ""
+    checkpoint_object_store: bool = False
 
 
 def _tiny_model(device: torch.device) -> tuple[TrainableClefModel, dict[str, int], LabeledRecord]:
@@ -90,7 +91,7 @@ def _check_gradients(model: TrainableClefModel, label: LabeledRecord, device: to
 
 
 def _checkpoint_probe(
-    model: TrainableClefModel, head_config: dict[str, int], label: LabeledRecord, processor: Any, output: Path, device: torch.device, checkpoint_dir: str,
+    model: TrainableClefModel, head_config: dict[str, int], label: LabeledRecord, processor: Any, output: Path, device: torch.device, checkpoint_dir: str, object_store: bool,
 ) -> dict[str, float]:
     # A tiny randomly initialized model is a unit-test fixture, not a training run.
     optimizer = _build_optimizer(model, TrainArgs().from_dict({"model_dir": "fixture", "data_dir": "fixture", "output_dir": "fixture", "run_name": "fixture"}))
@@ -98,7 +99,7 @@ def _checkpoint_probe(
     batch = collate_records([label.encoded], pad_token_id=0, device=device)
     with torch.no_grad():
         expected = model(batch)[0][0].float().softmax(-1)
-    save_checkpoint(model, optimizer, output, 0, {"config": {}}, processor, head_config, checkpoint_root=checkpoint_dir or None)
+    save_checkpoint(model, optimizer, output, 0, {"config": {}}, processor, head_config, checkpoint_root=checkpoint_dir or None, object_store=object_store)
     root = checkpoint_dir.rstrip("/") + "/step_0000000" if checkpoint_dir else output / "checkpoints" / "step_0000000"
     # Changing the head tests actual DCP restoration rather than loading untouched weights.
     with torch.no_grad():
@@ -140,7 +141,7 @@ def main() -> None:
     result = {"real_backbone": args.real_model, "world_size": dist.get_world_size(), "gradients": _check_gradients(model, label, device)}
     output = Path(args.output_dir)
     if not args.real_model:
-        result.update(_checkpoint_probe(model, head_config, label, processor, output, device, args.checkpoint_dir))
+        result.update(_checkpoint_probe(model, head_config, label, processor, output, device, args.checkpoint_dir, args.checkpoint_object_store))
     result["peak_memory_bytes"] = torch.cuda.max_memory_allocated(device)
     if dist.get_rank() == 0:
         output.mkdir(parents=True, exist_ok=True)

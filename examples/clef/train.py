@@ -37,6 +37,7 @@ class Args(Tap):
     output_dir: str
     run_name: str
     checkpoint_dir: str = ""
+    checkpoint_object_store: bool = False
     head_config: str = str(Path(__file__).with_name("joint_head_config.json"))
     global_batch_size: int = 64
     micro_batch_size: int = 1
@@ -264,7 +265,7 @@ def _run(
                 telemetry.log(metrics, completed)
             if completed % args.save_interval == 0 or completed == config["total_steps"]:
                 save_checkpoint(model, optimizer, output, completed, {"config": config}, processor, head_config,
-                                checkpoint_root=args.checkpoint_dir or None)
+                                checkpoint_root=args.checkpoint_dir or None, object_store=args.checkpoint_object_store)
 
 
 if __name__ == "__main__":

@@ -25,8 +25,11 @@ def save_checkpoint(
     processor: Any,
     head_config: dict[str, int],
     checkpoint_root: str | Path | None = None,
+    object_store: bool = False,
 ) -> None:
-    if str(checkpoint_root).startswith("s3://"):
+    if object_store or str(checkpoint_root).startswith("s3://"):
+        if checkpoint_root is None:
+            raise ValueError("object-store checkpoints require an explicit directory")
         save_s3_checkpoint(model, optimizer, output_dir, str(checkpoint_root), step, metadata,
                            lambda state, export: _export_model(model, state, export, processor, head_config))
         return

@@ -4,6 +4,7 @@ import hashlib
 import json
 import shutil
 from collections.abc import Callable
+from os import PathLike
 from pathlib import Path
 from typing import Any
 
@@ -12,9 +13,23 @@ import torch
 import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
 from torch.distributed.checkpoint._fsspec_filesystem import FsspecReader, FsspecWriter
+from torch.distributed.checkpoint.filesystem import FileSystem, FileSystemWriter
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_model_state_dict
 
 from miles.backends.fsdp_utils.checkpoint import ModelState, OptimizerState
+
+
+class _ObjectStoreFileSystem(FileSystem):
+    def rename(self, path: str | PathLike, new_path: str | PathLike) -> None:
+        # Mounted object stores have sequential writes but no rename operation.
+        # Leave the small temporary metadata object; COMPLETE.json gates readers.
+        shutil.copyfile(path, new_path)
+
+
+class _ObjectStoreWriter(FileSystemWriter):
+    def __init__(self, path: str) -> None:
+        super().__init__(path, sync_files=False, overwrite=False)
+        self.fs = _ObjectStoreFileSystem()
 
 
 def save_s3_checkpoint(
@@ -28,7 +43,7 @@ def save_s3_checkpoint(
         raise FileExistsError(uri)
     dist.barrier()
     # DCP closes every multipart upload before its collective save completes.
-    writer = FsspecWriter(uri + "/native", sync_files=False, overwrite=False)
+    writer = FsspecWriter(uri + "/native", sync_files=False, overwrite=False) if uri.startswith("s3://") else _ObjectStoreWriter(uri + "/native")
     dcp.save({"model": ModelState(model), "optimizer": OptimizerState(model, optimizer)}, storage_writer=writer)
     state = get_model_state_dict(model, options=StateDictOptions(full_state_dict=True, cpu_offload=True))
     if dist.get_rank() == 0:
