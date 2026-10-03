@@ -332,6 +332,22 @@ def _publish(path, recipe, build):
     logger.info("checkpoint cache published: %s", path)
 
 
+def _weight_options(converter, options, source_flag, destination_flag):
+    weight_options = {
+        flag: values
+        for flag, values in options.items()
+        if flag not in _EXECUTION_OPTIONS | {source_flag, destination_flag, "--overwrite"}
+    }
+    if converter == "convert_hf_to_torch_dist.py":
+        # Without an explicit padded vocabulary, TP can change the global embedding shape.
+        if "--padded-vocab-size" not in options:
+            weight_options["--tensor-model-parallel-size"] = options.get("--tensor-model-parallel-size", ["1"])
+        # set_default_megatron_args uses bf16 unless fp16 is requested.
+        weight_options.pop("--bf16", None)
+        weight_options.setdefault("--megatron-to-hf-mode", ["raw"])
+    return weight_options
+
+
 def run_conversion(cmd, execute):
     if not enabled():
         return execute(cmd)
@@ -373,11 +389,7 @@ def run_conversion(cmd, execute):
         "format": 1,
         "converter": tool.name,
         "source": snapshot(source, weights_only=True),
-        "options": {
-            flag: values
-            for flag, values in options.items()
-            if flag not in _EXECUTION_OPTIONS | {source_flag, destination_flag, "--overwrite"}
-        },
+        "options": _weight_options(tool.name, options, source_flag, destination_flag),
         "code": _conversion_code(tool, options, source, environment),
         "packages": _package_versions(),
         "environment": {

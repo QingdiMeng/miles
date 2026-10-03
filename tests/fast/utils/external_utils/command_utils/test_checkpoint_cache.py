@@ -283,3 +283,14 @@ def test_hf_update_reuses_unchanged_blobs_without_exposing_partial_files(tmp_pat
     before = cache.snapshot(original, weights_only=True)
     (original / "README.md").write_text("Unrelated documentation change")
     assert cache.snapshot(original, weights_only=True) == before
+
+
+def test_tp_only_shares_when_it_cannot_change_the_global_embedding_shape():
+    def identity(**flags):
+        return cache._weight_options("convert_hf_to_torch_dist.py", flags, "--hf-checkpoint", "--save")
+
+    assert identity() == identity(**{"--bf16": [], "--tensor-model-parallel-size": ["1"]})
+    assert identity() != identity(**{"--tensor-model-parallel-size": ["2"]})
+    assert identity(**{"--padded-vocab-size": ["1024"], "--tensor-model-parallel-size": ["1"]}) == identity(
+        **{"--padded-vocab-size": ["1024"], "--tensor-model-parallel-size": ["2"]}
+    )
