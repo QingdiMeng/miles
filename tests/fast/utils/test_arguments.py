@@ -869,13 +869,17 @@ def test_sampling_support_arguments_fail_closed(extra, message):
         (["--rollout-top-p", "0.95", "--rollout-top-k", "32"], True),
     ],
 )
-def test_sampling_support_replay_is_derived_from_rollout_filters(sampling_args, expected):
+@pytest.mark.parametrize("candidate_count", [0, 64])
+def test_sampling_replay_and_logprobs_mode_are_derived_from_rollout_filters(sampling_args, expected, candidate_count):
     parser = argparse.ArgumentParser()
     get_miles_extra_args_provider()(parser)
-    args = parser.parse_args(sampling_args + ["--num-rollout", "1"] + REQUIRED_ARGS)
+    args = parser.parse_args(
+        sampling_args + ["--num-rollout", "1", "--rollout-top-logprobs-num", str(candidate_count)] + REQUIRED_ARGS
+    )
 
     miles_validate_args(args)
     assert args.use_sampling_support_replay is expected
+    assert args.rollout_sampling_logprobs_mode == ("support" if expected else "selected")
 
 
 def test_sglang_parallel_sizes_keep_server_args_destinations():
@@ -1570,6 +1574,40 @@ class TestCustomConfigAppliedBeforeDerivedArgs:
         return parser.parse_args(
             extra + ["--custom-config-path", str(config_path), "--num-rollout", "1"] + REQUIRED_ARGS
         )
+
+    def test_score_centering_config_is_validated_at_startup(self, tmp_path: Path) -> None:
+        args = self._parse(tmp_path, [], "loss_type: score_centering\nrollout_top_logprobs_num: 0\n")
+        with pytest.raises(ValueError, match="--rollout-top-logprobs-num"):
+            miles_validate_args(args)
+
+    def test_filtered_score_centering_enables_replay_at_startup(self, tmp_path: Path) -> None:
+        args = self._parse(
+            tmp_path,
+            [
+                "--rollout-top-p",
+                "0.9",
+                "--rollout-top-k",
+                "64",
+                "--rollout-top-logprobs-num",
+                "128",
+            ],
+            "loss_type: score_centering\n",
+        )
+        miles_validate_args(args)
+        assert args.use_sampling_support_replay is True
+        assert args.rollout_sampling_logprobs_mode == "support"
+
+    @pytest.mark.parametrize("filtered", [False, True])
+    def test_sampling_logprobs_mode_uses_final_sampling_config(self, tmp_path: Path, filtered: bool) -> None:
+        args = self._parse(
+            tmp_path,
+            ["--rollout-top-k", "32", "--rollout-top-logprobs-num", "64"],
+            f"rollout_top_p: {0.9 if filtered else 1.0}\n"
+            f"rollout_top_k: {32 if filtered else -1}\n"
+            f"rollout_sampling_logprobs_mode: {'selected' if filtered else 'support'}\n",
+        )
+        miles_validate_args(args)
+        assert args.rollout_sampling_logprobs_mode == ("support" if filtered else "selected")
 
     def test_a_dashboard_switched_on_by_the_config_file_is_still_checked(self, tmp_path):
         """Checking the dashboard before the file override let a file-only opt-in start without a dump directory."""
