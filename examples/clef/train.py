@@ -36,6 +36,7 @@ class Args(Tap):
     data_dir: str
     output_dir: str
     run_name: str
+    checkpoint_dir: str = ""
     head_config: str = str(Path(__file__).with_name("joint_head_config.json"))
     global_batch_size: int = 64
     micro_batch_size: int = 1
@@ -97,6 +98,19 @@ def _clip_gradients(model: TrainableClefModel, max_norm: float, device: torch.de
     for gradient in local:
         gradient.mul_(coefficient)
     return norm.item()
+
+
+def _build_optimizer(model: TrainableClefModel, args: Args) -> torch.optim.Optimizer:
+    backbone = [p for name, p in model.named_parameters() if not name.startswith("head.") and p.requires_grad]
+    optimizer = torch.optim.AdamW([
+        {"params": backbone, "lr": args.backbone_lr}, {"params": list(model.head.parameters()), "lr": args.head_lr},
+    ], weight_decay=args.weight_decay, foreach=False)
+    # Explicit zero-step states avoid checkpoint helpers lazily executing a dummy
+    # Adam step for backbone parameters that have no gradients during head warmup.
+    for group in optimizer.param_groups:
+        for parameter in group["params"]:
+            optimizer.state[parameter] = {"step": torch.zeros(()), "exp_avg": torch.zeros_like(parameter), "exp_avg_sq": torch.zeros_like(parameter)}
+    return optimizer
 
 
 @torch.no_grad()
@@ -191,7 +205,7 @@ def _prepare(args: Args) -> tuple[list[DecisionExample], list[DecisionExample], 
                    "total_steps": args.head_warmup_steps + args.epochs * len(train) // args.global_batch_size,
                    "loss": "direct_brier", "reasoning": False, "lora": False, "precision": "fp32_master_bf16_compute"})
     output = Path(args.output_dir)
-    if dist.get_rank() == 0:
+    if int(os.environ["LOCAL_RANK"]) == 0:
         output.mkdir(parents=True, exist_ok=bool(args.resume))
         if not args.resume:
             (output / "config.json").write_text(json.dumps(config, indent=2))
@@ -210,10 +224,7 @@ def main() -> None:
     processor = AutoProcessor.from_pretrained(args.model_dir, local_files_only=True)
     head_config = read_head_config(Path(args.head_config))
     model = shard_model(build_model(args.model_dir, head_config, device), dist.get_world_size())
-    backbone = [p for name, p in model.named_parameters() if not name.startswith("head.") and p.requires_grad]
-    optimizer = torch.optim.AdamW([
-        {"params": backbone, "lr": args.backbone_lr}, {"params": list(model.head.parameters()), "lr": args.head_lr},
-    ], weight_decay=args.weight_decay, foreach=False)
+    optimizer = _build_optimizer(model, args)
     start = 0
     if args.resume:
         saved = load_checkpoint(model, optimizer, Path(args.resume))
@@ -252,7 +263,8 @@ def _run(
             if telemetry is not None:
                 telemetry.log(metrics, completed)
             if completed % args.save_interval == 0 or completed == config["total_steps"]:
-                save_checkpoint(model, optimizer, output, completed, {"config": config}, processor, head_config)
+                save_checkpoint(model, optimizer, output, completed, {"config": config}, processor, head_config,
+                                checkpoint_root=Path(args.checkpoint_dir) if args.checkpoint_dir else None)
 
 
 if __name__ == "__main__":

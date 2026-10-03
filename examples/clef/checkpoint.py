@@ -23,8 +23,10 @@ def save_checkpoint(
     metadata: dict[str, Any],
     processor: Any,
     head_config: dict[str, int],
+    checkpoint_root: Path | None = None,
 ) -> None:
-    root = output_dir / "checkpoints" / f"step_{step:07d}"
+    checkpoint_root = checkpoint_root if checkpoint_root is not None else output_dir / "checkpoints"
+    root = checkpoint_root / f"step_{step:07d}"
     if dist.get_rank() == 0:
         root.mkdir(parents=True, exist_ok=False)
     dist.barrier()
@@ -50,7 +52,7 @@ def save_checkpoint(
     dist.barrier()
     if dist.get_rank() == 0:
         (root / "COMPLETE.json").write_text(json.dumps({"step": step, "world_size": dist.get_world_size()}))
-        tracker = output_dir / "checkpoints" / "latest.json"
+        tracker = checkpoint_root / "latest.json"
         temporary = tracker.with_suffix(".tmp")
         temporary.write_text(json.dumps({"step": step, "path": str(root)}))
         temporary.replace(tracker)
