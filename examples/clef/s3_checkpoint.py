@@ -46,13 +46,13 @@ def save_s3_checkpoint(
             fs.put_file(str(path), key + "/" + relative)
             size = path.stat().st_size
             if fs.info(key + "/" + relative)["size"] != size:
-                raise IOError(f"uploaded size mismatch: {relative}")
+                raise OSError(f"uploaded size mismatch: {relative}")
             files.append({"path": relative, "bytes": size, "sha256": digest})
         native = fs.find(key + "/native")
         if not any(path.endswith("/.metadata") for path in native):
-            raise IOError("native checkpoint metadata is missing")
+            raise OSError("native checkpoint metadata is missing")
         if len([path for path in native if path.endswith(".distcp")]) != dist.get_world_size():
-            raise IOError("native checkpoint shard count mismatch")
+            raise OSError("native checkpoint shard count mismatch")
         fs.pipe_file(key + "/upload-manifest.json", json.dumps({"files": files}).encode())
         # The marker is published only after native shards and every export are present.
         fs.pipe_file(key + "/COMPLETE.json", json.dumps({"step": step, "world_size": dist.get_world_size()}).encode())
