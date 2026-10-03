@@ -130,7 +130,7 @@ def _parallel_args(args: ScriptArgs) -> str:
 
 def _prepare_spmd(args: ScriptArgs):
     assert args.hf_checkpoint is not None
-    U.convert_checkpoint(
+    args.create_backend().convert_checkpoint(
         model_name=args.model_name,
         hf_checkpoint=args.hf_checkpoint,
         megatron_model_type=args.megatron_model_type,
@@ -266,10 +266,23 @@ def _train(args: ScriptArgs):
         "SGLANG_DSV4_FP4_EXPERTS": "0",
         "SGLANG_HEALTH_CHECK_TIMEOUT": "900",
         "SGLANG_DG_CACHE_DIR_PER_PROCESS": "1",
+        # JIT caches (tilelang/triton/inductor) on an NFS home go stale under
+        # 16-rank concurrent compilation; keep them node-local
+        "TILELANG_CACHE_DIR": "/tmp/tilelang_cache",
+        "TRITON_CACHE_DIR": "/tmp/triton_cache",
+        "TORCHINDUCTOR_CACHE_DIR": "/tmp/inductor_cache",
         "SGLANG_OPT_FP8_WO_A_GEMM": "0",
+        # the compensated mHC weight split caches derived weights inside the
+        # captured graphs, which online weight updates cannot refresh
+        "SGLANG_OPT_DEEPGEMM_HC_PRENORM": "0",
         "SGLANG_OPT_FUSE_WQA_WKV": "0",
         "SGLANG_DISABLE_MULTIMEM_AG": "1",
         "SGLANG_ENABLE_DSV41_ENGRAM_HOST_TABLE": "1" if args.sglang_engram_host_table else "0",
+        # the shared layout passes a memfd through /proc, which cannot cross a
+        # node boundary; engines wider than a node need the per-rank slices
+        "SGLANG_DSV41_ENGRAM_HOST_TABLE_LAYOUT": (
+            "per_rank" if engine_gpus > args.num_gpus_per_node else "shared"
+        ),
         "TORCHINDUCTOR_COMPILE_THREADS": "1",
         "PYTHONFAULTHANDLER": "1",
         "CUDA_DEVICE_MAX_CONNECTIONS": "1",
@@ -339,9 +352,9 @@ def _train(args: ScriptArgs):
         f"{misc_args} "
         f"{args.extra_args} "
     )
-    U.execute_train(
+    backend = args.create_backend()
+    backend.execute_train(
         train_args=train_args,
-        config=args,
         num_gpus_per_node=args.num_gpus_per_node,
         megatron_model_type=args.megatron_model_type,
         extra_env_vars=extra_env_vars,
