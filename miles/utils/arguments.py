@@ -39,7 +39,9 @@ from miles.utils.object_store_config import (
     compute_mooncake_init_kwargs_from_env,
     compute_mooncake_init_kwargs_vanilla,
 )
+from miles.utils.rollout_topk_logprobs import validate_rollout_topk_logprobs_args
 from miles.utils.run_uuid import RUN_UUID_LENGTH, generate_run_uuid, validate_run_uuid
+from miles.utils.score_centering import validate_score_centering_args
 from miles.utils.tracking_utils.ci_history import RECORD_DIR_ENV
 from miles.utils.workers.argv_utils import with_relax_parser_required_args, with_suppressed_parser_help
 from miles.utils.workers.naming import DEPLOY_INSTANCE_ID_MAX_LENGTH, DNS_LABEL_PATTERN
@@ -682,6 +684,16 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
                     "the top-k for the inference engine during rollout. Positive values enable "
                     "sampling-support replay. SGLang's --sampling-mask-max-tokens is the physical "
                     "returned-support limit because cutoff ties can retain more than top-k tokens."
+                ),
+            )
+            parser.add_argument(
+                "--rollout-top-logprobs-num",
+                type=int,
+                default=0,
+                help=(
+                    "Number of sampler candidate log-probs recorded per generated token in "
+                    "Sample.rollout_topk_token_ids / rollout_topk_log_probs; 0 disables recording. "
+                    "Training requests ask SGLang for them and override any client-supplied value."
                 ),
             )
             parser.add_argument(
@@ -1595,10 +1607,10 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
             parser.add_argument(
                 "--loss-type",
                 type=str,
-                choices=["policy_loss", "sft_loss", "custom_loss"],
+                choices=["policy_loss", "sft_loss", "custom_loss", "score_centering"],
                 default="policy_loss",
                 help=(
-                    "Choose loss type, currently support ppo policy_loss or sft_loss, "
+                    "Choose PPO policy_loss, REINFORCE score_centering, or sft_loss; "
                     "if custom_loss is set, we will use the function path from `--custom-loss-function-path`."
                 ),
             )
@@ -1611,6 +1623,15 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
                     "we will use this function to calculate the loss. "
                 ),
             )
+            parser.add_argument(
+                "--score-centering-is",
+                choices=["none", "tis", "mis"],
+                default="none",
+                help="Importance weights to center together with the policy score.",
+            )
+            parser.add_argument("--score-centering-tis-clip", type=float, default=2.0)
+            parser.add_argument("--score-centering-mis-low", type=float, default=0.5)
+            parser.add_argument("--score-centering-mis-high", type=float, default=5.0)
             parser.add_argument(
                 "--kl-loss-type",
                 type=str,
@@ -3277,6 +3298,7 @@ def miles_validate_args(args):
     if args.rollout_top_k != -1 and args.rollout_top_k < 1:
         raise ValueError(f"--rollout-top-k must be -1 or at least 1, got {args.rollout_top_k}")
     args.use_sampling_support_replay = args.rollout_top_p < 1.0 or args.rollout_top_k > 0
+    args.rollout_sampling_logprobs_mode = "support" if args.use_sampling_support_replay else "selected"
     if args.use_sampling_support_replay:
         if args.rollout_top_k == -1:
             raise ValueError(
@@ -3296,6 +3318,7 @@ def miles_validate_args(args):
                 "sampling-support replay cannot currently be combined with reference KL or teacher distillation; "
                 "those objectives require a separate full-policy actor score"
             )
+    validate_rollout_topk_logprobs_args(args)
 
     if not args.use_session_server and args.tito_model != TITOTokenizerType.DEFAULT.value:
         raise ValueError(
@@ -3896,6 +3919,8 @@ def miles_validate_args(args):
 
     if args.skip_actor_forward_only:
         validate_skip_actor_forward_only(args)
+
+    validate_score_centering_args(args)
 
     _maybe_apply_dumper_overrides(args)
 
