@@ -117,7 +117,10 @@ def _options(argv):
 
 
 def _source_hashes(paths, root):
-    return {str(path.relative_to(root)): _digest(path.read_bytes()) for path in sorted(set(paths))}
+    return {
+        str(path.relative_to(root)): _digest(ast.dump(ast.parse(path.read_text()), include_attributes=False).encode())
+        for path in sorted(set(paths))
+    }
 
 
 def _model_dependencies(paths, root):

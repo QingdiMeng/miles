@@ -255,6 +255,10 @@ def test_kimi_layout_change_invalidates_only_relevant_model_code(tmp_path, monke
     )
     tool = root / "tools/convert_hf_to_torch_dist.py"
     before = cache._conversion_code(tool, {}, source, {})
+    (root / "miles_plugins/models/kimi_k3/model.py").write_text(
+        "# Formatting and comments do not change weights.\nstate_key='self_attention.q_proj.weight'\n"
+    )
+    assert cache._conversion_code(tool, {}, source, {}) == before
     (root / "miles/backends/megatron_utils/actor.py").write_text("training_change = True\n")
     assert cache._conversion_code(tool, {}, source, {}) == before
     (root / "miles_plugins/models/kimi_k3/model.py").write_text(
