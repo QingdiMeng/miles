@@ -15,8 +15,9 @@ jobs:
       ref: ${{ inputs.source_ref }}
       plan_already_resolved: true
       execute_command: >-
+        python tools/kubernetes/lint_charts.py &&
         pytest tests/fast/utils/external_utils/command_utils
-        tests/fast/launch_scripts tests/manual/launch_scripts
+        tests/fast/launch_scripts
         tests/ci/test/test_file_run.py -q
     secrets:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
