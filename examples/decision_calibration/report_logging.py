@@ -1,4 +1,4 @@
-"""Log JSON report validity and exact probability-one collapse percentages."""
+"""Log report validity, probability-one collapse, and single-answer accuracy."""
 
 from collections.abc import Sequence
 
@@ -24,6 +24,21 @@ def report_statistics(samples: Sequence) -> dict[str, float]:
         result[prefix + "probability_collapse_count"] = collapsed
         result[prefix + "probability_collapse_pct"] = 100 * collapsed / len(group)
         result[prefix + "report_valid_pct"] = 100 * len(valid) / len(group)
+        single_answer = [
+            (sample.metadata["target"], report)
+            for sample, report in zip(group, reports, strict=True)
+            if sample.metadata["target"].count(1.0) == 1
+            and all(value in (0.0, 1.0) for value in sample.metadata["target"])
+        ]
+        if single_answer:
+            correct = sum(
+                report["valid"]
+                and max(range(len(target)), key=report["probabilities"].__getitem__) == target.index(1.0)
+                for target, report in single_answer
+            )
+            result[prefix + "single_answer_count"] = len(single_answer)
+            result[prefix + "single_answer_correct_count"] = correct
+            result[prefix + "single_answer_accuracy"] = correct / len(single_answer)
         if valid:
             result[prefix + "probability_collapse_valid_pct"] = 100 * collapsed / len(valid)
     return result

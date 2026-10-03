@@ -137,6 +137,12 @@ prepared data. Eight sampled reports per question receive GRPO group
 advantages. This trains stated probabilities; answer-token logits require a
 separate evaluation and are not assumed to become calibrated.
 
+The report logging hooks record `single_answer_accuracy` (0 to 1),
+`single_answer_count`, and `single_answer_correct_count` for one-hot targets,
+overall and by source, under `rollout/` and `eval/<dataset>/`. The predicted
+answer is the largest normalized probability; ties select the first option.
+Invalid reports count as incorrect. Non-one-hot synthetic targets are excluded.
+
 
 `python -m examples.decision_calibration.prepare_mixed --pilot-data-dir /path/to/pilot-data --mmlu-parquet /path/to/mmlu-test.parquet --output-dir /path/to/new-data`
 prepares 8,192 training questions: 256 GPQA, 7,117 MMLU, and 819 synthetic.
