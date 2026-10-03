@@ -42,8 +42,9 @@ def messages(task: dict) -> list[dict]:
     keys = ", ".join(json.dumps(chr(65 + i)) for i in range(len(labels)))
     state = task["state"] if isinstance(task["state"], str) else json.dumps(task["state"])
     text = (f"State:\n{state}\n\n{question['instructions']}\n\nOptions:\n" + "\n".join(options)
-            + f"\n\nReport your probability for every option as a JSON object with exactly the keys {keys}. "
-            "Use finite numbers between 0 and 1 that sum to 1. Report your uncertainty honestly. "
+            + f"\n\nReport your probabilities as a JSON object using only option keys {keys}. "
+            "Omitted options have probability zero. Use finite nonnegative numbers with a positive total; "
+            "we normalize them to sum to 1 before scoring. Negative values are invalid. Report your uncertainty honestly. "
             "Output only JSON, without explanation or Markdown.")
     return [{"role": "user", "content": text}]
 

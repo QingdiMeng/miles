@@ -126,10 +126,14 @@ Pass `--probability-report` to the launcher to use conventional sequence-level
 GRPO instead of the sampled decision-token Brier-gradient estimator. The model
 generates `{"A":0.1,"B":0.6,"C":0.2,"D":0.1}` with thinking disabled and a
 128-token response cap. Each valid report receives negative full-distribution
-Brier loss against the metadata target. Reports must contain exactly four
-unique keys and finite numeric probabilities in [0,1] summing to 1 within 1e-6;
-invalid reports receive -3, below the worst valid reward of -2. No probabilities
-are silently normalized. Eight sampled reports per question receive GRPO group
+Brier loss against the metadata target after normalization. Reports may omit
+zero-probability options: `{"B":1}` is a valid one-hot report. Keys must be
+unique and belong to the question's options. Finite nonnegative values are
+normalized to sum to one, so `{"A":2,"B":6}` becomes probabilities 0.25 and
+0.75. Negative values, nonnumeric values, unknown/duplicate keys, and empty or
+zero-total reports receive -3, below the worst valid reward of -2. The prompt
+explains normalization and replaces the strict instruction in previously
+prepared data. Eight sampled reports per question receive GRPO group
 advantages. This trains stated probabilities; answer-token logits require a
 separate evaluation and are not assumed to become calibrated.
 
@@ -193,8 +197,10 @@ public-subset diagnostic, not an official score including sealed items.
 
 The evaluator reports validity, full multiclass Brier, ten-bin top-label ECE,
 accuracy, ordinal MAE, exact probability-one collapse, and request latency.
-Requests are serial after an excluded warm-up. JSON parsing retains the training
-sum tolerance of `1e-6`; probabilities are never inferred or repaired. Ordinal
+Requests are serial after an excluded warm-up. JSON parsing uses the training
+sparse-report contract: omitted options become zero and finite nonnegative
+weights with a positive total are normalized before scoring. Previously archived
+evaluations used the strict parser; their results are unchanged. Ordinal
 accuracy uses native argmax correctness while ordinal MAE uses expected level.
 
 `run_jevbench.py` copies four HF exports from an archive, verifies every file's
