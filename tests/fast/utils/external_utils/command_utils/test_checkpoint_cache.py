@@ -154,7 +154,9 @@ def test_command_guard_preserves_environment_and_ignores_topology(tmp_path, monk
         _weights(Path(tokens[tokens.index("--save-dir") + 1]))
 
     tool = Path(cache.__file__).resolve().parents[4] / "tools/convert_mxfp4_to_bf16.py"
-    command = f"PYTHONPATH=/checkout-a NVTE_USE_FAST_MATH=0 python {tool} --model-dir {source} --save-dir {destination}"
+    command = (
+        f"PYTHONPATH=/checkout-a NVTE_USE_FAST_MATH=0 python {tool} --model-dir {source} --save-dir {destination}"
+    )
     cache.run_conversion(command + " --device cuda --max-workers 4", execute)
     cache._close_leases()
     cache.run_conversion(command.replace("/checkout-a", "/checkout-b") + " --device cuda --max-workers 8", execute)
@@ -248,12 +250,16 @@ def test_kimi_layout_change_invalidates_only_relevant_model_code(tmp_path, monke
     (bridge / "__init__.py").write_text("")
     monkeypatch.setattr(cache, "__file__", str(root / "miles/utils/external_utils/command_utils/checkpoint_cache.py"))
     monkeypatch.setenv("MEGATRON_SOURCE_ROOT", str(megatron))
-    monkeypatch.setattr(cache.importlib.util, "find_spec", lambda _: SimpleNamespace(submodule_search_locations=[bridge]))
+    monkeypatch.setattr(
+        cache.importlib.util, "find_spec", lambda _: SimpleNamespace(submodule_search_locations=[bridge])
+    )
     tool = root / "tools/convert_hf_to_torch_dist.py"
     before = cache._conversion_code(tool, {}, source, {})
     (root / "miles/backends/megatron_utils/actor.py").write_text("training_change = True\n")
     assert cache._conversion_code(tool, {}, source, {}) == before
-    (root / "miles_plugins/models/kimi_k3/model.py").write_text('state_key = "self_attention.linear_attn.q_proj.weight"\n')
+    (root / "miles_plugins/models/kimi_k3/model.py").write_text(
+        'state_key = "self_attention.linear_attn.q_proj.weight"\n'
+    )
     assert cache._conversion_code(tool, {}, source, {}) != before
 
 

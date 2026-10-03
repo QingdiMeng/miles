@@ -302,7 +302,8 @@ class BaseCommandBackend(ABC):
         self, cmd: str, capture_output: bool = False, num_gpus_per_node: int | None = None
     ) -> str | None:
         return checkpoint_cache.run_conversion(
-            cmd, partial(self._exec_command_gpu_inner, capture_output=capture_output, num_gpus_per_node=num_gpus_per_node)
+            cmd,
+            partial(self._exec_command_gpu_inner, capture_output=capture_output, num_gpus_per_node=num_gpus_per_node),
         )
 
     def exec_command_multi_node(

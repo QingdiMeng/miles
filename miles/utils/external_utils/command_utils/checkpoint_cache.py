@@ -12,10 +12,10 @@ import logging
 import os
 import shlex
 import shutil
-import tempfile
 import struct
-from pathlib import Path
+import tempfile
 from contextvars import ContextVar
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 MANIFEST = "miles_checkpoint_manifest.json"
@@ -68,10 +68,18 @@ def snapshot(path, *, weights_only=False):
     for file in sorted(path.rglob("*")):
         if not file.is_file() or ".cache" in file.relative_to(path).parts or file.name == MANIFEST:
             continue
-        if weights_only and file.suffix not in {".safetensors", ".bin", ".pt", ".py"} and file.name not in {
-            "config.json", "hf_quant_config.json", "quantize_config.json", "model.safetensors.index.json",
-            "pytorch_model.bin.index.json",
-        }:
+        if (
+            weights_only
+            and file.suffix not in {".safetensors", ".bin", ".pt", ".py"}
+            and file.name
+            not in {
+                "config.json",
+                "hf_quant_config.json",
+                "quantize_config.json",
+                "model.safetensors.index.json",
+                "pytorch_model.bin.index.json",
+            }
+        ):
             continue
         stat = file.stat()
         entry = {"size": stat.st_size}
@@ -351,7 +359,11 @@ def run_conversion(cmd, execute):
     source = Path(options[source_flag][0]).resolve(strict=True)
     destination = Path(options[destination_flag][0]).absolute()
     resolved_destination = destination.resolve()
-    if source == resolved_destination or source in resolved_destination.parents or resolved_destination in source.parents:
+    if (
+        source == resolved_destination
+        or source in resolved_destination.parents
+        or resolved_destination in source.parents
+    ):
         raise ValueError("Checkpoint source and destination must not overlap")
     if any(flag in options for flag in ("--files", "--shard-rank", "--num-shards", "--finalize-only")):
         raise ValueError("CI checkpoint caches require a complete conversion, not a partial shard")

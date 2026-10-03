@@ -8,8 +8,8 @@ from typing import Literal
 
 import typer
 
-from miles.utils.external_utils.command_utils import checkpoint_cache
 from miles.utils.external_utils import command_utils
+from miles.utils.external_utils.command_utils import checkpoint_cache
 
 app = typer.Typer()
 

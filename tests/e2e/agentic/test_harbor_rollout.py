@@ -46,14 +46,13 @@ import shutil
 import sys
 import urllib.request
 from pathlib import Path
-
-from miles.utils.external_utils.command_utils import checkpoint_cache
 from types import SimpleNamespace
 
 from tests.ci.ci_register import register_cuda_ci
 
 from miles.rollout.agentic.credentials import PROVIDER_CREDENTIALS
 from miles.utils.external_utils import command_utils
+from miles.utils.external_utils.command_utils import checkpoint_cache
 
 register_cuda_ci(
     est_time=1200,

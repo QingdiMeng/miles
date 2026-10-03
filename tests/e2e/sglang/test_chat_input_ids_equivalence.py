@@ -3,10 +3,11 @@ import os
 
 import pytest
 import requests
-from miles.utils.external_utils.command_utils.checkpoint_cache import download_hf_checkpoint
 from tests.ci.ci_register import register_cuda_ci, register_rocm_ci
 from tests.e2e.sglang.utils.sglang_server import start_sglang_server
 from transformers import AutoTokenizer
+
+from miles.utils.external_utils.command_utils.checkpoint_cache import download_hf_checkpoint
 
 register_cuda_ci(est_time=190, suite="stage-c-4-gpu-h200", labels=["sglang"], hardware=["hopper", "blackwell"])
 register_rocm_ci(est_time=80, suite="nightly-stage-c-4-gpu-mi350", labels=["sglang"])

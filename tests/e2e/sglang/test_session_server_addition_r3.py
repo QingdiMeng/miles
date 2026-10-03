@@ -8,13 +8,13 @@ import numpy as np
 import pytest
 import requests
 import torch
-from miles.utils.external_utils.command_utils.checkpoint_cache import download_hf_checkpoint
 from tests.ci.ci_register import register_cuda_ci
 from tests.e2e.sglang.utils.sglang_server import start_sglang_server
 
 from miles.rollout.session.config import compute_session_server_config
 from miles.rollout.session.samples.codec import decode_samples_and_merge_input_sample
 from miles.rollout.session.server import SessionServer
+from miles.utils.external_utils.command_utils.checkpoint_cache import download_hf_checkpoint
 from miles.utils.http_utils import find_available_port
 from miles.utils.test_utils.uvicorn_thread_server import UvicornThreadServer
 from miles.utils.types import Sample
