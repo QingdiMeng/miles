@@ -96,12 +96,15 @@ def plan_file_run(all_tests, test_file: str, image_tag: str) -> dict[str, str]:
             raise FileRunError(f"CPU suite {registration.suite} is not allowed for an explicit file run")
         hw = "cpu"
         runs_on_json = ""
+    timeout_seconds = max(1800, int(registration.est_time * 1.25))
     return {
         "hw": hw,
         "suite": registration.suite,
         "runs_on": runs_on_json,
         "container_image": f"radixark/miles:{image_tag}",
-        "timeout_seconds": str(max(1800, int(registration.est_time * 1.25))),
+        "timeout_seconds": str(timeout_seconds),
+        # Leave setup and teardown time outside the test's own timeout.
+        "timeout_minutes": str(max(360, (timeout_seconds + 59) // 60 + 30)),
     }
 
 

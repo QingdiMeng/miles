@@ -52,6 +52,7 @@ def test_cuda_file_resolves_to_its_suite_runner_and_image():
         "runs_on": json.dumps(["h200", "4gpu"]),
         "container_image": "radixark/miles:dev",
         "timeout_seconds": "1800",
+        "timeout_minutes": "360",
     }
 
 
@@ -64,12 +65,19 @@ def test_cpu_file_resolves_without_runner_labels():
         "runs_on": "",
         "container_image": "radixark/miles:pr-42",
         "timeout_seconds": "1800",
+        "timeout_minutes": "360",
     }
 
 
 def test_long_file_extends_the_default_timeout():
     tests = [_make("tests/e2e/x/test_a.py", est_time=2000)]
     assert plan_file_run(tests, "tests/e2e/x/test_a.py", "dev")["timeout_seconds"] == "2500"
+
+
+def test_long_file_job_outlives_the_test_timeout():
+    plan = resolve_file_run("tests/e2e/long/test_multi_policy_solver_verifier_gsm8k.py", "dev")
+    assert int(plan["timeout_seconds"]) == 45000
+    assert int(plan["timeout_minutes"]) * 60 >= int(plan["timeout_seconds"]) + 1800
 
 
 def test_unknown_cpu_suite_is_a_hard_error():

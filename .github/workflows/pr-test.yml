@@ -305,6 +305,8 @@ jobs:
     uses: ./.github/workflows/_run-ci.yml
     with:
       runs_on: '["h200", "4gpu"]'
+      # The 250-step solver/verifier test takes about 10h, before other files and setup.
+      timeout_minutes: 900
       container_image: ${{ needs.resolve-ci-image.outputs.container_image }}
       ref: ${{ inputs.ref || '' }}
       execute_command: >-
