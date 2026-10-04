@@ -1,4 +1,4 @@
-name: Checkpoint Cache CPU Validation
+name: CI CPU Validation
 on:
   workflow_dispatch:
     inputs:
@@ -14,10 +14,6 @@ jobs:
     with:
       ref: ${{ inputs.source_ref }}
       plan_already_resolved: true
-      execute_command: >-
-        python tools/kubernetes/lint_charts.py &&
-        pytest tests/fast/utils/external_utils/command_utils
-        tests/fast/launch_scripts
-        tests/ci/test/test_file_run.py -q
+      execute_command: pytest tests/ci/test -q
     secrets:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
